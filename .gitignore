@@ -1,0 +1,11 @@
+# Datos: nunca al repo (tienen datos personales de clientes)
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+*.json
+!docs/**/*.json
+
+__pycache__/
+node_modules/
+.clasp.json
