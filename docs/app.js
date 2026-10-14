@@ -56,7 +56,7 @@
   }
 
   // ---------- Pantallas ----------
-  const PANTALLAS = ['pantalla-config', 'pantalla-login', 'pantalla-conectar'];
+  const PANTALLAS = ['pantalla-config', 'pantalla-login', 'pantalla-sin-acceso'];
 
   function mostrar(pantalla) {
     for (const id of PANTALLAS) $(`#${id}`).hidden = id !== pantalla;
@@ -92,13 +92,13 @@
     }
   }
 
-  // Devuelve false si el usuario todavía no le dio acceso a la planilla.
+  // Devuelve false si la planilla no está compartida con la cuenta que ingresó.
   async function abrirBase() {
     try {
       state.info = await DB.info();
     } catch (err) {
       if (err instanceof DB.SinAcceso) {
-        mostrar('pantalla-conectar');
+        mostrar('pantalla-sin-acceso');
         return false;
       }
       throw err;
@@ -110,28 +110,16 @@
     return true;
   }
 
-  const SIN_ACCESO_TRAS_ELEGIR = 'Google todavía no habilitó el acceso a la planilla. Esperá unos segundos y tocá "Ya la elegí, continuar". '
-    + 'Si sigue igual, revisá que la planilla esté compartida con esta cuenta.';
-
-  async function conectar() {
-    $('#conectar-msg').textContent = '';
-    // Visible desde que se abre el selector: si el selector no avisa al elegir, la espera no termina nunca.
-    $('#btn-reintentar-conectar').hidden = false;
+  async function reintentarAcceso() {
+    const btn = $('#btn-reintentar');
+    $('#sin-acceso-msg').textContent = '';
+    btn.disabled = true;
     try {
-      await DB.conectarPlanilla();
-      if (!(await abrirBase())) $('#conectar-msg').textContent = SIN_ACCESO_TRAS_ELEGIR;
+      if (!(await abrirBase())) $('#sin-acceso-msg').textContent = 'Sigue sin acceso. Revisá que la planilla esté compartida con esta cuenta.';
     } catch (err) {
-      $('#conectar-msg').textContent = err.message;
-    }
-  }
-
-  // Por si el selector no avisó a la página después de elegir la planilla.
-  async function reintentarConectar() {
-    $('#conectar-msg').textContent = '';
-    try {
-      if (!(await abrirBase())) $('#conectar-msg').textContent = SIN_ACCESO_TRAS_ELEGIR;
-    } catch (err) {
-      $('#conectar-msg').textContent = err.message;
+      $('#sin-acceso-msg').textContent = err.message;
+    } finally {
+      btn.disabled = false;
     }
   }
 
@@ -686,8 +674,8 @@
 
   // ---------- Eventos ----------
   $('#btn-login').addEventListener('click', ingresar);
-  $('#btn-conectar').addEventListener('click', conectar);
-  $('#btn-reintentar-conectar').addEventListener('click', reintentarConectar);
+  $('#btn-reintentar').addEventListener('click', reintentarAcceso);
+  $('#btn-otra-cuenta').addEventListener('click', salir);
   $('#btn-salir').addEventListener('click', salir);
   $('#btn-reconectar').addEventListener('click', reconectar);
   $('#btn-refrescar').addEventListener('click', () => cargar().catch(() => {}));
@@ -733,7 +721,7 @@
   if (['stock', 'ventas', 'compras'].includes(hash)) state.vista = hash;
   $$('#nav button').forEach((b) => b.toggleAttribute('aria-current', b.dataset.vista === state.vista));
 
-  const faltan = ['CLIENT_ID', 'API_KEY', 'APP_ID', 'SPREADSHEET_ID'].filter((k) => !CFG[k]);
+  const faltan = ['CLIENT_ID', 'SPREADSHEET_ID'].filter((k) => !CFG[k]);
   if (faltan.length) {
     mostrar('pantalla-config');
   } else {

@@ -1,8 +1,9 @@
-// Acceso a Google: login con Google Identity Services, selector de archivos (Picker) y Sheets API.
-// El token vive solo en memoria y dura ~1 hora. El permiso pedido es drive.file: la app solo puede
-// tocar la planilla que cada usuario eligió una vez en el selector, no el resto de su Drive.
+// Acceso a Google: login con Google Identity Services y Sheets API.
+// El token vive solo en memoria y dura ~1 hora. El permiso pedido es "spreadsheets" (ver y editar las
+// hojas de cálculo del usuario); la app solo usa la planilla configurada, y Google solo la deja abrir
+// si está compartida con esa cuenta.
 window.GoogleDB = (() => {
-  const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+  const SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
   const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
 
   let tokenClient = null;
@@ -16,7 +17,7 @@ window.GoogleDB = (() => {
     constructor() { super('La sesión de Google venció. Tocá "Reconectar".'); }
   }
   class SinAcceso extends Error {
-    constructor() { super('Todavía no conectaste la planilla con ERPeq.'); }
+    constructor() { super('Esta cuenta no tiene acceso a la planilla de ERPeq.'); }
   }
 
   function esperar(cond, ms, error) {
@@ -87,44 +88,13 @@ window.GoogleDB = (() => {
     }
     const data = res.status === 204 ? null : await res.json().catch(() => null);
     const mensaje = data?.error?.message || `Error ${res.status} de Google`;
-    // 403/404 suele ser "este usuario no le dio acceso a la app a la planilla"; una API
+    // 403/404 suele ser "la planilla no está compartida con esta cuenta"; una API
     // deshabilitada en el proyecto también da 403, pero eso es un error de configuración.
     if (res.status === 404 || (res.status === 403 && !/has not been used|is disabled|API key/i.test(mensaje))) {
       throw new SinAcceso();
     }
     if (!res.ok) throw new Error(mensaje);
     return data;
-  }
-
-  // Selector de Google mostrando solo la planilla configurada. Al elegirla, la app gana acceso a ese archivo.
-  async function conectarPlanilla() {
-    if (!window.gapi) throw new Error('No se pudo cargar el selector de Google.');
-    await new Promise((resolve, reject) => gapi.load('picker', { callback: resolve, onerror: reject }));
-    return new Promise((resolve, reject) => {
-      const vista = new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS)
-        .setFileIds(cfg.SPREADSHEET_ID)
-        .setMode(google.picker.DocsViewMode.LIST);
-      new google.picker.PickerBuilder()
-        .setAppId(cfg.APP_ID)
-        .setOAuthToken(token)
-        .setDeveloperKey(cfg.API_KEY)
-        .setLocale('es')
-        .setOrigin(location.origin)
-        .setTitle('Elegí la planilla de ERPeq')
-        .addView(vista)
-        .setCallback((data) => {
-          console.info('[ERPeq] selector:', data.action);
-          if (data.action === google.picker.Action.PICKED) {
-            const elegido = data.docs?.[0]?.id;
-            if (elegido === cfg.SPREADSHEET_ID) resolve();
-            else reject(new Error('Esa no es la planilla configurada para ERPeq.'));
-          } else if (data.action === google.picker.Action.CANCEL) {
-            reject(new Error('No se eligió la planilla.'));
-          }
-        })
-        .build()
-        .setVisible(true);
-    });
   }
 
   const enc = encodeURIComponent;
@@ -182,5 +152,5 @@ window.GoogleDB = (() => {
     });
   }
 
-  return { init, login, logout, conectarPlanilla, leer, info, agregarFilas, extenderFormulasProductos, deSerie, SesionVencida, SinAcceso };
+  return { init, login, logout, leer, info, agregarFilas, extenderFormulasProductos, deSerie, SesionVencida, SinAcceso };
 })();

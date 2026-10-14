@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style; font-src https://fonts.gstatic.com; img-src 'self' data: https://*.googleusercontent.com https://*.gstatic.com https://*.google.com; connect-src 'self' https://sheets.googleapis.com https://www.googleapis.com https://content.googleapis.com https://apis.google.com https://accounts.google.com/gsi/; frame-src https://accounts.google.com https://docs.google.com https://drive.google.com https://content.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://sheets.googleapis.com https://oauth2.googleapis.com https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>ERPeq</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -53,8 +53,8 @@
 
     <section class="card gate" id="pantalla-login" hidden>
       <h2>Ingresá con tu cuenta de Google</h2>
-      <p>ERPeq trabaja sobre una planilla de Google Sheets. Solo puede abrir esa planilla, y solo si
-        está compartida con tu cuenta. No tiene acceso al resto de tu Drive.</p>
+      <p>ERPeq trabaja sobre una planilla de Google Sheets que tiene que estar compartida con tu cuenta.
+        Google te va a pedir permiso para ver y editar tus hojas de cálculo: la app solo usa la planilla de ERPeq.</p>
       <button class="btn btn-primary btn-google" id="btn-login" type="button">
         <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
         Ingresar con Google
@@ -62,16 +62,16 @@
       <p class="msg err" id="login-msg" role="alert"></p>
     </section>
 
-    <section class="card gate" id="pantalla-conectar" hidden>
-      <h2>Conectá la planilla</h2>
-      <p>Es un paso que se hace <strong>una sola vez</strong> por cuenta: Google te va a mostrar la planilla de ERPeq
-        y tenés que elegirla. Así la app obtiene permiso sobre ese archivo y nada más.</p>
-      <p class="muted">Si la planilla no aparece, pedile al dueño que la comparta con tu cuenta de Google.</p>
+    <section class="card gate" id="pantalla-sin-acceso" hidden>
+      <h2>Tu cuenta no tiene acceso a la planilla</h2>
+      <p>Ingresaste bien, pero la planilla de ERPeq no está compartida con esta cuenta de Google.</p>
+      <p class="muted">Pedile al dueño que te la comparta como <strong>Editor</strong> desde Google Drive y después tocá
+        "Reintentar". Si entraste con otra cuenta por error, tocá "Usar otra cuenta".</p>
       <div class="botones">
-        <button class="btn btn-primary" id="btn-conectar" type="button">Elegir la planilla</button>
-        <button class="btn btn-ghost" id="btn-reintentar-conectar" type="button" hidden>Ya la elegí, continuar</button>
+        <button class="btn btn-primary" id="btn-reintentar" type="button">Reintentar</button>
+        <button class="btn btn-ghost" id="btn-otra-cuenta" type="button">Usar otra cuenta</button>
       </div>
-      <p class="msg err" id="conectar-msg" role="alert"></p>
+      <p class="msg err" id="sin-acceso-msg" role="alert"></p>
     </section>
 
     <!-- ============ STOCK ============ -->
@@ -277,7 +277,6 @@
   <datalist id="dl-cargas"></datalist>
 
   <script src="https://accounts.google.com/gsi/client" async></script>
-  <script src="https://apis.google.com/js/api.js" async></script>
   <script src="vendor/chart.umd.min.js"></script>
   <script src="config.js"></script>
   <script src="modelo.js"></script>

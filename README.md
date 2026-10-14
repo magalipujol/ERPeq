@@ -6,8 +6,8 @@ Es una página estática (sin servidor) que se publica en GitHub Pages.
 ## Cómo funciona
 
 - Cada usuario entra con su cuenta de Google (Google Identity Services). El token dura una hora y vive solo en memoria.
-- La app pide el permiso `drive.file`: solo puede tocar la planilla configurada, y solo si el usuario la eligió una vez
-  en el selector de Google y la tiene compartida en Drive.
+- La app pide el permiso `spreadsheets` y trabaja solo sobre la planilla configurada, que tiene que estar compartida
+  con la cuenta del usuario. El proyecto queda en modo Prueba: solo entran los usuarios de prueba cargados.
 - Lee y escribe directo con la Sheets API desde el navegador. Las escrituras son siempre filas nuevas (append):
   el stock y el costo se calculan a partir de los movimientos.
 
@@ -29,9 +29,9 @@ Es una página estática (sin servidor) que se publica en GitHub Pages.
 ## Archivos
 
 - `docs/`: la app (lo que publica GitHub Pages, carpeta `/docs`).
-  - `config.js`: IDs del proyecto de Google y de la planilla.
+  - `config.js`: Client ID de Google y ID de la planilla.
   - `modelo.js`: lectura/escritura de filas y cálculos (sin dependencias del navegador).
-  - `google.js`: login, selector de archivos y Sheets API.
+  - `google.js`: login y Sheets API.
   - `app.js`: la interfaz.
 - `herramientas/excel_a_base.py`: convierte el Excel histórico en la planilla inicial.
 - `GUIA-CONFIGURACION.md`: paso a paso para configurar Google y la planilla.
