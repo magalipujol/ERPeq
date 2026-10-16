@@ -51,7 +51,7 @@ test('abre la sección que indica el #hash y lo actualiza al navegar', async ({ 
   await ingresar()
   await expect(page.getByRole('heading', { name: 'Compras', exact: true })).toBeVisible()
 
-  await page.getByRole('radiogroup').getByText('Ventas').click()
+  await page.getByRole('radiogroup', { name: 'Pantalla' }).getByText('Ventas').click()
   await expect(page.getByRole('heading', { name: 'Ventas', exact: true })).toBeVisible()
   await expect(page).toHaveURL(/#ventas$/)
 })

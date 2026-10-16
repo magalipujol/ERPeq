@@ -3,7 +3,7 @@
 // hojas de cálculo del usuario); la app solo usa la planilla configurada, y Google solo la deja abrir
 // si está compartida con esa cuenta.
 import type { Config } from './config';
-import type { Fila, ValorCelda } from './modelo';
+import { type ClaveHoja, type Escritura, type Fila, nombreHoja, type ValorCelda } from './modelo';
 
 const SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -137,39 +137,51 @@ export async function info() {
   return req<InfoPlanilla>(url(`?fields=${enc('properties.title,spreadsheetUrl,sheets.properties(sheetId,title)')}`));
 }
 
-// Los textos se guardan con apóstrofe adelante: Sheets los toma siempre como texto
-// (nunca como fórmula ni fecha). Las fechas van como "aaaa-mm-dd" y los números como números.
-function celda(v: ValorCelda) {
-  if (v === null || v === undefined || v === '') return '';
-  if (typeof v === 'number') return v;
+// Fecha local → número de serie de Sheets (días desde 30/12/1899, con la hora como fracción).
+export const aSerie = (d: Date) =>
+  (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()) - Date.UTC(1899, 11, 30)) / 86400000;
+
+interface DatoCelda {
+  userEnteredValue?: { stringValue?: string; numberValue?: number; boolValue?: boolean };
+  userEnteredFormat?: { numberFormat: { type: 'DATE' | 'DATE_TIME'; pattern: string } };
+}
+
+// Con appendCells los textos quedan siempre como texto (nunca fórmula ni fecha), así que no hace falta
+// el apóstrofe adelante.
+export function celda(v: ValorCelda): DatoCelda {
+  if (v === null || v === undefined || v === '') return {};
+  if (typeof v === 'number') return { userEnteredValue: { numberValue: v } };
+  if (typeof v === 'boolean') return { userEnteredValue: { boolValue: v } };
+  if (typeof v === 'string') return { userEnteredValue: { stringValue: v } };
   if (v instanceof Date) {
-    const p = (n: number) => String(n).padStart(2, '0');
-    return `${v.getFullYear()}-${p(v.getMonth() + 1)}-${p(v.getDate())}`;
+    return {
+      userEnteredValue: { numberValue: Math.floor(aSerie(v)) },
+      userEnteredFormat: { numberFormat: { type: 'DATE', pattern: 'dd/mm/yyyy' } },
+    };
   }
-  return `'${v}`;
+  return {
+    userEnteredValue: { numberValue: aSerie(v.momento) },
+    userEnteredFormat: { numberFormat: { type: 'DATE_TIME', pattern: 'dd/mm/yyyy hh:mm' } },
+  };
 }
 
-export async function agregarFilas(hoja: string, filas: ValorCelda[][]) {
-  const res = await req<{ updates: { updatedRange: string } }>(
-    url(`/values/${enc(`'${hoja}'!A1`)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`), {
-      method: 'POST',
-      body: JSON.stringify({ values: filas.map((f) => f.map(celda)) }),
-    });
-  return res.updates;
-}
-
-// Copia las fórmulas de stock de la primera fila de Productos a las filas nuevas.
-export async function extenderFormulasProductos(sheetId: number, desdeFila: number, cantidad: number, colInicio: number, colFin: number) {
-  await req(url(':batchUpdate'), {
-    method: 'POST',
-    body: JSON.stringify({
-      requests: [{
-        copyPaste: {
-          source: { sheetId, startRowIndex: 1, endRowIndex: 2, startColumnIndex: colInicio, endColumnIndex: colFin },
-          destination: { sheetId, startRowIndex: desdeFila, endRowIndex: desdeFila + cantidad, startColumnIndex: colInicio, endColumnIndex: colFin },
-          pasteType: 'PASTE_FORMULA',
+// Agrega filas al final de varias hojas en un solo batchUpdate: Google aplica todo o nada, así una
+// operación (por ejemplo, un pedido con sus ítems) nunca queda a medias.
+export async function escribir(planilla: InfoPlanilla, escritura: Escritura) {
+  const requests = (Object.entries(escritura) as [ClaveHoja, ValorCelda[][]][])
+    .filter(([, filas]) => filas.length > 0)
+    .map(([clave, filas]) => {
+      const titulo = nombreHoja(clave);
+      const hoja = planilla.sheets.find((s) => s.properties.title === titulo);
+      if (!hoja) throw new Error(`Falta la hoja "${titulo}" en la planilla.`);
+      return {
+        appendCells: {
+          sheetId: hoja.properties.sheetId,
+          rows: filas.map((f) => ({ values: f.map(celda) })),
+          fields: 'userEnteredValue,userEnteredFormat.numberFormat',
         },
-      }],
-    }),
-  });
+      };
+    });
+  if (requests.length === 0) return;
+  await req(url(':batchUpdate'), { method: 'POST', body: JSON.stringify({ requests }) });
 }

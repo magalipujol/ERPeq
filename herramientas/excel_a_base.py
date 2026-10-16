@@ -1,18 +1,17 @@
 """
 Convierte el Excel histórico (ROSARIO ACTUALIZADO.xlsm) en la base de datos de ERPeq.
 
-Genera un .xlsx con la estructura que espera la app. Ese archivo se sube a Google Drive
+Genera un .xlsx con la estructura de spec/modelo-de-datos.md. Ese archivo se sube a Google Drive
 y se abre como Hoja de cálculo de Google.
 
-    py herramientas/excel_a_base.py "ROSARIO ACTUALIZADO.xlsm" "ERPeq-base.xlsx"
+    uv run --with openpyxl herramientas/excel_a_base.py "ROSARIO ACTUALIZADO.xlsm" "ERPeq-base.xlsx"
 
 IMPORTANTE: el archivo generado tiene datos personales (agenda de clientes). No lo subas al repo.
-Requiere: pip install openpyxl
 """
 import re
 import sys
 import warnings
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime
 
 import openpyxl
@@ -22,22 +21,39 @@ from openpyxl.utils import get_column_letter
 warnings.filterwarnings('ignore')
 sys.stdout.reconfigure(encoding='utf-8')
 
-DEPOSITOS = ['General', 'Rosario']
-COMISION_POR_TIPO = {'DIETETICA': 3}  # % por defecto para ventas nuevas; el resto 0
+# Depósito de cada hoja de compras del Excel.
+DEPOSITOS = [('BB', 'General', 'Bahía Blanca'), ('ROS', 'Rosario', 'Rosario')]
+# Nombre de cada vendedor según la columna CARGA del Excel.
+VENDEDORES = {'GUADA/HERNAN': 'Guada/Hernán', 'LEO': 'Leo'}
 
+# Encabezados de cada hoja, en el orden de columnas de src/modelo.ts (HOJAS y filas).
 COLS = {
-    'Productos': ['ID', 'Producto', 'Unidad', 'Stock mínimo'] + [f'Stock {d}' for d in DEPOSITOS],
-    'Compras': ['Fecha', 'Depósito', 'Proveedor', 'ID producto', 'Producto', 'Cantidad', 'Precio unitario',
-                'Importe', 'Remito', 'Nota'],
-    'Ventas': ['Fecha', 'Depósito', 'Cliente', 'Tipo de cliente', 'Localidad', 'Provincia', 'ID producto',
-               'Producto', 'Cantidad', 'Precio unitario', 'Importe', 'Comisión', 'Costo unitario', 'Ganancia',
-               'Carga', 'Nota'],
-    'Ajustes': ['Fecha', 'Depósito', 'ID producto', 'Producto', 'Cantidad', 'Motivo'],
-    'Tipos de cliente': ['Tipo', 'Comisión %'],
-    'Fletes': ['Fecha', 'Transporte / Cliente', 'Abonado', 'Flete', 'Comisión', 'Total a recibir'],
-    'Contactos': ['N°', 'Tipo', 'Nombre', 'Teléfono', 'Dirección', 'Email / Web', 'Localidad', 'Provincia',
-                  'Horarios', 'Observaciones'],
+    'Depósitos': ['id', 'nombre', 'localidad'],
+    'Productos': ['id', 'producto', 'unidad', 'minimo'],
+    'Contactos': ['id', 'rol', 'nombre', 'tipo_cliente', 'telefono', 'direccion', 'email', 'localidad', 'provincia',
+                  'observaciones'],
+    'Tipos de cliente': ['tipo'],
+    'Vendedores': ['id', 'nombre', 'activo'],
+    'Precios': ['producto_id', 'producto', 'precio', 'desde'],
+    'Reglas de comisión': ['vendedor_id', 'producto_id', 'porcentaje', 'desde'],
+    'Compras': ['fecha', 'deposito_id', 'proveedor', 'contacto_id', 'producto_id', 'producto', 'cantidad', 'precio',
+                'importe', 'remito', 'pedido_id', 'nota'],
+    'Pedidos': ['id', 'fecha', 'contacto_id', 'cliente', 'tipo_cliente', 'localidad', 'provincia', 'deposito_id', 'nota'],
+    'Pedidos ítems': ['pedido_id', 'linea', 'producto_id', 'producto', 'cantidad', 'precio_lista', 'precio'],
+    'Pedidos estados': ['pedido_id', 'fecha', 'estado'],
+    'Pedidos vendedores': ['pedido_id', 'vendedor_id'],
+    'Ventas': ['id', 'fecha', 'pedido_id', 'deposito_id', 'nota'],
+    'Ventas ítems': ['venta_id', 'linea', 'pedido_linea', 'producto_id', 'producto', 'cantidad', 'precio', 'importe',
+                     'costo'],
+    'Ventas comisiones': ['venta_id', 'linea', 'vendedor_id', 'vendedor', 'porcentaje_regla', 'porcentaje', 'monto'],
+    'Fletes': ['id', 'fecha', 'transporte', 'contacto_id', 'origen_id', 'destino_id', 'costo', 'guia', 'nota'],
+    'Fletes ítems': ['flete_id', 'producto_id', 'producto', 'cantidad'],
+    'Fletes estados': ['flete_id', 'fecha', 'estado'],
+    'Pedidos fletes': ['pedido_id', 'flete_id', 'costo_asignado'],
+    'Ajustes': ['fecha', 'deposito_id', 'producto_id', 'producto', 'cantidad', 'motivo'],
 }
+COLS_FECHA = {'fecha', 'desde'}
+COLS_PLATA = {'precio', 'importe', 'costo', 'monto', 'precio_lista', 'costo_asignado'}
 
 
 def norm(s):
@@ -81,34 +97,51 @@ def filas(ws, desde, max_col=20, corte=500):
         yield r, list(fila) + [None] * (max_col - len(fila))
 
 
+class Ids:
+    """IDs consecutivos con prefijo, uno por clave."""
+
+    def __init__(self, prefijo, ancho):
+        self.prefijo, self.ancho, self.ids = prefijo, ancho, {}
+
+    def __call__(self, clave):
+        if clave not in self.ids:
+            self.ids[clave] = f'{self.prefijo}{len(self.ids) + 1:0{self.ancho}d}'
+        return self.ids[clave]
+
+
 def main(origen, destino):
     wv = openpyxl.load_workbook(origen, data_only=True)   # valores calculados
     wf = openpyxl.load_workbook(origen, data_only=False)  # fórmulas (para saber el depósito de cada venta)
     avisos = []
 
     # ---------- Productos ----------
-    ids = {}
-
-    def producto_id(nombre):
-        nombre = norm(nombre)
-        if not nombre:
-            return None
-        if nombre not in ids:
-            ids[nombre] = f'P{len(ids) + 1:03d}'
-        return ids[nombre]
-
+    producto_id = Ids('P', 3)
     for r in range(3, wv['Listas de datos'].max_row + 1):
-        producto_id(wv['Listas de datos'].cell(r, 5).value)
+        if norm(wv['Listas de datos'].cell(r, 5).value):
+            producto_id(norm(wv['Listas de datos'].cell(r, 5).value))
     for hoja in ('STOCK GENERAL', 'STOCK ROSARIO'):
         for r in range(2, wv[hoja].max_row + 1):
-            producto_id(wv[hoja].cell(r, 2).value)
-    conocidos = set(ids)
+            if norm(wv[hoja].cell(r, 2).value):
+                producto_id(norm(wv[hoja].cell(r, 2).value))
+    conocidos = set(producto_id.ids)
+
+    # ---------- Contactos ----------
+    contacto_id = Ids('C', 4)
+    contactos = {}  # (rol, nombre en mayúsculas) → fila
+
+    def contacto(rol, nombre, **datos):
+        clave = (rol, nombre.upper())
+        if clave not in contactos:
+            contactos[clave] = {'id': contacto_id(clave), 'rol': rol, 'nombre': nombre, **datos}
+        return contactos[clave]['id']
 
     # ---------- Compras ----------
     compras = []
-    for hoja, deposito in (('COMPRAS', 'General'), ('COMPRAS ROSARIO', 'Rosario')):
+    proveedores = set()
+    for hoja, deposito in (('COMPRAS', 'BB'), ('COMPRAS ROSARIO', 'ROS')):
         for r, f in filas(wv[hoja], 3):
-            # B día, C mes, D año, E proveedor, I producto, J cantidad, K pagado, L remito, M importe
+            # B día, C mes, D año, E proveedor, F tipo, G localidad, H provincia, I producto, J cantidad,
+            # K pagado, L remito, M importe
             prod, cant = norm(f[8]), num(f[9])
             if not prod or cant is None:
                 continue
@@ -116,13 +149,33 @@ def main(origen, destino):
             importe = num(f[12])
             if importe is None and precio is not None:
                 importe = cant * precio
+            prov = norm(f[4])
+            proveedores.add(prov.upper())
+            cid = contacto('proveedor', prov, tipo=norm(f[5]), localidad=norm(f[6]), provincia=norm(f[7])) if prov else ''
             compras.append({
-                'fecha': fecha(f[1], f[2], f[3]), 'deposito': deposito, 'proveedor': norm(f[4]),
+                'fecha': fecha(f[1], f[2], f[3]), 'deposito': deposito, 'proveedor': prov, 'contacto': cid,
                 'id': producto_id(prod), 'producto': prod, 'cantidad': cant, 'precio': precio,
-                'importe': importe, 'remito': norm(f[11]), 'nota': '',
+                'importe': importe, 'remito': norm(f[11]),
             })
 
-    # Costo promedio ponderado de cada producto hasta una fecha (ambos depósitos).
+    # La agenda del Excel mezcla clientes y proveedores: es proveedor si aparece en las compras.
+    for r, f in filas(wv['ALTA CLIEN-PROV'], 2):
+        nombre = norm(f[2])
+        if not nombre:
+            continue
+        tel = f[3]
+        if isinstance(tel, float) and tel.is_integer():
+            tel = int(tel)
+        rol = 'proveedor' if nombre.upper() in proveedores else 'cliente'
+        datos = {'tipo': norm(f[1]), 'telefono': norm(tel), 'direccion': norm(f[4]), 'email': norm(f[5]),
+                 'localidad': norm(f[6]), 'provincia': norm(f[7]),
+                 'observaciones': ' · '.join(x for x in (norm(f[8]), norm(f[9])) if x)}
+        if (rol, nombre.upper()) in contactos:
+            contactos[(rol, nombre.upper())].update({k: v for k, v in datos.items() if v})
+        else:
+            contacto(rol, nombre, **datos)
+
+    # Costo promedio ponderado de cada producto hasta una fecha (todos los depósitos).
     compras_por_id = defaultdict(list)
     for c in compras:
         if c['precio'] is not None and c['cantidad'] > 0:
@@ -134,8 +187,8 @@ def main(origen, destino):
         cant = sum(c['cantidad'] for c in previas)
         return round(sum(c['cantidad'] * c['precio'] for c in previas) / cant, 2) if cant else None
 
-    # ---------- Ventas ----------
-    ventas = []
+    # ---------- Líneas de venta del Excel ----------
+    lineas = []
     vv, vf = wv['Ventas Realizadas'], wf['Ventas Realizadas']
     for r, f in filas(vv, 3):
         # B día, C mes, D año, E cliente, F tipo, G localidad, H provincia, I producto, J cantidad,
@@ -144,32 +197,86 @@ def main(origen, destino):
         if not prod or cant is None:
             continue
         formula_ganancia = str(vf.cell(r, 14).value or '')
-        deposito = 'Rosario' if 'COMPRAS ROSARIO' in formula_ganancia.upper() else 'General'
-        precio = num(f[10])
-        importe = num(f[14])
+        precio, importe = num(f[10]), num(f[14])
         if importe is None and precio is not None:
             importe = cant * precio
-        comision = num(f[11]) or 0
-        nota = '' if formula_ganancia.startswith('=') or num(f[13]) is not None else norm(f[13])
-        pid = producto_id(prod)
+        if precio is None and importe is not None and cant:
+            precio = importe / cant
+        if precio is None:
+            avisos.append(f'Venta fila {r}: sin precio ni importe, queda en $0 ({prod})')
+            precio, importe = 0, 0
         cuando = fecha(f[1], f[2], f[3])
-        costo = costo_promedio(pid, cuando)
-        ganancia = round(importe - comision - cant * costo, 2) if (importe is not None and costo is not None) else None
         if cuando is None:
             avisos.append(f'Venta fila {r}: fecha incompleta ({f[1]}/{f[2]}/{f[3]})')
-        ventas.append({
-            'fecha': cuando, 'deposito': deposito, 'cliente': norm(f[4]), 'tipo': norm(f[5]),
-            'localidad': norm(f[6]), 'provincia': norm(f[7]), 'id': pid, 'producto': prod, 'cantidad': cant,
-            'precio': precio, 'importe': importe, 'comision': round(comision, 2), 'costo': costo,
-            'ganancia': ganancia, 'carga': norm(f[12]), 'nota': nota,
+        carga = norm(f[12]).upper()
+        vendedor = carga if carga in VENDEDORES else ''
+        if carga and not vendedor:
+            avisos.append(f'Venta fila {r}: CARGA "{norm(f[12])}" no es un vendedor conocido')
+        lineas.append({
+            'fecha': cuando, 'deposito': 'ROS' if 'COMPRAS ROSARIO' in formula_ganancia.upper() else 'BB',
+            'cliente': norm(f[4]), 'tipo': norm(f[5]), 'localidad': norm(f[6]), 'provincia': norm(f[7]),
+            'id': producto_id(prod), 'producto': prod, 'cantidad': cant, 'precio': precio,
+            'importe': round(importe or 0, 2), 'comision': round(num(f[11]) or 0, 2), 'vendedor': vendedor,
+            'nota': '' if formula_ganancia.startswith('=') or num(f[13]) is not None else norm(f[13]),
         })
 
-    nuevos = sorted(set(ids) - conocidos)
-    for n in nuevos:
-        avisos.append(f'Producto que solo aparece en ventas/compras (¿variante de otro?): {n}')
-    sin_costo = sorted({v['producto'] for v in ventas if v['costo'] is None})
-    for n in sin_costo:
-        avisos.append(f'Sin compras con precio, la ganancia de sus ventas queda vacía: {n}')
+    # ---------- Vendedores y reglas de comisión ----------
+    vendedor_id = {v: f'VEN{i:02d}' for i, v in enumerate(VENDEDORES, start=1)}
+    tasa = lambda l: round(l['comision'] / l['importe'] * 100, 2) if l['importe'] else 0.0
+    reglas = []
+    for v in VENDEDORES:
+        suyas = [l for l in lineas if l['vendedor'] == v]
+        if not suyas:
+            continue
+        desde = min((l['fecha'] for l in suyas if l['fecha']), default=None)
+        general = Counter(tasa(l) for l in suyas).most_common(1)[0][0]
+        if general:
+            reglas.append([vendedor_id[v], '', general, desde])
+        por_producto = defaultdict(Counter)
+        for l in suyas:
+            por_producto[l['id']][tasa(l)] += 1
+        for pid, tasas in sorted(por_producto.items()):
+            t = tasas.most_common(1)[0][0]
+            if t != general:
+                reglas.append([vendedor_id[v], pid, t, desde])
+
+    def porcentaje_regla(v, pid):
+        especifica = [r[2] for r in reglas if r[0] == v and r[1] == pid]
+        general = [r[2] for r in reglas if r[0] == v and r[1] == '']
+        return (especifica or general or [0])[0]
+
+    # ---------- Pedidos y ventas ----------
+    # Cada grupo de líneas con la misma fecha, cliente, depósito y vendedor es un pedido entregado completo.
+    pedidos, pedidos_items, pedidos_estados, pedidos_vendedores = [], [], [], []
+    ventas, ventas_items, ventas_comisiones = [], [], []
+    grupos = defaultdict(list)
+    for l in lineas:
+        grupos[(l['fecha'], l['cliente'].upper(), l['deposito'], l['vendedor'])].append(l)
+    for n, ((cuando, _, deposito, vendedor), ls) in enumerate(grupos.items(), start=1):
+        pid, vid = f'PE{n:04d}', f'V{n:04d}'
+        primera = ls[0]
+        cid = contacto('cliente', primera['cliente'], tipo=primera['tipo'], localidad=primera['localidad'],
+                       provincia=primera['provincia']) if primera['cliente'] else ''
+        nota = ' · '.join(dict.fromkeys(l['nota'] for l in ls if l['nota']))
+        pedidos.append([pid, cuando, cid, primera['cliente'], primera['tipo'], primera['localidad'],
+                        primera['provincia'], deposito, nota])
+        pedidos_estados.append([pid, cuando, 'abierto'])
+        ventas.append([vid, cuando, pid, deposito, ''])
+        if vendedor:
+            pedidos_vendedores.append([pid, vendedor_id[vendedor]])
+        for i, l in enumerate(ls, start=1):
+            pedidos_items.append([pid, i, l['id'], l['producto'], l['cantidad'], None, l['precio']])
+            ventas_items.append([vid, i, i, l['id'], l['producto'], l['cantidad'], l['precio'], l['importe'],
+                                 costo_promedio(l['id'], cuando)])
+            if vendedor and l['comision']:
+                ventas_comisiones.append([vid, i, vendedor_id[vendedor], VENDEDORES[vendedor],
+                                          porcentaje_regla(vendedor_id[vendedor], l['id']), tasa(l), l['comision']])
+
+    # ---------- Precios: el de la última venta de cada producto ----------
+    ultimo = {}
+    for l in sorted((l for l in lineas if l['fecha'] and l['precio']), key=lambda l: l['fecha']):
+        ultimo[l['id']] = l
+    precios = [[pid, l['producto'], round(l['precio'], 2), l['fecha']] for pid, l in sorted(ultimo.items())]
 
     # ---------- Tipos de cliente ----------
     tipos = []
@@ -177,33 +284,61 @@ def main(origen, destino):
         t = norm(wv['Listas de datos'].cell(r, 6).value)
         if t and t not in tipos:
             tipos.append(t)
-    for v in ventas:
-        if v['tipo'] and v['tipo'] not in tipos:
-            tipos.append(v['tipo'])
+    for l in lineas:
+        if l['tipo'] and l['tipo'] not in tipos:
+            tipos.append(l['tipo'])
 
     # ---------- Fletes ----------
-    fletes = []
+    # El Excel no dice origen, destino ni mercadería: quedan como fletes terminados que no mueven stock.
+    fletes, fletes_estados = [], []
     for r, f in filas(wv['FLETES'], 3):
-        # A día, B mes, C año, D cliente, E abonado, F flete, G comisión, H total
-        if not norm(f[3]) and num(f[5]) is None:
+        # A día, B mes, C año, D cliente/transporte, E abonado, F flete, G comisión, H total
+        nombre, costo = norm(f[3]), num(f[5])
+        if not nombre and costo is None:
             continue
-        fletes.append([fecha(f[0], f[1], f[2]), norm(f[3]), num(f[4]), num(f[5]), num(f[6]), num(f[7])])
+        fid = f'F{len(fletes) + 1:04d}'
+        cuando = fecha(f[0], f[1], f[2])
+        cid = contacto('transporte', nombre) if nombre else ''
+        fletes.append([fid, cuando, nombre, cid, '', '', costo, '', ''])
+        fletes_estados.append([fid, cuando, 'finalizado'])
+        if any(num(x) is not None for x in (f[4], f[6], f[7])):
+            avisos.append(f'Flete fila {r}: tiene Abonado/Comisión/Total, que el modelo no guarda')
 
-    # ---------- Contactos ----------
-    contactos = []
-    for r, f in filas(wv['ALTA CLIEN-PROV'], 2):
-        if not norm(f[2]):
-            continue
-        tel = f[3]
-        if isinstance(tel, float) and tel.is_integer():
-            tel = int(tel)
-        contactos.append([f[0], norm(f[1]), norm(f[2]), norm(tel), norm(f[4]), norm(f[5]), norm(f[6]),
-                          norm(f[7]), norm(f[8]), norm(f[9])])
+    nuevos = sorted(set(producto_id.ids) - conocidos)
+    for n in nuevos:
+        avisos.append(f'Producto que solo aparece en ventas/compras (¿variante de otro?): {n}')
+    for n in sorted({row[4] for row in ventas_items if row[8] is None}):
+        avisos.append(f'Sin compras con precio, la ganancia de sus ventas no descuenta costo: {n}')
 
     # ---------- Escribir ----------
+    datos = {
+        'Depósitos': [list(d) for d in DEPOSITOS],
+        'Productos': [[pid, nombre, unidad_probable(nombre), None]
+                      for nombre, pid in sorted(producto_id.ids.items(), key=lambda x: x[1])],
+        'Contactos': [[c['id'], c['rol'], c['nombre'], c.get('tipo', ''), c.get('telefono', ''), c.get('direccion', ''),
+                       c.get('email', ''), c.get('localidad', ''), c.get('provincia', ''), c.get('observaciones', '')]
+                      for c in sorted(contactos.values(), key=lambda c: c['id'])],
+        'Tipos de cliente': [[t] for t in tipos],
+        'Vendedores': [[vendedor_id[v], nombre, 'sí'] for v, nombre in VENDEDORES.items()],
+        'Precios': precios,
+        'Reglas de comisión': reglas,
+        'Compras': [[c['fecha'], c['deposito'], c['proveedor'], c['contacto'], c['id'], c['producto'], c['cantidad'],
+                     c['precio'], c['importe'], c['remito'], '', ''] for c in compras],
+        'Pedidos': pedidos,
+        'Pedidos ítems': pedidos_items,
+        'Pedidos estados': pedidos_estados,
+        'Pedidos vendedores': pedidos_vendedores,
+        'Ventas': ventas,
+        'Ventas ítems': ventas_items,
+        'Ventas comisiones': ventas_comisiones,
+        'Fletes': fletes,
+        'Fletes ítems': [],
+        'Fletes estados': fletes_estados,
+        'Pedidos fletes': [],
+        'Ajustes': [],
+    }
     out = openpyxl.Workbook()
     out.remove(out.active)
-    hojas = {}
     for nombre, cols in COLS.items():
         ws = out.create_sheet(nombre)
         ws.append(cols)
@@ -211,69 +346,35 @@ def main(origen, destino):
             c.font = Font(bold=True)
             c.fill = PatternFill('solid', fgColor='E8F0E3')
         ws.freeze_panes = 'A2'
-        hojas[nombre] = ws
-
-    wp = hojas['Productos']
-    for i, (nombre, pid) in enumerate(sorted(ids.items(), key=lambda x: x[1]), start=2):
-        stock = []
-        for d in DEPOSITOS:
-            stock.append(
-                f'=SUMIFS(Compras!$F:$F,Compras!$D:$D,$A{i},Compras!$B:$B,"{d}")'
-                f'-SUMIFS(Ventas!$I:$I,Ventas!$G:$G,$A{i},Ventas!$B:$B,"{d}")'
-                f'+SUMIFS(Ajustes!$E:$E,Ajustes!$C:$C,$A{i},Ajustes!$B:$B,"{d}")')
-        wp.append([pid, nombre, unidad_probable(nombre), None] + stock)
-
-    for c in compras:
-        hojas['Compras'].append([c['fecha'], c['deposito'], c['proveedor'], c['id'], c['producto'], c['cantidad'],
-                                 c['precio'], c['importe'], c['remito'], c['nota']])
-    for v in ventas:
-        hojas['Ventas'].append([v['fecha'], v['deposito'], v['cliente'], v['tipo'], v['localidad'], v['provincia'],
-                                v['id'], v['producto'], v['cantidad'], v['precio'], v['importe'], v['comision'],
-                                v['costo'], v['ganancia'], v['carga'], v['nota']])
-    for t in tipos:
-        hojas['Tipos de cliente'].append([t, COMISION_POR_TIPO.get(t, 0)])
-    for f in fletes:
-        hojas['Fletes'].append(f)
-    for c in contactos:
-        hojas['Contactos'].append(c)
-
-    formato_fecha = 'dd/mm/yyyy'
-    formato_plata = '"$"#,##0.00'
-    for hoja, col_fecha, cols_plata in (('Compras', 'A', 'GH'), ('Ventas', 'A', 'JKLMN'), ('Ajustes', 'A', ''),
-                                         ('Fletes', 'A', 'CDEF')):
-        ws = hojas[hoja]
-        for row in ws.iter_rows(min_row=2):
-            for c in row:
-                if c.column_letter == col_fecha:
-                    c.number_format = formato_fecha
-                elif c.column_letter in cols_plata:
-                    c.number_format = formato_plata
-    for ws in hojas.values():
-        for i, col in enumerate(ws.iter_cols(min_row=1, max_row=min(ws.max_row, 200)), start=1):
-            largo = max((len(str(c.value)) for c in col if c.value is not None and not str(c.value).startswith('=')),
-                        default=8)
-            ws.column_dimensions[get_column_letter(i)].width = min(max(largo + 2, 10), 45)
-
+        for fila in datos[nombre]:
+            ws.append(fila)
+        for i, col in enumerate(cols, start=1):
+            formato = 'dd/mm/yyyy' if col in COLS_FECHA else '"$"#,##0.00' if col in COLS_PLATA else None
+            if formato:
+                for (c,) in ws.iter_rows(min_row=2, min_col=i, max_col=i):
+                    c.number_format = formato
+            largo = max((len(str(f[i - 1])) for f in datos[nombre][:200] if f[i - 1] is not None), default=8)
+            ws.column_dimensions[get_column_letter(i)].width = min(max(largo, len(col)) + 2, 45)
     out.save(destino)
 
     # ---------- Resumen ----------
     stock = defaultdict(float)
     for c in compras:
         stock[(c['id'], c['deposito'])] += c['cantidad']
-    for v in ventas:
-        stock[(v['id'], v['deposito'])] -= v['cantidad']
-    nombre_de = {pid: n for n, pid in ids.items()}
+    for l in lineas:
+        stock[(l['id'], l['deposito'])] -= l['cantidad']
+    nombre_de = {pid: n for n, pid in producto_id.ids.items()}
     negativos = sorted(((nombre_de[pid], d, round(s, 2)) for (pid, d), s in stock.items() if s < -0.001),
                        key=lambda x: x[2])
 
     print(f'Base generada: {destino}')
-    print(f'  Productos: {len(ids)}  Compras: {len(compras)}  Ventas: {len(ventas)}  '
-          f'Tipos de cliente: {len(tipos)}  Fletes: {len(fletes)}  Contactos: {len(contactos)}')
-    print(f'  Ventas por depósito: ' + ', '.join(
-        f"{d} {sum(1 for v in ventas if v['deposito'] == d)}" for d in DEPOSITOS))
+    print('  ' + '  '.join(f'{k}: {len(v)}' for k, v in datos.items() if v))
+    print('\nReglas de comisión deducidas del Excel (la más frecuente por vendedor y por producto):')
+    for v, p, t, _ in reglas:
+        print(f'  {v} {nombre_de.get(p, "general"):45} {t}%')
     print(f'\nStock negativo ({len(negativos)}): se corrige con un ajuste de stock desde la app')
     for n, d, s in negativos:
-        print(f'  {s:>10}  {d:8} {n}')
+        print(f'  {s:>10}  {d:4} {n}')
     print(f'\nAvisos ({len(avisos)}):')
     for a in avisos:
         print('  -', a)

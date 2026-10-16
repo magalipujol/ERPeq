@@ -1,19 +1,22 @@
 import { createContext, use, useState } from 'react';
-import { CONFIG } from './config';
 import { mensajeDeError } from './formato';
 import type { InfoPlanilla } from './google';
 import type * as M from './modelo';
 
-export const DEPS = CONFIG.DEPOSITOS;
-
 export interface Base {
   info: InfoPlanilla;
   datos: M.Datos;
-  stock: Map<string, M.StockDeposito>;
+  stock: M.Stock;
   costos: Map<string, number>;
+  pedidos: M.ResumenPedido[];
+  estadosFletes: Map<string, string>;
   cargando: boolean;
   buscarProducto: (nombre: string) => M.Producto | undefined;
-  stockTotal: (id: string) => number;
+  buscarContacto: (rol: M.Rol, nombre: string) => M.Contacto | undefined;
+  nombreDeposito: (id: string) => string;
+  nombreVendedor: (id: string) => string;
+  // Guarda filas en varias hojas a la vez.
+  escribir: (escritura: M.Escritura) => Promise<void>;
   recargar: () => Promise<void>;
 }
 
@@ -24,6 +27,8 @@ export function useBase() {
   if (!base) throw new Error('useBase fuera de BaseProvider');
   return base;
 }
+
+export const normalizar = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
 // Envuelve un guardado: marca el botón como ocupado, muestra el resultado y vuelve a leer la planilla.
 export function useGuardar() {

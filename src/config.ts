@@ -8,8 +8,6 @@ export const CONFIG = {
 
   // La planilla que hace de base de datos: el ID es la parte de la URL entre /d/ y /edit
   SPREADSHEET_ID: '1oIfqcZla06goA_esX7YEy8f-y57jwGbppjT05Y5Q7uU',
-
-  DEPOSITOS: ['General', 'Rosario'],
 };
 
 export type Config = typeof CONFIG;

@@ -1,6 +1,6 @@
 # ERPeq
 
-Gestión de stock, ventas y compras para una dietética, con Google Sheets como base de datos.
+Gestión de stock, pedidos, ventas, compras y fletes para una dietética, con Google Sheets como base de datos.
 Es una página estática (sin servidor) hecha con React, TypeScript y Mantine, que se publica en GitHub Pages.
 
 ## Cómo funciona
@@ -8,23 +8,26 @@ Es una página estática (sin servidor) hecha con React, TypeScript y Mantine, q
 - Cada usuario entra con su cuenta de Google (Google Identity Services). El token dura una hora y vive solo en memoria.
 - La app pide el permiso `spreadsheets` y trabaja solo sobre la planilla configurada, que tiene que estar compartida
   con la cuenta del usuario. El proyecto queda en modo Prueba: solo entran los usuarios de prueba cargados.
-- Lee y escribe directo con la Sheets API desde el navegador. Las escrituras son siempre filas nuevas (append):
-  el stock y el costo se calculan a partir de los movimientos.
+- Lee y escribe directo con la Sheets API desde el navegador. Las escrituras son siempre filas nuevas, y cada
+  operación (un pedido con sus ítems, una entrega con sus comisiones) va en un solo `batchUpdate`: se guarda
+  entera o no se guarda. El stock, el costo y los estados se calculan a partir de los movimientos.
 
 ## Estructura de la planilla
 
-| Hoja | Contenido |
-|---|---|
-| Productos | ID, nombre, unidad, stock mínimo. Las columnas *Stock General* / *Stock Rosario* son fórmulas. |
-| Compras | Una fila por producto comprado (suma stock al depósito). |
-| Ventas | Una fila por producto vendido (resta stock). Guarda el costo promedio al momento de la venta y la ganancia. |
-| Ajustes | Correcciones de stock (+/−) con motivo. |
-| Tipos de cliente | Comisión % por defecto de cada tipo. Editable. |
-| Fletes, Contactos | Datos importados del Excel (todavía sin pantalla en la app). |
+El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.md](spec/modelo-de-datos.md).
 
-**Stock** = compras − ventas + ajustes, por depósito.
+| Hojas | Contenido |
+|---|---|
+| Depósitos, Productos, Contactos, Tipos de cliente, Vendedores | Datos maestros. |
+| Precios, Reglas de comisión | Valores por defecto (precio de lista y % de comisión por vendedor y producto), con fecha desde. |
+| Pedidos, Pedidos ítems, Pedidos estados, Pedidos vendedores | Lo que pide el cliente, con el precio fijado al crearlo. Reserva stock. |
+| Ventas, Ventas ítems, Ventas comisiones | Cada entrega de un pedido: descuenta stock y genera la comisión. |
+| Compras, Ajustes | Entradas y correcciones de stock. |
+| Fletes, Fletes ítems, Fletes estados, Pedidos fletes | Viajes con su costo; los que van entre depósitos mueven stock según su estado. |
+
+**Stock** = compras − entregas + ajustes ± fletes entre depósitos (en camino: sale del origen; finalizado: entra en el destino).
 **Costo promedio** = promedio ponderado de todas las compras con precio del producto.
-**Ganancia** = importe − comisión − cantidad × costo promedio.
+**Ganancia de un pedido** = lo entregado − comisiones − cantidad × costo promedio − fletes asignados.
 
 ## Archivos
 
@@ -32,7 +35,8 @@ Es una página estática (sin servidor) hecha con React, TypeScript y Mantine, q
   - `config.ts`: Client ID de Google y ID de la planilla.
   - `modelo.ts`: lectura/escritura de filas y cálculos (sin dependencias del navegador).
   - `google.ts`: login y Sheets API.
-  - `App.tsx`: pantallas de acceso y navegación; `vistas/`: Stock, Ventas y Compras.
+  - `App.tsx`: pantallas de acceso y navegación; `vistas/`: Stock, Pedidos, Ventas, Compras, Fletes y Precios.
+- `spec/`: especificaciones (`modelo-de-datos.md`).
 - `.github/workflows/ci.yml`: lint, tipos y pruebas en cada pull request y push.
 - `.github/workflows/deploy.yml`: corre el CI y, si pasa, compila y publica en GitHub Pages en cada push a `main`
   (en *Settings → Pages*, la fuente tiene que ser **GitHub Actions**).
@@ -42,11 +46,12 @@ Es una página estática (sin servidor) hecha con React, TypeScript y Mantine, q
 ## Generar la base desde el Excel
 
 ```sh
-pip install openpyxl
-py herramientas/excel_a_base.py "ROSARIO ACTUALIZADO.xlsm" "ERPeq-base.xlsx"
+uv run --with openpyxl herramientas/excel_a_base.py "ROSARIO ACTUALIZADO.xlsm" "ERPeq-base.xlsx"
 ```
 
-Muestra un resumen con los productos con stock negativo y los datos a revisar.
+(o `pip install openpyxl` y `python herramientas/excel_a_base.py ...`). Muestra un resumen con las reglas de
+comisión deducidas, los productos con stock negativo y los datos a revisar. Para cargarla en la planilla ver
+`GUIA-CONFIGURACION.md`.
 **El `.xlsx` generado tiene datos personales: no lo subas al repo** (`.gitignore` ya lo excluye).
 
 ## Probar en la compu

@@ -5,10 +5,9 @@ import {
 } from '@mantine/core';
 import { IconArrowDown, IconArrowUp } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
-import { DEPS, useBase, useGuardar } from '../base';
+import { useBase, useGuardar } from '../base';
 import { Encabezado, Kpis, Mensaje } from '../componentes/comunes';
 import { aNumero, fmtMoney, fmtNum, unicos } from '../formato';
-import * as DB from '../google';
 import * as M from '../modelo';
 
 interface Estado { color: string; texto: string }
@@ -26,23 +25,29 @@ function estadoStock(p: M.Producto, total: number): Estado {
 }
 
 interface FilaStock extends M.Producto {
-  s: M.StockDeposito; total: number; costo: number | null; valor: number | null; estado: Estado;
+  s: M.PorDeposito; transito: number; total: number; comprometido: number; faltante: number;
+  costo: number | null; valor: number | null; estado: Estado;
 }
 
 export function Stock({ visible }: { visible: boolean }) {
-  const { datos, stock, costos, stockTotal } = useBase();
+  const { datos, stock, costos } = useBase();
 
   const filas = useMemo<FilaStock[]>(() => datos.productos.map((p) => {
-    const total = M.redondear(stockTotal(p.id), 3);
+    const s = stock.enDeposito.get(p.id) ?? {};
+    const transito = M.sumaDeps(stock.enTransito.get(p.id));
+    const total = M.redondear(M.sumaDeps(s) + transito, 3);
     const costo = costos.get(p.id) ?? null;
     return {
-      ...p, s: stock.get(p.id) ?? Object.fromEntries(DEPS.map((d) => [d, 0])), total, costo,
+      ...p, s, transito, total, costo,
+      comprometido: M.sumaDeps(stock.comprometido.get(p.id)),
+      faltante: M.redondear(datos.depositos.reduce((a, d) => a + M.faltante(stock, p.id, d.id), 0), 3),
       valor: costo !== null && total > 0 ? total * costo : null, estado: estadoStock(p, total),
     };
-  }), [datos, stock, costos, stockTotal]);
+  }), [datos, stock, costos]);
 
   const bajos = filas.filter(bajoMinimo).length;
-  const negs = filas.filter((f) => DEPS.some((d) => f.s[d] < 0)).length;
+  const negs = filas.filter((f) => Object.values(f.s).some((v) => v < 0)).length;
+  const faltan = filas.filter((f) => f.faltante > 0).length;
 
   return (
     <Stack gap="md">
@@ -50,6 +55,7 @@ export function Stock({ visible }: { visible: boolean }) {
         { label: 'Productos con stock', valor: filas.filter((f) => f.total > 0).length },
         { label: 'Bajo el mínimo', valor: bajos, alerta: bajos > 0 },
         { label: 'Stock negativo', valor: negs, alerta: negs > 0 },
+        { label: 'Faltan para pedidos', valor: faltan, alerta: faltan > 0 },
         { label: 'Valor del stock (a costo)', valor: fmtMoney(filas.reduce((s, f) => s + (f.valor ?? 0), 0)) },
       ]} />
 
@@ -70,15 +76,17 @@ export function Stock({ visible }: { visible: boolean }) {
 interface Columna { key: string; titulo: string; num?: boolean }
 
 function Inventario({ filas }: { filas: FilaStock[] }) {
-  const { cargando } = useBase();
+  const { datos, cargando } = useBase();
+  const deps = datos.depositos;
   const [buscar, setBuscar] = useState('');
   const [filtro, setFiltro] = useState('');
   const [orden, setOrden] = useState({ key: 'producto', dir: 1 });
 
   const cols: Columna[] = [
     { key: 'producto', titulo: 'Producto' }, { key: 'unidad', titulo: 'Unidad' },
-    ...DEPS.map((d) => ({ key: `dep:${d}`, titulo: d, num: true })),
-    { key: 'total', titulo: 'Total', num: true }, { key: 'minimo', titulo: 'Mínimo', num: true },
+    ...deps.map((d) => ({ key: `dep:${d.id}`, titulo: d.nombre, num: true })),
+    { key: 'transito', titulo: 'En camino', num: true }, { key: 'total', titulo: 'Total', num: true },
+    { key: 'comprometido', titulo: 'Comprometido', num: true }, { key: 'minimo', titulo: 'Mínimo', num: true },
     { key: 'estado', titulo: 'Estado' }, { key: 'costo', titulo: 'Costo prom.', num: true }, { key: 'valor', titulo: 'Valor', num: true },
   ];
 
@@ -91,8 +99,9 @@ function Inventario({ filas }: { filas: FilaStock[] }) {
     .filter((f) => !q || f.producto.toLowerCase().includes(q))
     .filter((f) => !filtro
       || (filtro === 'con' && f.total > 0)
-      || (filtro === 'neg' && DEPS.some((d) => f.s[d] < 0))
-      || (filtro === 'bajo' && bajoMinimo(f)))
+      || (filtro === 'neg' && Object.values(f.s).some((v) => v < 0))
+      || (filtro === 'bajo' && bajoMinimo(f))
+      || (filtro === 'falta' && f.faltante > 0))
     .sort((a, b) => {
       const va = valor(a);
       const vb = valor(b);
@@ -112,6 +121,7 @@ function Inventario({ filas }: { filas: FilaStock[] }) {
           <NativeSelect aria-label="Filtrar" value={filtro} onChange={(e) => { setFiltro(e.currentTarget.value); }} data={[
             { value: '', label: 'Todos' }, { value: 'con', label: 'Con stock' },
             { value: 'neg', label: 'Stock negativo' }, { value: 'bajo', label: 'Bajo el mínimo' },
+            { value: 'falta', label: 'Faltan para pedidos' },
           ]} />
         </Group>
       </Encabezado>
@@ -136,10 +146,16 @@ function Inventario({ filas }: { filas: FilaStock[] }) {
               <Table.Tr key={f.id}>
                 <Table.Td fw={500} miw={180} style={{ whiteSpace: 'normal' }}>{f.producto}</Table.Td>
                 <Table.Td c="dimmed">{f.unidad}</Table.Td>
-                {DEPS.map((d) => (
-                  <Table.Td key={d} className="num" c={f.s[d] < 0 ? 'red' : undefined} fw={f.s[d] < 0 ? 600 : undefined}>{fmtNum(f.s[d])}</Table.Td>
-                ))}
+                {deps.map((d) => {
+                  const v = f.s[d.id] ?? 0;
+                  return <Table.Td key={d.id} className="num" c={v < 0 ? 'red' : undefined} fw={v < 0 ? 600 : undefined}>{fmtNum(v)}</Table.Td>;
+                })}
+                <Table.Td className="num" c="dimmed">{f.transito !== 0 ? fmtNum(f.transito) : '–'}</Table.Td>
                 <Table.Td className="num" fw={600} c={f.total < 0 ? 'red' : undefined}>{fmtNum(f.total)}</Table.Td>
+                <Table.Td className="num" c={f.faltante > 0 ? 'yellow.8' : 'dimmed'} fw={f.faltante > 0 ? 600 : undefined}
+                  title={f.faltante > 0 ? `Faltan ${fmtNum(f.faltante)} ${f.unidad}` : undefined}>
+                  {f.comprometido !== 0 ? fmtNum(f.comprometido) : '–'}
+                </Table.Td>
                 <Table.Td className="num" c="dimmed">{minimoDe(f) !== 0 ? fmtNum(f.minimo) : '–'}</Table.Td>
                 <Table.Td><Badge variant="light" color={f.estado.color} size="sm">{f.estado.texto}</Badge></Table.Td>
                 <Table.Td className="num" c="dimmed">{fmtMoney(f.costo)}</Table.Td>
@@ -155,17 +171,18 @@ function Inventario({ filas }: { filas: FilaStock[] }) {
 }
 
 function AjusteStock() {
-  const { datos, stock, buscarProducto } = useBase();
+  const { datos, stock, buscarProducto, nombreDeposito, escribir } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [producto, setProducto] = useState('');
-  const [deposito, setDeposito] = useState(DEPS[0]);
+  const [depSel, setDepSel] = useState<string | null>(null);
+  const deposito = depSel ?? datos.depositos.at(0)?.id ?? '';
   const [cantidadTxt, setCantidadTxt] = useState<number | string>('');
   const [motivo, setMotivo] = useState('');
   const nombres = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
 
   const p = buscarProducto(producto);
   const cantidad = aNumero(cantidadTxt);
-  const antes = p ? stock.get(p.id)?.[deposito] ?? 0 : 0;
+  const antes = p ? stock.enDeposito.get(p.id)?.[deposito] ?? 0 : 0;
   const hayCantidad = cantidad !== 0 && !Number.isNaN(cantidad);
 
   function enviar(e: React.SubmitEvent<HTMLFormElement>) {
@@ -175,7 +192,7 @@ function AjusteStock() {
     if (!hayCantidad) { error('Ingresá una cantidad distinta de 0.'); return; }
     if (!mot) { error('Indicá el motivo.'); return; }
     guardar(async () => {
-      await DB.agregarFilas('Ajustes', [M.filas.ajuste({ fecha: new Date(), deposito, id: p.id, producto: p.producto, cantidad, motivo: mot })]);
+      await escribir({ ajustes: [M.filas.ajuste({ fecha: new Date(), depositoId: deposito, productoId: p.id, producto: p.producto, cantidad, motivo: mot })] });
       setCantidadTxt('');
       setMotivo('');
       return `✓ Ajuste registrado: ${cantidad > 0 ? '+' : ''}${fmtNum(cantidad)} ${p.unidad} de ${p.producto}.`;
@@ -190,7 +207,8 @@ function AjusteStock() {
         <Stack gap="sm">
           <Autocomplete label="Producto" placeholder="Buscar producto…" data={nombres} value={producto} onChange={setProducto} />
           <Group grow gap="xs" align="flex-start">
-            <NativeSelect label="Depósito" data={DEPS} value={deposito} onChange={(e) => { setDeposito(e.currentTarget.value); }} />
+            <NativeSelect label="Depósito" data={datos.depositos.map((d) => ({ value: d.id, label: d.nombre }))} value={deposito}
+              onChange={(e) => { setDepSel(e.currentTarget.value); }} />
             <NumberInput label="Cantidad" placeholder="−5 ó 10" value={cantidadTxt} onChange={setCantidadTxt}
               rightSection={<Text size="xs" c="dimmed">{p?.unidad}</Text>} rightSectionPointerEvents="none" />
           </Group>
@@ -198,7 +216,7 @@ function AjusteStock() {
             onChange={(e) => { setMotivo(e.currentTarget.value); }} />
           {p && hayCantidad ? (
             <Text size="sm" className="suave" px="sm" py={8}>
-              Stock en {deposito}: {fmtNum(antes)} → <strong>{fmtNum(M.redondear(antes + cantidad, 3))} {p.unidad}</strong>
+              Stock en {nombreDeposito(deposito)}: {fmtNum(antes)} → <strong>{fmtNum(M.redondear(antes + cantidad, 3))} {p.unidad}</strong>
             </Text>
           ) : producto && !p ? (
             <Text size="sm" className="suave" px="sm" py={8}>No existe ese producto.</Text>
@@ -214,6 +232,8 @@ function AjusteStock() {
 const COLORES = ['var(--c1)', 'var(--c2)', 'var(--c3)'];
 
 function GraficoStock({ filas }: { filas: FilaStock[] }) {
+  const { datos } = useBase();
+  const deps = datos.depositos;
   const unidades = unicos(filas.map((f) => f.unidad));
   const [elegida, setElegida] = useState<string | null>(null);
   const unidad = elegida && unidades.includes(elegida) ? elegida : unidades.includes('kg') ? 'kg' : unidades[0];
@@ -222,7 +242,7 @@ function GraficoStock({ filas }: { filas: FilaStock[] }) {
     .filter((f) => f.unidad === unidad && f.total > 0)
     .sort((a, b) => b.total - a.total)
     .slice(0, 12)
-    .map((f) => ({ producto: f.producto, ...Object.fromEntries(DEPS.map((d) => [d, Math.max(0, f.s[d])])) }));
+    .map((f) => ({ producto: f.producto, ...Object.fromEntries(deps.map((d) => [d.nombre, Math.max(0, f.s[d.id] ?? 0)])) }));
 
   return (
     <Paper>
@@ -237,7 +257,7 @@ function GraficoStock({ filas }: { filas: FilaStock[] }) {
         orientation="vertical"
         withLegend
         legendProps={{ verticalAlign: 'top', align: 'right' }}
-        series={DEPS.map((d, i) => ({ name: d, color: COLORES[i % COLORES.length] }))}
+        series={deps.map((d, i) => ({ name: d.nombre, color: COLORES[i % COLORES.length] }))}
         valueFormatter={(v) => `${fmtNum(v)} ${unidad}`}
         yAxisProps={{ width: 180 }}
         gridAxis="x"

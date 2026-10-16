@@ -1,22 +1,27 @@
 import { Autocomplete, Button, CloseButton, Fieldset, Grid, Group, NativeSelect, NumberInput, Stack, Text } from '@mantine/core';
 import { useMemo } from 'react';
 import { useBase } from '../base';
-import { fmtMoney, fmtNum, numeroOCero, unicos } from '../formato';
-import { redondear } from '../modelo';
+import { aNumero, fmtMoney, fmtNum, numeroOCero, unicos } from '../formato';
+import * as M from '../modelo';
 import { type Item, itemVacio } from './item';
 
-// Líneas de productos de una venta o compra.
-export function Items({ tipo, deposito, items, onChange }:
-  { tipo: 'venta' | 'compra'; deposito: string; items: Item[]; onChange: (items: Item[]) => void }) {
+// compra: puede crear productos nuevos y sugiere el último precio de compra.
+// pedido: sugiere el precio de lista vigente, que se puede sobreescribir.
+// flete: sin precio.
+export type ModoItems = 'compra' | 'pedido' | 'flete';
+
+// Líneas de productos de una compra, un pedido o un flete.
+export function Items({ modo, deposito, fecha, items, onChange }:
+  { modo: ModoItems; deposito: string; fecha: Date | null; items: Item[]; onChange: (items: Item[]) => void }) {
   const { datos, buscarProducto } = useBase();
   const nombres = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
 
-  function ultimoPrecio(id: string) {
-    const fuente = tipo === 'venta' ? datos.ventas : datos.compras;
+  function precioSugerido(id: string) {
+    if (modo === 'pedido') return M.precioVigente(datos.precios, id, fecha);
     // Un precio 0 no sirve como sugerencia: se sigue buscando.
-    for (let i = fuente.length - 1; i >= 0; i--) {
-      const { precio } = fuente[i];
-      if (fuente[i].id === id && precio !== null && precio !== 0) return precio;
+    for (let i = datos.compras.length - 1; i >= 0; i--) {
+      const { productoId, precio } = datos.compras[i];
+      if (productoId === id && precio !== null && precio !== 0) return precio;
     }
     return null;
   }
@@ -26,8 +31,8 @@ export function Items({ tipo, deposito, items, onChange }:
   function cambiarProducto(i: number, producto: string) {
     const cambios: Partial<Item> = { producto };
     const p = buscarProducto(producto);
-    if (p && items[i].precio === '') {
-      const precio = ultimoPrecio(p.id);
+    if (p && modo !== 'flete' && items[i].precio === '') {
+      const precio = precioSugerido(p.id);
       if (precio !== null) cambios.precio = precio;
     }
     cambiar(i, cambios);
@@ -38,30 +43,32 @@ export function Items({ tipo, deposito, items, onChange }:
       <Stack gap="sm">
         {items.map((it, i) => {
           const p = buscarProducto(it.producto);
-          const unidad = p ? p.unidad : (tipo === 'compra' && it.producto ? it.unidad : '');
+          const unidad = p ? p.unidad : (modo === 'compra' && it.producto ? it.unidad : '');
           return (
             <div key={it.clave}>
               <Grid gap={6} align="flex-start">
-                <Grid.Col span={{ base: 12, xs: 5 }}>
+                <Grid.Col span={{ base: 12, xs: modo === 'flete' ? 8 : 5 }}>
                   <Autocomplete
                     placeholder="Producto" aria-label="Producto" data={nombres}
                     value={it.producto} onChange={(v) => { cambiarProducto(i, v); }}
                   />
                 </Grid.Col>
-                <Grid.Col span={{ base: 'auto', xs: 3 }}>
+                <Grid.Col span={{ base: 'auto', xs: modo === 'flete' ? 'auto' : 3 }}>
                   <NumberInput
                     placeholder="Cant." aria-label="Cantidad" allowNegative={false}
                     value={it.cantidad} onChange={(v) => { cambiar(i, { cantidad: v }); }}
                     rightSection={<Text size="xs" c="dimmed">{unidad}</Text>} rightSectionPointerEvents="none"
                   />
                 </Grid.Col>
-                <Grid.Col span="auto">
-                  <NumberInput
-                    placeholder="Precio unit." aria-label="Precio unitario" allowNegative={false}
-                    value={it.precio} onChange={(v) => { cambiar(i, { precio: v }); }}
-                    leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none"
-                  />
-                </Grid.Col>
+                {modo !== 'flete' && (
+                  <Grid.Col span="auto">
+                    <NumberInput
+                      placeholder="Precio unit." aria-label="Precio unitario" allowNegative={false}
+                      value={it.precio} onChange={(v) => { cambiar(i, { precio: v }); }}
+                      leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none"
+                    />
+                  </Grid.Col>
+                )}
                 <Grid.Col span="content">
                   <CloseButton
                     mt={4} title="Quitar" aria-label="Quitar" disabled={items.length === 1}
@@ -69,7 +76,7 @@ export function Items({ tipo, deposito, items, onChange }:
                   />
                 </Grid.Col>
               </Grid>
-              <Info tipo={tipo} item={it} deposito={deposito} onUnidad={(u) => { cambiar(i, { unidad: u }); }} />
+              <Info modo={modo} item={it} deposito={deposito} fecha={fecha} onUnidad={(u) => { cambiar(i, { unidad: u }); }} />
             </div>
           );
         })}
@@ -81,13 +88,13 @@ export function Items({ tipo, deposito, items, onChange }:
   );
 }
 
-function Info({ tipo, item, deposito, onUnidad }:
-  { tipo: 'venta' | 'compra'; item: Item; deposito: string; onUnidad: (u: string) => void }) {
-  const { stock, costos, buscarProducto } = useBase();
+function Info({ modo, item, deposito, fecha, onUnidad }:
+  { modo: ModoItems; item: Item; deposito: string; fecha: Date | null; onUnidad: (u: string) => void }) {
+  const { datos, stock, nombreDeposito, buscarProducto } = useBase();
   if (!item.producto) return null;
   const p = buscarProducto(item.producto);
   if (!p) {
-    return tipo === 'venta'
+    return modo !== 'compra'
       ? <Text size="xs" c="red" mt={4}>No existe ese producto.</Text>
       : (
         <Group gap={6} mt={4}>
@@ -98,23 +105,35 @@ function Info({ tipo, item, deposito, onUnidad }:
         </Group>
       );
   }
-  const disp = stock.get(p.id)?.[deposito] ?? 0;
-  const costo = costos.get(p.id);
+  const dep = nombreDeposito(deposito);
+  const enDep = stock.enDeposito.get(p.id)?.[deposito] ?? 0;
   const cant = numeroOCero(item.cantidad);
-  if (tipo === 'venta') {
-    const falta = cant > disp;
+  if (modo === 'compra') {
+    return <Text size="xs" c="dimmed" mt={4}>Stock en {dep}: {fmtNum(enDep)} → {fmtNum(M.redondear(enDep + cant, 3))} {p.unidad}</Text>;
+  }
+  if (modo === 'flete') {
+    if (!deposito) return null;
+    const falta = cant > enDep;
     return (
-      <Text size="xs" c="dimmed" mt={4}>
-        <Text span inherit c={falta ? 'yellow.8' : undefined} fw={falta ? 500 : undefined}>
-          Stock en {deposito}: {fmtNum(disp)} {p.unidad}{falta ? ' — queda negativo' : ''}
-        </Text>
-        {' · '}Costo prom. {costo !== undefined ? fmtMoney(costo) : 'sin datos'}
+      <Text size="xs" mt={4} c={falta ? 'yellow.8' : 'dimmed'} fw={falta ? 500 : undefined}>
+        Stock en {dep}: {fmtNum(enDep)} {p.unidad}{falta ? ' — no alcanza' : ''}
       </Text>
     );
   }
+  const lista = M.precioVigente(datos.precios, p.id, fecha);
+  const precio = aNumero(item.precio);
+  const especial = lista !== null && !Number.isNaN(precio) && precio !== lista;
+  const disponible = M.redondear(enDep - (stock.comprometido.get(p.id)?.[deposito] ?? 0), 3);
   return (
     <Text size="xs" c="dimmed" mt={4}>
-      Stock en {deposito}: {fmtNum(disp)} → {fmtNum(redondear(disp + cant, 3))} {p.unidad}
+      Disponible en {dep}: {fmtNum(disponible)} {p.unidad}
+      {disponible < cant && <Text span inherit c="yellow.8" fw={500}> — falta stock</Text>}
+      {' · '}
+      {lista === null
+        ? <Text span inherit c="yellow.8">Sin precio de lista: se agrega con este precio</Text>
+        : especial
+          ? <Text span inherit c="blue" fw={500}>Precio especial (lista {fmtMoney(lista)})</Text>
+          : <>Precio de lista {fmtMoney(lista)}</>}
     </Text>
   );
 }

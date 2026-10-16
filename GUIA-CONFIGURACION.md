@@ -70,6 +70,13 @@ La base inicial se genera desde el Excel histórico con `herramientas/excel_a_ba
 3. Renombrala si querés (por ejemplo `ERPeq - Base de datos`).
 4. Copiá el **ID** de la URL: `https://docs.google.com/spreadsheets/d/`**`ESTE-ES-EL-ID`**`/edit`.
 
+### Volver a cargar la base en una planilla que ya existe
+
+Para no cambiar el ID (y no tener que tocar `config.ts` ni volver a compartir), se puede reemplazar el
+contenido de la planilla actual: abrila → *Archivo* → *Importar* → *Subir* → `ERPeq-base.xlsx` →
+*Reemplazar hoja de cálculo*. **Se pierde todo lo que tenía**, incluido lo cargado desde la app después de
+generar la base: hacé antes una copia (*Archivo* → *Crear una copia*).
+
 > El `.xlsx` tiene datos personales (agenda de clientes). No lo subas al repositorio ni lo mandes por canales públicos.
 
 ## 3. Completar `src/config.ts`
@@ -78,9 +85,11 @@ La base inicial se genera desde el Excel histórico con `herramientas/excel_a_ba
 export const CONFIG = {
   CLIENT_ID: '1234-abc.apps.googleusercontent.com',
   SPREADSHEET_ID: 'ID-de-la-planilla',
-  DEPOSITOS: ['General', 'Rosario'],
 };
 ```
+
+Los depósitos, vendedores, precios y reglas de comisión se cargan en la planilla (hojas *Depósitos*,
+*Vendedores*, *Precios* y *Reglas de comisión*), no acá.
 
 ## 4. Primer ingreso
 

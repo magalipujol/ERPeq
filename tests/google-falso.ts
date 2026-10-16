@@ -7,39 +7,71 @@ import { CONFIG } from '../src/config'
 export const HOY = new Date('2026-10-16T12:00:00-03:00')
 
 // Sheets guarda las fechas como días desde 30/12/1899.
-const fecha = (iso: string) => {
+export const serie = (iso: string) => {
   const [a, m, d] = iso.split('-').map(Number)
   return (Date.UTC(a, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000
 }
+// Fecha y hora con que la app guarda los estados (la hora fija de las pruebas, 12:00).
+export const AHORA = serie('2026-10-16') + 0.5
+export const HOY_SERIE = serie('2026-10-16')
 
-type Fila = (string | number)[]
+type Fila = (string | number | boolean)[]
 
 export function planillaInicial(): Record<string, Fila[]> {
   return {
+    'Depósitos': [['BB', 'General', 'Bahía Blanca'], ['ROS', 'Rosario', 'Rosario']],
     'Productos': [
       ['P001', 'Almendras', 'kg', ''],
       ['P002', 'Avena', 'kg', 50],
       ['P003', 'Miel', 'unid.', ''],
     ],
+    'Contactos': [
+      ['C0001', 'cliente', 'Ana', 'Minorista', '', '', '', 'Funes', 'Santa Fe', ''],
+      ['C0002', 'proveedor', 'Prov A', '', '', '', '', '', '', ''],
+      ['C0003', 'proveedor', 'Prov B', '', '', '', '', '', '', ''],
+      ['C0004', 'transporte', 'Interprovincial', '', '', '', '', '', '', ''],
+    ],
+    'Tipos de cliente': [['Minorista'], ['Revendedor']],
+    'Vendedores': [['VEN01', 'Leo', 'sí'], ['VEN02', 'Guada/Hernán', 'sí']],
+    'Precios': [
+      ['P001', 'Almendras', 3000, serie('2026-01-01')],
+      ['P002', 'Avena', 800, serie('2026-01-01')],
+    ],
+    'Reglas de comisión': [
+      ['VEN01', '', 10, serie('2026-01-01')],
+      ['VEN02', '', 3, serie('2026-01-01')],
+      ['VEN02', 'P001', 7, serie('2026-01-01')],
+    ],
     'Compras': [
-      [fecha('2026-09-10'), 'General', 'Prov A', 'P001', 'Almendras', 10, 2000, 20000, '', ''],
-      [fecha('2026-10-02'), 'General', 'Prov A', 'P001', 'Almendras', 10, 1000, 10000, 'R-1', ''],
-      [fecha('2026-10-03'), 'Rosario', 'Prov B', 'P002', 'Avena', 30, 500, 15000, '', ''],
+      [serie('2026-09-10'), 'BB', 'Prov A', 'C0002', 'P001', 'Almendras', 10, 2000, 20000, '', '', ''],
+      [serie('2026-10-02'), 'BB', 'Prov A', 'C0002', 'P001', 'Almendras', 10, 1000, 10000, 'R-1', '', ''],
+      [serie('2026-10-03'), 'ROS', 'Prov B', 'C0003', 'P002', 'Avena', 30, 500, 15000, '', '', ''],
     ],
-    'Ventas': [
-      [fecha('2026-10-05'), 'General', 'Ana', 'Minorista', 'Funes', 'Santa Fe', 'P001', 'Almendras', 4, 3000, 12000, 0, 1500, 6000, 'Leo', ''],
+    'Pedidos': [
+      ['PE0001', serie('2026-10-05'), 'C0001', 'Ana', 'Minorista', 'Funes', 'Santa Fe', 'BB', ''],
+      ['PE0002', serie('2026-10-10'), 'C0001', 'Ana', 'Minorista', 'Funes', 'Santa Fe', 'ROS', ''],
     ],
+    'Pedidos ítems': [
+      ['PE0001', 1, 'P001', 'Almendras', 4, 3000, 3000],
+      ['PE0002', 1, 'P002', 'Avena', 10, 800, 800],
+    ],
+    'Pedidos estados': [['PE0001', serie('2026-10-05'), 'abierto'], ['PE0002', serie('2026-10-10'), 'abierto']],
+    'Pedidos vendedores': [['PE0001', 'VEN01'], ['PE0002', 'VEN02']],
+    'Ventas': [['V0001', serie('2026-10-05'), 'PE0001', 'BB', '']],
+    'Ventas ítems': [['V0001', 1, 1, 'P001', 'Almendras', 4, 3000, 12000, 1500]],
+    'Ventas comisiones': [['V0001', 1, 'VEN01', 'Leo', 10, 10, 1200]],
+    'Fletes': [['F0001', serie('2026-10-08'), 'Interprovincial', 'C0004', 'BB', 'ROS', 5000, '', '']],
+    'Fletes ítems': [['F0001', 'P001', 'Almendras', 6]],
+    'Fletes estados': [['F0001', serie('2026-10-08'), 'preparacion'], ['F0001', serie('2026-10-08'), 'camino']],
+    'Pedidos fletes': [],
     'Ajustes': [
-      [fecha('2026-10-06'), 'Rosario', 'P002', 'Avena', -5, 'rotura'],
-    ],
-    'Tipos de cliente': [
-      ['Minorista', 0],
-      ['Revendedor', 10],
+      [serie('2026-10-06'), 'ROS', 'P002', 'Avena', -5, 'rotura'],
     ],
   }
 }
 
-export interface Escritura { tipo: 'append' | 'batchUpdate'; hoja?: string; body: unknown }
+// Filas agregadas por hoja en un mismo batchUpdate (una operación de la app).
+export type Escritura = Record<string, Fila[]>
 
 export interface GoogleFalso {
   hojas: Record<string, Fila[]>
@@ -58,9 +90,10 @@ window.google = { accounts: { oauth2: {
   revoke(_t, cb) { cb && cb(); },
 } } };`
 
-// Lo que hace Sheets con valueInputOption=USER_ENTERED: "'texto" queda como texto y "aaaa-mm-dd" como fecha.
-const comoLoGuardaSheets = (v: string | number) =>
-  (typeof v !== 'string' ? v : v.startsWith("'") ? v.slice(1) : /^\d{4}-\d{2}-\d{2}$/.test(v) ? fecha(v) : v)
+interface Celda { userEnteredValue?: { stringValue?: string; numberValue?: number; boolValue?: boolean } }
+interface AppendCells { appendCells: { sheetId: number; rows: { values: Celda[] }[] } }
+
+const valor = (c: Celda) => c.userEnteredValue?.stringValue ?? c.userEnteredValue?.numberValue ?? c.userEnteredValue?.boolValue ?? ''
 
 const hojaDeRango = (rango: string) => {
   const m = /^'(.+)'!/.exec(rango)
@@ -103,19 +136,18 @@ export async function instalarGoogleFalso(page: Page): Promise<GoogleFalso> {
         valueRanges: url.searchParams.getAll('ranges').map((r) => ({ range: r, values: hojas[hojaDeRango(r)] })),
       })
     }
-    const append = /^\/values\/(.+):append$/.exec(ruta)
-    if (append && req.method() === 'POST') {
-      const hoja = hojaDeRango(append[1])
-      const body = req.postDataJSON() as { values: Fila[] }
-      escrituras.push({ tipo: 'append', hoja, body })
-      const desde = hojas[hoja].length + 2
-      hojas[hoja].push(...body.values.map((f) => f.map(comoLoGuardaSheets)))
-      const hasta = hojas[hoja].length + 1
-      return json({ updates: { updatedRange: `'${hoja}'!A${desde}:Z${hasta}` } })
-    }
     if (ruta === ':batchUpdate' && req.method() === 'POST') {
-      escrituras.push({ tipo: 'batchUpdate', body: req.postDataJSON() as unknown })
-      return json({ replies: [{}] })
+      const { requests } = req.postDataJSON() as { requests: AppendCells[] }
+      const titulos = Object.keys(hojas)
+      const escritura: Escritura = {}
+      for (const { appendCells } of requests) {
+        const hoja = titulos[appendCells.sheetId - 100]
+        const filas = appendCells.rows.map((r) => r.values.map(valor))
+        escritura[hoja] = [...(escritura[hoja] ?? []), ...filas]
+        hojas[hoja].push(...filas)
+      }
+      escrituras.push(escritura)
+      return json({ replies: requests.map(() => ({})) })
     }
     return json({ error: { message: `ruta no simulada: ${req.method()} ${ruta}` } }, 500)
   })

@@ -1,5 +1,5 @@
 import {
-  ActionIcon, Alert, AppShell, Box, Button, Code, Container, Group, Paper, SegmentedControl, Stack, Text,
+  ActionIcon, Alert, AppShell, Box, Button, Code, Container, Group, Paper, ScrollArea, SegmentedControl, Stack, Text,
   ThemeIcon, Title, Tooltip,
 } from '@mantine/core';
 import { IconBrandGoogleFilled, IconExternalLink, IconRefresh } from '@tabler/icons-react';
@@ -10,17 +10,24 @@ import { hora, mensajeDeError } from './formato';
 import * as DB from './google';
 import * as M from './modelo';
 import { Compras } from './vistas/Compras';
+import { Fletes } from './vistas/Fletes';
+import { Pedidos } from './vistas/Pedidos';
+import { Precios } from './vistas/Precios';
 import { Stock } from './vistas/Stock';
 import { Ventas } from './vistas/Ventas';
 
 type Pantalla = 'config' | 'login' | 'sin-acceso' | 'app';
-type Vista = 'stock' | 'ventas' | 'compras';
-const VISTAS: Vista[] = ['stock', 'ventas', 'compras'];
-const ESTADO_INICIAL = { texto: 'Stock, ventas y compras', error: false };
+const NAV = [
+  { value: 'stock', label: 'Stock' }, { value: 'pedidos', label: 'Pedidos' }, { value: 'ventas', label: 'Ventas' },
+  { value: 'compras', label: 'Compras' }, { value: 'fletes', label: 'Fletes' }, { value: 'precios', label: 'Precios' },
+] as const;
+type Vista = (typeof NAV)[number]['value'];
+const VISTAS: readonly string[] = NAV.map((n) => n.value);
+const ESTADO_INICIAL = { texto: 'Stock, pedidos, ventas y fletes', error: false };
 
 const vistaDelHash = (): Vista => {
   const h = location.hash.slice(1);
-  return (VISTAS as string[]).includes(h) ? (h as Vista) : 'stock';
+  return VISTAS.includes(h) ? (h as Vista) : 'stock';
 };
 
 export function App() {
@@ -47,7 +54,7 @@ export function App() {
     setEstado({ texto: 'Leyendo la planilla…', error: false });
     setCargando(true);
     try {
-      const crudo = await DB.leer([M.RANGOS.productos, M.RANGOS.compras, M.RANGOS.ventas, M.RANGOS.ajustes, M.RANGOS.tipos]);
+      const crudo = await DB.leer(M.CLAVES.map(M.rango));
       setDatos(M.parsear(crudo, DB.deSerie));
       setEstado({ texto: `Sincronizado ${hora()}`, error: false });
     } catch (err) {
@@ -123,7 +130,7 @@ export function App() {
   const enApp = pantalla === 'app' && info !== null && datos !== null;
 
   return (
-    <AppShell header={{ height: { base: enApp ? 116 : 68, sm: 68 } }}>
+    <AppShell header={{ height: { base: enApp ? 116 : 68, lg: 68 } }}>
       <AppShell.Header>
         <Container size="xl" h="100%">
           <Group h="100%" justify="space-between" gap="xs" py={8}>
@@ -135,11 +142,9 @@ export function App() {
               </div>
             </Group>
             {enApp && (
-              <SegmentedControl
-                value={vista}
-                onChange={(v) => { irA(v); }}
-                data={[{ value: 'stock', label: 'Stock' }, { value: 'ventas', label: 'Ventas' }, { value: 'compras', label: 'Compras' }]}
-              />
+              <ScrollArea type="never" maw="100%">
+                <SegmentedControl value={vista} onChange={(v) => { irA(v); }} data={[...NAV]} aria-label="Pantalla" />
+              </ScrollArea>
             )}
             {(pantalla === 'app' || pantalla === 'sin-acceso') && (
               <Group gap={6}>
@@ -209,8 +214,11 @@ export function App() {
           {enApp && (
             <BaseProvider info={info} datos={datos} cargando={cargando} recargar={cargar}>
               <Box display={vista === 'stock' ? undefined : 'none'}><Stock visible={vista === 'stock'} /></Box>
+              <Box display={vista === 'pedidos' ? undefined : 'none'}><Pedidos /></Box>
               <Box display={vista === 'ventas' ? undefined : 'none'}><Ventas visible={vista === 'ventas'} /></Box>
               <Box display={vista === 'compras' ? undefined : 'none'}><Compras /></Box>
+              <Box display={vista === 'fletes' ? undefined : 'none'}><Fletes /></Box>
+              <Box display={vista === 'precios' ? undefined : 'none'}><Precios /></Box>
             </BaseProvider>
           )}
         </Container>

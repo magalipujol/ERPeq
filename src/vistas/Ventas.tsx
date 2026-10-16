@@ -1,24 +1,23 @@
 import { BarChart } from '@mantine/charts';
-import {
-  Autocomplete, Button, Grid, Group, NativeSelect, NumberInput, Paper, ScrollArea, Stack, Table, Text, TextInput, Title,
-} from '@mantine/core';
+import { Grid, Group, Paper, ScrollArea, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { useMemo, useState } from 'react';
-import { DEPS, useBase, useGuardar } from '../base';
-import { Encabezado, Kpis, Mensaje, Resumen, SelectorMes } from '../componentes/comunes';
+import { useBase } from '../base';
+import { Encabezado, Kpis, SelectorMes } from '../componentes/comunes';
+import { fmtFecha, fmtMes, fmtMoney, fmtNum, porFechaDesc } from '../formato';
 import { mesElegido } from '../meses';
-import { type Item, itemVacio } from '../componentes/item';
-import { Items } from '../componentes/Items';
-import { aNumero, deISO, fmtFecha, fmtMes, fmtMoney, fmtNum, hoyISO, numeroOCero, porFechaDesc, sumable, unicos } from '../formato';
-import * as DB from '../google';
 import * as M from '../modelo';
 
+// Las ventas son las entregas de los pedidos: se cargan desde la pantalla Pedidos.
 export function Ventas({ visible }: { visible: boolean }) {
   const { datos } = useBase();
   const [mesSel, setMesSel] = useState<string | null>(null);
+  const lineas = useMemo(() => M.lineasVendidas(datos), [datos]);
   const fechas = useMemo(() => datos.ventas.map((v) => v.fecha), [datos]);
   const mes = mesElegido(fechas, mesSel);
-  const delMes = datos.ventas.filter((v) => v.fecha !== null && M.claveMes(v.fecha) === mes);
-  const suma = (k: 'importe' | 'ganancia' | 'comision') => delMes.reduce((s, v) => s + (v[k] ?? 0), 0);
+  const enMes = (f: Date | null) => f !== null && M.claveMes(f) === mes;
+  const delMes = lineas.filter((l) => enMes(l.venta.fecha));
+  const fletesMes = datos.fletes.filter((f) => enMes(f.fecha)).reduce((s, f) => s + (f.costo ?? 0), 0);
+  const suma = (k: 'importe' | 'comision' | 'ganancia') => delMes.reduce((s, l) => s + (l[k] ?? 0), 0);
 
   return (
     <Stack gap="md">
@@ -28,153 +27,24 @@ export function Ventas({ visible }: { visible: boolean }) {
       </Group>
       <Kpis label="Resumen de ventas" items={[
         { label: 'Vendido', valor: fmtMoney(suma('importe')) },
-        { label: 'Ganancia', valor: fmtMoney(suma('ganancia')) },
         { label: 'Comisiones', valor: fmtMoney(suma('comision')) },
-        { label: 'Clientes distintos', valor: new Set(delMes.map((v) => v.cliente)).size },
+        { label: 'Ganancia (antes de fletes)', valor: fmtMoney(suma('ganancia')) },
+        { label: 'Fletes del mes', valor: fmtMoney(fletesMes) },
+        { label: 'Clientes distintos', valor: new Set(delMes.map((l) => l.pedido?.cliente)).size },
       ]} />
 
       <Grid gap="md" align="flex-start">
-        <Grid.Col span={{ base: 12, md: 6.5 }}><FormVenta /></Grid.Col>
-        <Grid.Col span={{ base: 12, md: 5.5 }}>{visible && <GraficoVentas />}</Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6.5 }}>{visible && <GraficoVentas lineas={lineas} />}</Grid.Col>
+        <Grid.Col span={{ base: 12, md: 5.5 }}><ComisionesMes mes={mes} /></Grid.Col>
       </Grid>
 
-      <DetalleVentas ventas={delMes} />
+      <DetalleVentas lineas={delMes} />
     </Stack>
   );
 }
 
-interface Linea {
-  p: M.Producto | undefined; cantidad: number; precio: number; costo: number | null;
-  calc: ReturnType<typeof M.lineaVenta> | null;
-}
-const esCompleta = (l: Linea): l is Linea & { p: M.Producto; calc: NonNullable<Linea['calc']> } =>
-  l.p !== undefined && l.calc !== null;
-
-function FormVenta() {
-  const { datos, costos, buscarProducto } = useBase();
-  const { guardando, msg, guardar, error } = useGuardar();
-  const [fecha, setFecha] = useState(hoyISO);
-  const [deposito, setDeposito] = useState(DEPS[0]);
-  const [cliente, setCliente] = useState('');
-  const [tipoSel, setTipoSel] = useState<string | null>(null);
-  const [comisionTxt, setComisionTxt] = useState<number | string>('');
-  const [localidad, setLocalidad] = useState('');
-  const [provincia, setProvincia] = useState('');
-  const [carga, setCarga] = useState('');
-  const [nota, setNota] = useState('');
-  const [items, setItems] = useState<Item[]>(() => [itemVacio()]);
-
-  const listas = useMemo(() => ({
-    clientes: unicos(datos.ventas.map((v) => v.cliente)),
-    localidades: unicos(datos.ventas.map((v) => v.localidad)),
-    provincias: unicos(datos.ventas.map((v) => v.provincia)),
-    cargas: unicos(datos.ventas.map((v) => v.carga)),
-    tipos: datos.tipos.map((t) => t.tipo),
-  }), [datos]);
-  const tipo = tipoSel && listas.tipos.includes(tipoSel) ? tipoSel : listas.tipos[0] ?? '';
-  const comisionDeTipo = (t: string) => datos.tipos.find((x) => x.tipo === t)?.comision ?? 0;
-
-  const pct = numeroOCero(comisionTxt);
-  const lineas = items.map((it): Linea => {
-    const p = buscarProducto(it.producto);
-    const cantidad = aNumero(it.cantidad);
-    const precio = aNumero(it.precio);
-    const costo = p ? (costos.get(p.id) ?? null) : null;
-    return { p, cantidad, precio, costo, calc: p && cantidad > 0 ? M.lineaVenta({ cantidad, precio, comisionPct: pct, costo }) : null };
-  });
-
-  const completas = lineas.filter(esCompleta);
-
-  function elegirCliente(nombre: string) {
-    setCliente(nombre);
-    const n = nombre.trim().toLowerCase();
-    const ultima = [...datos.ventas].reverse().find((v) => v.cliente.toLowerCase() === n);
-    if (!ultima) return;
-    const t = listas.tipos.includes(ultima.tipo) ? ultima.tipo : tipo;
-    setTipoSel(t);
-    setComisionTxt(comisionDeTipo(t));
-    setLocalidad(ultima.localidad);
-    setProvincia(ultima.provincia);
-    if (!carga) setCarga(ultima.carga);
-  }
-
-  function enviar(e: React.SubmitEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const nombre = cliente.trim();
-    const falta = !fecha ? 'Elegí la fecha.'
-      : !nombre ? 'Ingresá el cliente.'
-      : lineas.some((l) => !l.p) ? 'Hay productos que no existen en la lista.'
-      : lineas.some((l) => !(l.cantidad > 0)) ? 'Todas las cantidades tienen que ser mayores a 0.'
-      : lineas.some((l) => !(l.precio >= 0)) ? 'Falta el precio de algún producto.'
-      : null;
-    if (falta) { error(falta); return; }
-
-    const base = {
-      fecha: deISO(fecha), deposito, cliente: nombre, tipo,
-      localidad: localidad.trim(), provincia: provincia.trim(), carga: carga.trim(), nota: nota.trim(),
-    };
-    guardar(async () => {
-      // Pasada la validación, todas las líneas están completas.
-      await DB.agregarFilas('Ventas', completas.map((l) => M.filas.venta({
-        ...base, id: l.p.id, producto: l.p.producto, cantidad: l.cantidad, precio: l.precio,
-        importe: l.calc.importe, comision: l.calc.comision, costo: l.costo, ganancia: l.calc.ganancia,
-      })));
-      const total = completas.reduce((s, l) => s + l.calc.importe, 0);
-      setItems([itemVacio()]);
-      setCliente('');
-      setNota('');
-      return `✓ Venta a ${nombre} registrada (${lineas.length} producto${lineas.length > 1 ? 's' : ''}, ${fmtMoney(total)}).`;
-    });
-  }
-
-  const sumar = (k: 'importe' | 'comision' | 'ganancia') => completas.reduce((s, l) => s + sumable(l.calc[k]), 0);
-  const sinCosto = completas.some((l) => l.calc.ganancia === null);
-
-  return (
-    <Paper>
-      <Encabezado titulo="Registrar venta" />
-      <form onSubmit={enviar} noValidate aria-label="Registrar venta">
-        <Stack gap="sm">
-          <Group grow gap="xs" align="flex-start">
-            <TextInput label="Fecha" type="date" value={fecha} onChange={(e) => { setFecha(e.currentTarget.value); }} />
-            <NativeSelect label="Depósito" data={DEPS} value={deposito} onChange={(e) => { setDeposito(e.currentTarget.value); }} />
-          </Group>
-          <Autocomplete label="Cliente" maxLength={120} placeholder="Nombre del cliente" data={listas.clientes}
-            value={cliente} onChange={setCliente} onOptionSubmit={elegirCliente} onBlur={() => { elegirCliente(cliente); }} />
-          <Group grow gap="xs" align="flex-start">
-            <NativeSelect label="Tipo de cliente" data={listas.tipos} value={tipo}
-              onChange={(e) => { setTipoSel(e.currentTarget.value); setComisionTxt(comisionDeTipo(e.currentTarget.value)); }} />
-            <NumberInput label="Comisión" min={0} max={100} allowNegative={false} value={comisionTxt} onChange={setComisionTxt}
-              rightSection={<Text size="xs" c="dimmed">%</Text>} rightSectionPointerEvents="none" />
-          </Group>
-          <Group grow gap="xs" align="flex-start">
-            <Autocomplete label="Localidad" maxLength={80} data={listas.localidades} value={localidad} onChange={setLocalidad} />
-            <Autocomplete label="Provincia" maxLength={80} data={listas.provincias} value={provincia} onChange={setProvincia} />
-          </Group>
-          <Autocomplete label="Carga" maxLength={60} placeholder="Quién carga / vende" data={listas.cargas} value={carga} onChange={setCarga} />
-
-          <Items tipo="venta" deposito={deposito} items={items} onChange={setItems} />
-
-          <TextInput label="Nota" maxLength={200} placeholder="Opcional" value={nota} onChange={(e) => { setNota(e.currentTarget.value); }} />
-          {completas.length > 0 && (
-            <Group className="suave" px="md" py="xs" gap="xl">
-              <Resumen label="Importe" valor={fmtMoney(sumar('importe'))} />
-              <Resumen label="Comisión" valor={fmtMoney(sumar('comision'))} />
-              <Resumen label={`Ganancia${sinCosto ? '*' : ''}`} valor={fmtMoney(sumar('ganancia'))} />
-              {sinCosto && <Text size="xs" c="dimmed" w="100%">* Hay productos sin costo de compra: su ganancia no se calcula.</Text>}
-            </Group>
-          )}
-          <Button type="submit" loading={guardando}>Registrar venta</Button>
-          <Mensaje msg={msg} />
-        </Stack>
-      </form>
-    </Paper>
-  );
-}
-
-function GraficoVentas() {
-  const { datos } = useBase();
-  const meses = M.ventasPorMes(datos.ventas).slice(-12).map((m) => ({
+function GraficoVentas({ lineas }: { lineas: M.LineaVendida[] }) {
+  const meses = M.ventasPorMes(lineas).slice(-12).map((m) => ({
     mes: fmtMes(m.mes).replace(/ de /, ' '), Vendido: Math.round(m.importe), Ganancia: Math.round(m.ganancia),
   }));
   return (
@@ -196,13 +66,56 @@ function GraficoVentas() {
   );
 }
 
-function DetalleVentas({ ventas }: { ventas: M.Venta[] }) {
-  const { cargando } = useBase();
+// Liquidación del mes: comisión de cada vendedor por las entregas del mes.
+function ComisionesMes({ mes }: { mes: string }) {
+  const { datos, nombreVendedor } = useBase();
+  const fechaVenta = new Map(datos.ventas.map((v) => [v.id, v.fecha]));
+  const porVendedor = new Map<string, { monto: number; ventas: Set<string>; editadas: number }>();
+  for (const c of datos.ventasComisiones) {
+    const f = fechaVenta.get(c.ventaId);
+    if (!f || M.claveMes(f) !== mes) continue;
+    const v = porVendedor.get(c.vendedorId) ?? { monto: 0, ventas: new Set(), editadas: 0 };
+    v.monto += c.monto;
+    v.ventas.add(c.ventaId);
+    if (c.porcentajeRegla !== null && c.porcentajeRegla !== c.porcentaje) v.editadas += 1;
+    porVendedor.set(c.vendedorId, v);
+  }
+  const filas = [...porVendedor.entries()].sort((a, b) => b[1].monto - a[1].monto);
+
+  return (
+    <Paper>
+      <Encabezado titulo="Comisiones del mes" />
+      <Table fz="sm" aria-label="Comisiones por vendedor">
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>Vendedor</Table.Th><Table.Th className="num">Entregas</Table.Th><Table.Th className="num">Comisión</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {filas.map(([id, v]) => (
+            <Table.Tr key={id}>
+              <Table.Td>
+                {nombreVendedor(id)}
+                {v.editadas > 0 && <Text size="xs" c="dimmed">{v.editadas} con % distinto de la regla</Text>}
+              </Table.Td>
+              <Table.Td className="num">{v.ventas.size}</Table.Td>
+              <Table.Td className="num" fw={600}>{fmtMoney(v.monto)}</Table.Td>
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
+      {filas.length === 0 && <Text c="dimmed" mt="xs" size="sm">No hay comisiones en este mes.</Text>}
+    </Paper>
+  );
+}
+
+function DetalleVentas({ lineas }: { lineas: M.LineaVendida[] }) {
+  const { cargando, nombreDeposito } = useBase();
   const [buscar, setBuscar] = useState('');
   const q = buscar.trim().toLowerCase();
-  const filas = ventas
-    .filter((v) => !q || v.cliente.toLowerCase().includes(q) || v.producto.toLowerCase().includes(q))
-    .sort(porFechaDesc);
+  const filas = lineas
+    .filter((l) => !q || (l.pedido?.cliente.toLowerCase().includes(q) ?? false) || l.producto.toLowerCase().includes(q))
+    .sort((a, b) => porFechaDesc(a.venta, b.venta));
 
   return (
     <Paper>
@@ -214,29 +127,30 @@ function DetalleVentas({ ventas }: { ventas: M.Venta[] }) {
         <Table stickyHeader highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1, whiteSpace: 'nowrap' }}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Fecha</Table.Th><Table.Th>Cliente</Table.Th><Table.Th>Producto</Table.Th>
+              <Table.Th>Fecha</Table.Th><Table.Th>Venta</Table.Th><Table.Th>Cliente</Table.Th><Table.Th>Producto</Table.Th>
               <Table.Th className="num">Cant.</Table.Th><Table.Th className="num">Precio</Table.Th>
               <Table.Th className="num">Importe</Table.Th><Table.Th className="num">Comisión</Table.Th>
               <Table.Th className="num">Ganancia</Table.Th><Table.Th>Depósito</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {filas.map((v) => (
-              <Table.Tr key={v.fila}>
-                <Table.Td c="dimmed">{fmtFecha(v.fecha)}</Table.Td>
+            {filas.map((l) => (
+              <Table.Tr key={`${l.ventaId}#${l.linea}`}>
+                <Table.Td c="dimmed">{fmtFecha(l.venta.fecha)}</Table.Td>
+                <Table.Td c="dimmed">{l.ventaId} · {l.venta.pedidoId}</Table.Td>
                 <Table.Td>
-                  {v.cliente}
-                  {v.nota && <Text size="xs" c="dimmed" style={{ whiteSpace: 'normal' }}>{v.nota}</Text>}
+                  {l.pedido?.cliente}
+                  {l.venta.nota && <Text size="xs" c="dimmed" style={{ whiteSpace: 'normal' }}>{l.venta.nota}</Text>}
                 </Table.Td>
-                <Table.Td>{v.producto}</Table.Td>
-                <Table.Td className="num">{fmtNum(v.cantidad)}</Table.Td>
-                <Table.Td className="num">{fmtMoney(v.precio)}</Table.Td>
-                <Table.Td className="num" fw={600}>{fmtMoney(v.importe)}</Table.Td>
-                <Table.Td className="num" c="dimmed">{v.comision !== 0 ? fmtMoney(v.comision) : '–'}</Table.Td>
-                <Table.Td className="num" c={(v.ganancia ?? 0) < 0 ? 'red' : undefined} fw={(v.ganancia ?? 0) < 0 ? 600 : undefined}>
-                  {fmtMoney(v.ganancia)}
+                <Table.Td>{l.producto}</Table.Td>
+                <Table.Td className="num">{fmtNum(l.cantidad)}</Table.Td>
+                <Table.Td className="num">{fmtMoney(l.precio)}</Table.Td>
+                <Table.Td className="num" fw={600}>{fmtMoney(l.importe)}</Table.Td>
+                <Table.Td className="num" c="dimmed">{l.comision !== 0 ? fmtMoney(l.comision) : '–'}</Table.Td>
+                <Table.Td className="num" c={(l.ganancia ?? 0) < 0 ? 'red' : undefined} fw={(l.ganancia ?? 0) < 0 ? 600 : undefined}>
+                  {fmtMoney(l.ganancia)}
                 </Table.Td>
-                <Table.Td c="dimmed">{v.deposito}</Table.Td>
+                <Table.Td c="dimmed">{nombreDeposito(l.venta.depositoId)}</Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>
