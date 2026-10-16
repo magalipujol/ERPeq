@@ -7,6 +7,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
+import vitest from '@vitest/eslint-plugin'
 
 export default defineConfig(
   globalIgnores(['dist', 'playwright-report', 'test-results', 'herramientas']),
@@ -92,6 +93,17 @@ export default defineConfig(
       jsxA11y.flatConfigs.strict,
     ],
     languageOptions: { globals: globals.browser },
+  },
+
+  {
+    files: ['src/**/*.test.ts'],
+    extends: [vitest.configs.all],
+    rules: {
+      // Solo tiene sentido en pruebas asíncronas, donde un expect puede no ejecutarse nunca.
+      'vitest/prefer-expect-assertions': ['error', { onlyFunctionsWithAsyncKeyword: true }],
+      // Los relojes falsos se arman y desarman en hooks.
+      'vitest/no-hooks': ['error', { allow: ['beforeEach', 'afterEach'] }],
+    },
   },
 
   {

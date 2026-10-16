@@ -64,13 +64,17 @@ y abrir http://localhost:5500 (tiene que estar autorizado como origen en el proy
 
 ## Pruebas
 
-Pruebas de punta a punta con Playwright, contra el build. Google está simulado (`tests/google-falso.ts`):
-no hace falta cuenta ni se toca la planilla real.
+- **Unitarias** (Vitest, `src/**/*.test.ts`): la lógica pura de `modelo.ts`, `formato.ts` y `meses.ts`. Tardan menos de un segundo.
+- **De punta a punta** (Playwright, `tests/`): la app entera contra el build. Google está simulado
+  (`tests/google-falso.ts`): no hace falta cuenta ni se toca la planilla real.
 
 ```sh
-pnpm exec playwright install chromium   # la primera vez
-pnpm test
-pnpm test:ui                            # para verlas paso a paso
+pnpm test:unit                          # unitarias
+pnpm test:unit:watch                    # unitarias, re-corriendo al guardar
+pnpm exec playwright install chromium   # la primera vez, para las de punta a punta
+pnpm test:e2e
+pnpm test:e2e:ui                        # para verlas paso a paso
+pnpm test                               # todas
 ```
 
 En GitHub corren antes de cada publicación: si alguna falla, no se publica.
@@ -78,10 +82,16 @@ En GitHub corren antes de cada publicación: si alguna falla, no se publica.
 ## Lint
 
 ESLint con las reglas más estrictas de typescript-eslint (`strictTypeChecked` + `stylisticTypeChecked`),
-`@eslint-react` (`strict-type-checked`), reglas de hooks de React, accesibilidad (`jsx-a11y` estricto) y
-Playwright para las pruebas. No se admiten warnings.
+`@eslint-react` (`strict-type-checked`), reglas de hooks de React, accesibilidad (`jsx-a11y` estricto),
+Vitest (`all`) y Playwright para las pruebas. No se admiten warnings.
 
 ```sh
 pnpm lint
 pnpm lint:fix    # arregla lo que se pueda solo
 ```
+
+## Antes de cada commit
+
+`pnpm install` instala un hook de git (husky) que, antes de cada commit, corre ESLint sobre los archivos
+agregados (lint-staged) y las pruebas unitarias. Si algo falla, el commit no se hace.
+Las de punta a punta quedan para GitHub porque tardan más (compilan y abren un navegador).

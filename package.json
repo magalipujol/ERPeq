@@ -7,12 +7,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "typecheck": "tsc -b",
     "preview": "vite preview",
-    "test": "playwright test",
-    "test:ui": "playwright test --ui",
+    "typecheck": "tsc -b",
     "lint": "eslint --max-warnings 0 .",
-    "lint:fix": "eslint --max-warnings 0 --fix ."
+    "lint:fix": "eslint --max-warnings 0 --fix .",
+    "test": "pnpm test:unit && pnpm test:e2e",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "prepare": "husky"
   },
   "dependencies": {
     "@mantine/charts": "^9.7.2",
@@ -32,18 +36,25 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "@vitest/eslint-plugin": "^1.6.27",
     "eslint": "^10.12.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-playwright": "^2.12.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.13.0",
+    "husky": "^9.1.7",
     "jiti": "^2.7.0",
+    "lint-staged": "^17.6.0",
     "postcss": "^8.5.30",
     "postcss-preset-mantine": "^1.18.0",
     "postcss-simple-vars": "^7.0.1",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.2",
-    "vite": "^8.3.4"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,cjs,mjs}": "eslint --max-warnings 0 --no-warn-ignored"
   }
 }
