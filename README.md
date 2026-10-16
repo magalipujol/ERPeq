@@ -1,7 +1,7 @@
 # ERPeq
 
 Gestión de stock, ventas y compras para una dietética, con Google Sheets como base de datos.
-Es una página estática (sin servidor) que se publica en GitHub Pages.
+Es una página estática (sin servidor) hecha con React, TypeScript y Mantine, que se publica en GitHub Pages.
 
 ## Cómo funciona
 
@@ -28,11 +28,13 @@ Es una página estática (sin servidor) que se publica en GitHub Pages.
 
 ## Archivos
 
-- `docs/`: la app (lo que publica GitHub Pages, carpeta `/docs`).
-  - `config.js`: Client ID de Google y ID de la planilla.
-  - `modelo.js`: lectura/escritura de filas y cálculos (sin dependencias del navegador).
-  - `google.js`: login y Sheets API.
-  - `app.js`: la interfaz.
+- `src/`: la app.
+  - `config.ts`: Client ID de Google y ID de la planilla.
+  - `modelo.ts`: lectura/escritura de filas y cálculos (sin dependencias del navegador).
+  - `google.ts`: login y Sheets API.
+  - `App.tsx`: pantallas de acceso y navegación; `vistas/`: Stock, Ventas y Compras.
+- `.github/workflows/deploy.yml`: compila y publica en GitHub Pages en cada push a `main`
+  (en *Settings → Pages*, la fuente tiene que ser **GitHub Actions**).
 - `herramientas/excel_a_base.py`: convierte el Excel histórico en la planilla inicial.
 - `GUIA-CONFIGURACION.md`: paso a paso para configurar Google y la planilla.
 
@@ -48,8 +50,26 @@ Muestra un resumen con los productos con stock negativo y los datos a revisar.
 
 ## Probar en la compu
 
+Hace falta Node 24 y pnpm (`corepack enable` lo instala).
+
 ```sh
-npx http-server docs -p 5500 -c-1
+pnpm install
+pnpm dev
 ```
 
 y abrir http://localhost:5500 (tiene que estar autorizado como origen en el proyecto de Google).
+
+`pnpm build` deja la versión publicable en `dist/`; `pnpm preview` la sirve en el mismo puerto.
+
+## Pruebas
+
+Pruebas de punta a punta con Playwright, contra el build. Google está simulado (`tests/google-falso.ts`):
+no hace falta cuenta ni se toca la planilla real.
+
+```sh
+pnpm exec playwright install chromium   # la primera vez
+pnpm test
+pnpm test:ui                            # para verlas paso a paso
+```
+
+En GitHub corren antes de cada publicación: si alguna falla, no se publica.

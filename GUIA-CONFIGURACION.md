@@ -7,9 +7,9 @@ Hacen falta tres cosas, todas en la cuenta del **dueño** (hoy Leo):
 
 1. Un proyecto de Google Cloud (gratis) que identifica a la app.
 2. La planilla de datos en su Drive.
-3. Completar `docs/config.js` con esos datos.
+3. Completar `src/config.ts` con esos datos.
 
-Ninguno de los valores de `config.js` es secreto: el Client ID solo funciona desde los orígenes
+Ninguno de los valores de `config.ts` es secreto: el Client ID solo funciona desde los orígenes
 autorizados, y la planilla solo la abren las cuentas con las que está compartida.
 
 ## Sobre el permiso que pide la app
@@ -19,7 +19,7 @@ La app pide el permiso **"Ver, editar, crear y borrar tus hojas de cálculo de G
 el token de sesión sirve para cualquier planilla de esa cuenta. Lo que limita el riesgo:
 
 - La app está en modo **Prueba**: solo pueden iniciar sesión las cuentas cargadas como usuarios de prueba.
-- El código solo usa la planilla configurada en `config.js`, y es público para revisarlo.
+- El código solo usa la planilla configurada en `config.ts`, y es público para revisarlo.
 - El token dura una hora, vive solo en memoria y "Salir" lo revoca.
 - La página bloquea scripts de terceros (Content-Security-Policy), salvo el login de Google.
 
@@ -72,10 +72,10 @@ La base inicial se genera desde el Excel histórico con `herramientas/excel_a_ba
 
 > El `.xlsx` tiene datos personales (agenda de clientes). No lo subas al repositorio ni lo mandes por canales públicos.
 
-## 3. Completar `docs/config.js`
+## 3. Completar `src/config.ts`
 
-```js
-window.ERPEQ_CONFIG = {
+```ts
+export const CONFIG = {
   CLIENT_ID: '1234-abc.apps.googleusercontent.com',
   SPREADSHEET_ID: 'ID-de-la-planilla',
   DEPOSITOS: ['General', 'Rosario'],

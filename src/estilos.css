@@ -1,0 +1,22 @@
+:root {
+  --erp-bg: #f6f3ec;
+  --erp-soft: #e8f0e1;
+  --c1: #4f7a3a;
+  --c2: #d49a2a;
+  --c3: #6c8fb3;
+  --mantine-color-body: #fffdf8;
+}
+
+:root[data-mantine-color-scheme='dark'] {
+  --erp-bg: #171a15;
+  --erp-soft: #2a3423;
+  --c1: #8bbf6e;
+  --c2: #e2b04a;
+  --c3: #8fb1d6;
+  --mantine-color-body: #20241d;
+}
+
+body { background: var(--erp-bg); }
+
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.suave { background: var(--erp-soft); border-radius: var(--mantine-radius-md); }

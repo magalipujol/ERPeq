@@ -4,8 +4,12 @@
 *.xls
 *.csv
 *.json
-!docs/**/*.json
+!package.json
+!tsconfig*.json
 
 __pycache__/
 node_modules/
+dist/
+test-results/
+playwright-report/
 .clasp.json
