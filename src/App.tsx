@@ -4,9 +4,9 @@ import {
 } from '@mantine/core';
 import { IconBrandGoogleFilled, IconExternalLink, IconRefresh } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
-import { BaseProvider } from './base';
+import { BaseProvider } from './BaseProvider';
 import { CONFIG } from './config';
-import { hora } from './formato';
+import { hora, mensajeDeError } from './formato';
 import * as DB from './google';
 import * as M from './modelo';
 import { Compras } from './vistas/Compras';
@@ -38,9 +38,9 @@ export function App() {
 
   useEffect(() => {
     if (faltaConfig) return;
-    DB.init(CONFIG, { onSesionVencida: () => setVencida(true) })
-      .then(() => setListo(true))
-      .catch((err) => setMsg(err.message));
+    DB.init(CONFIG, { onSesionVencida: () => { setVencida(true); } })
+      .then(() => { setListo(true); })
+      .catch((err: unknown) => { setMsg(mensajeDeError(err)); });
   }, [faltaConfig]);
 
   const cargar = useCallback(async () => {
@@ -51,7 +51,7 @@ export function App() {
       setDatos(M.parsear(crudo, DB.deSerie));
       setEstado({ texto: `Sincronizado ${hora()}`, error: false });
     } catch (err) {
-      setEstado({ texto: `No se pudo leer la planilla: ${(err as Error).message}`, error: true });
+      setEstado({ texto: `No se pudo leer la planilla: ${mensajeDeError(err)}`, error: true });
       throw err;
     } finally {
       setCargando(false);
@@ -80,18 +80,18 @@ export function App() {
     try {
       await fn();
     } catch (err) {
-      setMsg((err as Error).message);
+      setMsg(mensajeDeError(err));
     } finally {
       setOcupado(false);
     }
   }
 
-  const ingresar = () => conBoton(async () => {
+  const ingresar = async () => conBoton(async () => {
     await DB.login();
     await abrirBase();
   });
 
-  const reintentarAcceso = () => conBoton(async () => {
+  const reintentarAcceso = async () => conBoton(async () => {
     if (!(await abrirBase())) setMsg('Sigue sin acceso. Revisá que la planilla esté compartida con esta cuenta.');
   });
 
@@ -101,7 +101,7 @@ export function App() {
       setVencida(false);
       if (info) await cargar();
     } catch (err) {
-      setEstado({ texto: (err as Error).message, error: true });
+      setEstado({ texto: mensajeDeError(err), error: true });
     }
   }
 
@@ -120,7 +120,7 @@ export function App() {
     history.replaceState(null, '', `#${v}`);
   }
 
-  const enApp = pantalla === 'app' && info && datos;
+  const enApp = pantalla === 'app' && info !== null && datos !== null;
 
   return (
     <AppShell header={{ height: { base: enApp ? 116 : 68, sm: 68 } }}>
@@ -137,7 +137,7 @@ export function App() {
             {enApp && (
               <SegmentedControl
                 value={vista}
-                onChange={(v) => irA(v as Vista)}
+                onChange={(v) => { irA(v); }}
                 data={[{ value: 'stock', label: 'Stock' }, { value: 'ventas', label: 'Ventas' }, { value: 'compras', label: 'Compras' }]}
               />
             )}
@@ -149,13 +149,13 @@ export function App() {
                     <Button component="a" href={info.spreadsheetUrl} target="_blank" rel="noopener" size="xs" variant="default"
                       rightSection={<IconExternalLink size={14} />}>Planilla</Button>
                     <Tooltip label="Volver a leer la planilla">
-                      <ActionIcon variant="default" size="md" onClick={() => cargar().catch(() => {})} loading={cargando} aria-label="Refrescar">
+                      <ActionIcon variant="default" size="md" onClick={() => { void cargar().catch(() => undefined); }} loading={cargando} aria-label="Refrescar">
                         <IconRefresh size={16} />
                       </ActionIcon>
                     </Tooltip>
                   </>
                 )}
-                <Button size="xs" variant="default" onClick={salir}>Salir</Button>
+                <Button size="xs" variant="default" onClick={() => { void salir(); }}>Salir</Button>
               </Group>
             )}
           </Group>
@@ -168,7 +168,7 @@ export function App() {
             <Container size="xl">
               <Group justify="space-between">
                 <Text size="sm">La sesión de Google venció (dura una hora). Lo que estabas cargando no se perdió.</Text>
-                <Button size="xs" onClick={reconectar}>Reconectar</Button>
+                <Button size="xs" onClick={() => { void reconectar(); }}>Reconectar</Button>
               </Group>
             </Container>
           </Alert>
@@ -186,10 +186,10 @@ export function App() {
             <Puerta titulo="Ingresá con tu cuenta de Google">
               <Text>ERPeq trabaja sobre una planilla de Google Sheets que tiene que estar compartida con tu cuenta.
                 Google te va a pedir permiso para ver y editar tus hojas de cálculo: la app solo usa la planilla de ERPeq.</Text>
-              <Button leftSection={<IconBrandGoogleFilled size={18} />} onClick={ingresar} disabled={!listo} loading={ocupado}>
+              <Button leftSection={<IconBrandGoogleFilled size={18} />} onClick={() => { void ingresar(); }} disabled={!listo} loading={ocupado}>
                 Ingresar con Google
               </Button>
-              {msg && <Text c="red" role="alert">{msg}</Text>}
+              {msg !== '' && <Text c="red" role="alert">{msg}</Text>}
             </Puerta>
           )}
 
@@ -199,10 +199,10 @@ export function App() {
               <Text c="dimmed">Pedile al dueño que te la comparta como <strong>Editor</strong> desde Google Drive y después tocá
                 "Reintentar". Si entraste con otra cuenta por error, tocá "Usar otra cuenta".</Text>
               <Group gap="xs">
-                <Button onClick={reintentarAcceso} loading={ocupado}>Reintentar</Button>
-                <Button variant="default" onClick={salir}>Usar otra cuenta</Button>
+                <Button onClick={() => { void reintentarAcceso(); }} loading={ocupado}>Reintentar</Button>
+                <Button variant="default" onClick={() => { void salir(); }}>Usar otra cuenta</Button>
               </Group>
-              {msg && <Text c="red" role="alert">{msg}</Text>}
+              {msg !== '' && <Text c="red" role="alert">{msg}</Text>}
             </Puerta>
           )}
 

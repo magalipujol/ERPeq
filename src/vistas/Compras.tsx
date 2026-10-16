@@ -3,27 +3,29 @@ import {
 } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { DEPS, useBase, useGuardar } from '../base';
-import { Encabezado, Kpis, Mensaje, Resumen, SelectorMes, mesElegido } from '../componentes/comunes';
-import { type Item, Items, itemVacio } from '../componentes/Items';
-import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, unicos } from '../formato';
+import { Encabezado, Kpis, Mensaje, Resumen, SelectorMes } from '../componentes/comunes';
+import { mesElegido } from '../meses';
+import { type Item, itemVacio } from '../componentes/item';
+import { Items } from '../componentes/Items';
+import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, numeroOCero, porFechaDesc, unicos } from '../formato';
 import * as DB from '../google';
 import * as M from '../modelo';
 
 export function Compras() {
   const { datos } = useBase();
-  const [mesSel, setMes] = useState<string | null>(null);
+  const [mesSel, setMesSel] = useState<string | null>(null);
   const fechas = useMemo(() => datos.compras.map((c) => c.fecha), [datos]);
   const mes = mesElegido(fechas, mesSel);
-  const delMes = datos.compras.filter((c) => c.fecha && M.claveMes(c.fecha) === mes);
+  const delMes = datos.compras.filter((c) => c.fecha !== null && M.claveMes(c.fecha) === mes);
 
   return (
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={2}>Compras</Title>
-        <SelectorMes fechas={fechas} value={mesSel} onChange={setMes} />
+        <SelectorMes fechas={fechas} value={mesSel} onChange={setMesSel} />
       </Group>
       <Kpis label="Resumen de compras" items={[
-        { label: 'Comprado', valor: fmtMoney(delMes.reduce((s, c) => s + (c.importe || 0), 0)) },
+        { label: 'Comprado', valor: fmtMoney(delMes.reduce((s, c) => s + (c.importe ?? 0), 0)) },
         { label: 'Compras (líneas)', valor: delMes.length },
         { label: 'Proveedores', valor: new Set(delMes.map((c) => c.proveedor)).size },
       ]} />
@@ -47,7 +49,7 @@ function FormCompra() {
   const [items, setItems] = useState<Item[]>(() => [itemVacio()]);
   const proveedores = useMemo(() => unicos(datos.compras.map((c) => c.proveedor)), [datos]);
 
-  function enviar(e: React.FormEvent) {
+  function enviar(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const prov = proveedor.trim();
     const falta = !fecha ? 'Elegí la fecha.'
@@ -56,7 +58,7 @@ function FormCompra() {
       : items.some((it) => !(aNumero(it.cantidad) > 0)) ? 'Todas las cantidades tienen que ser mayores a 0.'
       : items.some((it) => it.precio !== '' && !(aNumero(it.precio) >= 0)) ? 'Hay un precio inválido.'
       : null;
-    if (falta) return error(falta);
+    if (falta) { error(falta); return; }
 
     guardar(async () => {
       // Productos nuevos: se agregan a la hoja Productos y se les copian las fórmulas de stock.
@@ -64,7 +66,7 @@ function FormCompra() {
       let sigId = M.siguienteId(datos.productos);
       const resolver = (it: Item) => {
         const nombre = it.producto.trim().replace(/\s+/g, ' ');
-        const existente = buscarProducto(nombre) || nuevos.find((n) => n.producto.toLowerCase() === nombre.toLowerCase());
+        const existente = buscarProducto(nombre) ?? nuevos.find((n) => n.producto.toLowerCase() === nombre.toLowerCase());
         if (existente) return existente;
         const p = { id: sigId, producto: nombre, unidad: it.unidad || 'kg', minimo: null };
         sigId = `P${String(Number(sigId.slice(1)) + 1).padStart(3, '0')}`;
@@ -73,9 +75,12 @@ function FormCompra() {
       };
       const lineas = items.map((it) => ({ p: resolver(it), cantidad: aNumero(it.cantidad), precio: it.precio === '' ? null : aNumero(it.precio) }));
 
-      if (nuevos.length) {
+      if (nuevos.length > 0) {
         const upd = await DB.agregarFilas('Productos', nuevos.map(M.filas.producto));
-        const fila = Number(upd.updatedRange.split('!')[1].match(/\d+/)![0]) - 1;
+        // updatedRange es tipo "'Productos'!A5:D6": la primera fila agregada, en base 0.
+        const desde = /!\D*(\d+)/.exec(upd.updatedRange);
+        if (!desde) throw new Error(`Google devolvió un rango inesperado: ${upd.updatedRange}`);
+        const fila = Number(desde[1]) - 1;
         const hoja = info.sheets.find((s) => s.properties.title === 'Productos');
         if (hoja) await DB.extenderFormulasProductos(hoja.properties.sheetId, fila, nuevos.length, M.PRODUCTOS_COL_STOCK, M.PRODUCTOS_COL_STOCK + DEPS.length);
       }
@@ -86,31 +91,31 @@ function FormCompra() {
       setItems([itemVacio()]);
       setRemito('');
       setNota('');
-      return `✓ Compra a ${prov} registrada (${lineas.length} producto${lineas.length > 1 ? 's' : ''}${nuevos.length ? `, ${nuevos.length} nuevo${nuevos.length > 1 ? 's' : ''}` : ''}).`;
+      return `✓ Compra a ${prov} registrada (${lineas.length} producto${lineas.length > 1 ? 's' : ''}${nuevos.length > 0 ? `, ${nuevos.length} nuevo${nuevos.length > 1 ? 's' : ''}` : ''}).`;
     });
   }
 
-  const validos = items.filter((it) => it.producto && aNumero(it.cantidad) > 0);
-  const total = validos.reduce((s, it) => s + aNumero(it.cantidad) * (aNumero(it.precio) || 0), 0);
+  const validos = items.filter((it) => it.producto !== '' && aNumero(it.cantidad) > 0);
+  const total = validos.reduce((s, it) => s + aNumero(it.cantidad) * numeroOCero(it.precio), 0);
   const nuevos = validos.filter((it) => !buscarProducto(it.producto)).length;
 
   return (
     <Paper>
       <Encabezado titulo="Registrar compra" />
-      <form onSubmit={enviar} noValidate>
+      <form onSubmit={enviar} noValidate aria-label="Registrar compra">
         <Stack gap="sm">
           <Group grow gap="xs" align="flex-start">
-            <TextInput label="Fecha" type="date" value={fecha} onChange={(e) => setFecha(e.currentTarget.value)} />
-            <NativeSelect label="Depósito" data={DEPS} value={deposito} onChange={(e) => setDeposito(e.currentTarget.value)} />
+            <TextInput label="Fecha" type="date" value={fecha} onChange={(e) => { setFecha(e.currentTarget.value); }} />
+            <NativeSelect label="Depósito" data={DEPS} value={deposito} onChange={(e) => { setDeposito(e.currentTarget.value); }} />
           </Group>
           <Group grow gap="xs" align="flex-start">
             <Autocomplete label="Proveedor" maxLength={120} data={proveedores} value={proveedor} onChange={setProveedor} />
-            <TextInput label="Remito" maxLength={60} placeholder="Opcional" value={remito} onChange={(e) => setRemito(e.currentTarget.value)} />
+            <TextInput label="Remito" maxLength={60} placeholder="Opcional" value={remito} onChange={(e) => { setRemito(e.currentTarget.value); }} />
           </Group>
 
           <Items tipo="compra" deposito={deposito} items={items} onChange={setItems} />
 
-          <TextInput label="Nota" maxLength={200} placeholder="Opcional" value={nota} onChange={(e) => setNota(e.currentTarget.value)} />
+          <TextInput label="Nota" maxLength={200} placeholder="Opcional" value={nota} onChange={(e) => { setNota(e.currentTarget.value); }} />
           {validos.length > 0 && (
             <Group className="suave" px="md" py="xs" gap="xl">
               <Resumen label="Total" valor={fmtMoney(total)} />
@@ -131,13 +136,13 @@ function DetalleCompras({ compras }: { compras: M.Compra[] }) {
   const q = buscar.trim().toLowerCase();
   const filas = compras
     .filter((c) => !q || c.proveedor.toLowerCase().includes(q) || c.producto.toLowerCase().includes(q))
-    .sort((a, b) => b.fecha!.getTime() - a.fecha!.getTime());
+    .sort(porFechaDesc);
 
   return (
     <Paper>
       <Encabezado titulo="Detalle del mes">
         <TextInput type="search" w={220} placeholder="Buscar…" aria-label="Buscar en compras"
-          value={buscar} onChange={(e) => setBuscar(e.currentTarget.value)} />
+          value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
       </Encabezado>
       <ScrollArea.Autosize mah={560} type="auto">
         <Table stickyHeader highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1, whiteSpace: 'nowrap' }}>
@@ -149,8 +154,8 @@ function DetalleCompras({ compras }: { compras: M.Compra[] }) {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {filas.map((c, i) => (
-              <Table.Tr key={i}>
+            {filas.map((c) => (
+              <Table.Tr key={c.fila}>
                 <Table.Td c="dimmed">{fmtFecha(c.fecha)}</Table.Td>
                 <Table.Td>
                   {c.proveedor}
@@ -166,7 +171,7 @@ function DetalleCompras({ compras }: { compras: M.Compra[] }) {
           </Table.Tbody>
         </Table>
       </ScrollArea.Autosize>
-      {!filas.length && <Text c="dimmed" mt="xs">No hay compras en este mes.</Text>}
+      {filas.length === 0 && <Text c="dimmed" mt="xs">No hay compras en este mes.</Text>}
     </Paper>
   );
 }

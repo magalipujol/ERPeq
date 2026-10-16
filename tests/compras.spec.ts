@@ -13,7 +13,7 @@ test('KPIs del mes', async ({ page }) => {
 })
 
 test('registra una compra con un producto nuevo y copia sus fórmulas de stock', async ({ page, google }) => {
-  const form = page.locator('form', { has: page.getByRole('button', { name: 'Registrar compra' }) })
+  const form = page.getByRole('form', { name: 'Registrar compra' })
   await form.getByLabel('Proveedor', { exact: true }).fill('Prov C')
   await form.getByLabel('Remito', { exact: true }).fill('R-9')
 
@@ -62,7 +62,7 @@ test('registra una compra con un producto nuevo y copia sus fórmulas de stock',
 })
 
 test('no guarda una compra sin proveedor', async ({ page, google }) => {
-  const form = page.locator('form', { has: page.getByRole('button', { name: 'Registrar compra' }) })
+  const form = page.getByRole('form', { name: 'Registrar compra' })
   await form.getByRole('button', { name: 'Registrar compra' }).click()
   await expect(form.getByText('Ingresá el proveedor.')).toBeVisible()
   expect(google.escrituras).toEqual([])

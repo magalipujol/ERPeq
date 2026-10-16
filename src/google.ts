@@ -8,16 +8,16 @@ import type { Fila, ValorCelda } from './modelo';
 const SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
 
-type Pendiente = {
+interface Pendiente {
   resolve: (resp: google.accounts.oauth2.TokenResponse) => void;
   reject: (err: google.accounts.oauth2.ClientConfigError) => void;
-};
+}
 
 let tokenClient: google.accounts.oauth2.TokenClient | null = null;
 let token: string | null = null;
 let vence = 0;
 let pendiente: Pendiente | null = null;
-let alVencer = () => {};
+let alVencer: () => void = () => undefined;
 let cfg: Config;
 
 export class SesionVencida extends Error {
@@ -33,7 +33,7 @@ export interface InfoPlanilla {
   sheets: { properties: { sheetId: number; title: string } }[];
 }
 
-function esperar(cond: () => unknown, ms: number, error: string) {
+async function esperar(cond: () => boolean, ms: number, error: string) {
   return new Promise<void>((resolve, reject) => {
     const limite = Date.now() + ms;
     (function chequear() {
@@ -47,7 +47,8 @@ function esperar(cond: () => unknown, ms: number, error: string) {
 export async function init(config: Config, { onSesionVencida }: { onSesionVencida: () => void }) {
   cfg = config;
   alVencer = onSesionVencida;
-  await esperar(() => window.google?.accounts?.oauth2, 10000,
+  // Los tipos de GIS declaran `google` siempre presente, pero no existe hasta que carga el script.
+  await esperar(() => 'google' in window, 10000,
     'No se pudo cargar el login de Google. Revisá la conexión o algún bloqueador.');
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: cfg.CLIENT_ID,
@@ -58,32 +59,38 @@ export async function init(config: Config, { onSesionVencida }: { onSesionVencid
 }
 
 // Abre la ventana de Google. Tiene que llamarse desde un click para que el navegador no la bloquee.
-export function login() {
+export async function login() {
   return new Promise<void>((resolve, reject) => {
     pendiente = {
       resolve: (resp) => {
-        if (resp.error) return reject(new Error(resp.error_description || resp.error));
+        if (resp.error) { reject(new Error(resp.error_description || resp.error)); return; }
         if (!google.accounts.oauth2.hasGrantedAllScopes(resp, SCOPE)) {
-          return reject(new Error('No se otorgó el permiso para que la app acceda a la planilla.'));
+          reject(new Error('No se otorgó el permiso para que la app acceda a la planilla.')); return;
         }
         token = resp.access_token;
         vence = Date.now() + (Number(resp.expires_in) - 60) * 1000;
         resolve();
       },
-      reject: (err) => reject(new Error(err?.type === 'popup_closed' ? 'Se cerró la ventana de Google.' : (err?.message || 'No se pudo ingresar.'))),
+      reject: (err) => { reject(new Error(err.type === 'popup_closed' ? 'Se cerró la ventana de Google.' : (err.message || 'No se pudo ingresar.'))); },
     };
-    tokenClient!.requestAccessToken({ prompt: '' });
+    if (!tokenClient) {
+      reject(new Error('El login de Google todavía no está listo.'));
+      return;
+    }
+    tokenClient.requestAccessToken({ prompt: '' });
   });
 }
 
 // Revoca el permiso: la próxima vez Google vuelve a pedir autorización.
-export function logout() {
+export async function logout() {
   return new Promise<void>((resolve) => {
-    if (!token) return resolve();
-    google.accounts.oauth2.revoke(token, () => resolve());
+    if (!token) { resolve(); return; }
+    google.accounts.oauth2.revoke(token, () => { resolve(); });
     token = null;
   });
 }
+
+interface ErrorGoogle { error?: { message?: string } }
 
 async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {
   if (!token || Date.now() > vence) {
@@ -92,15 +99,15 @@ async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {
     throw new SesionVencida();
   }
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
-  if (opts.body) headers['Content-Type'] = 'application/json';
+  if (opts.body !== undefined && opts.body !== null) headers['Content-Type'] = 'application/json';
   const res = await fetch(url, { ...opts, headers });
   if (res.status === 401) {
     token = null;
     alVencer();
     throw new SesionVencida();
   }
-  const data = res.status === 204 ? null : await res.json().catch(() => null);
-  const mensaje: string = data?.error?.message || `Error ${res.status} de Google`;
+  const data: unknown = res.status === 204 ? null : await res.json().catch(() => null);
+  const mensaje = (data as ErrorGoogle | null)?.error?.message ?? `Error ${res.status} de Google`;
   // 403/404 suele ser "la planilla no está compartida con esta cuenta"; una API
   // deshabilitada en el proyecto también da 403, pero eso es un error de configuración.
   if (res.status === 404 || (res.status === 403 && !/has not been used|is disabled|API key/i.test(mensaje))) {
@@ -123,7 +130,7 @@ export async function leer(rangos: string[]) {
   const qs = rangos.map((r) => `ranges=${enc(r)}`).join('&');
   const data = await req<{ valueRanges: { values?: Fila[] }[] }>(
     url(`/values:batchGet?${qs}&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER`));
-  return data.valueRanges.map((v) => v.values || []);
+  return data.valueRanges.map((v) => v.values ?? []);
 }
 
 export async function info() {
@@ -139,7 +146,7 @@ function celda(v: ValorCelda) {
     const p = (n: number) => String(n).padStart(2, '0');
     return `${v.getFullYear()}-${p(v.getMonth() + 1)}-${p(v.getDate())}`;
   }
-  return `'${String(v)}`;
+  return `'${v}`;
 }
 
 export async function agregarFilas(hoja: string, filas: ValorCelda[][]) {

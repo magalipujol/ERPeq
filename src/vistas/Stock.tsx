@@ -11,10 +11,13 @@ import { aNumero, fmtMoney, fmtNum, unicos } from '../formato';
 import * as DB from '../google';
 import * as M from '../modelo';
 
-type Estado = { color: string; texto: string };
+interface Estado { color: string; texto: string }
+
+const minimoDe = (p: M.Producto) => p.minimo ?? 0;
+const bajoMinimo = (f: FilaStock) => minimoDe(f) !== 0 && f.total < minimoDe(f);
 
 function estadoStock(p: M.Producto, total: number): Estado {
-  const minimo = p.minimo || 0;
+  const minimo = minimoDe(p);
   if (total < 0) return { color: 'red', texto: 'Negativo' };
   if (minimo > 0 && total < minimo) return { color: 'red', texto: 'Reponer' };
   if (minimo > 0 && total < minimo * 1.5) return { color: 'yellow', texto: 'Atención' };
@@ -33,12 +36,12 @@ export function Stock({ visible }: { visible: boolean }) {
     const total = M.redondear(stockTotal(p.id), 3);
     const costo = costos.get(p.id) ?? null;
     return {
-      ...p, s: stock.get(p.id)!, total, costo,
+      ...p, s: stock.get(p.id) ?? Object.fromEntries(DEPS.map((d) => [d, 0])), total, costo,
       valor: costo !== null && total > 0 ? total * costo : null, estado: estadoStock(p, total),
     };
   }), [datos, stock, costos, stockTotal]);
 
-  const bajos = filas.filter((f) => f.minimo && f.total < f.minimo).length;
+  const bajos = filas.filter(bajoMinimo).length;
   const negs = filas.filter((f) => DEPS.some((d) => f.s[d] < 0)).length;
 
   return (
@@ -47,7 +50,7 @@ export function Stock({ visible }: { visible: boolean }) {
         { label: 'Productos con stock', valor: filas.filter((f) => f.total > 0).length },
         { label: 'Bajo el mínimo', valor: bajos, alerta: bajos > 0 },
         { label: 'Stock negativo', valor: negs, alerta: negs > 0 },
-        { label: 'Valor del stock (a costo)', valor: fmtMoney(filas.reduce((s, f) => s + (f.valor || 0), 0)) },
+        { label: 'Valor del stock (a costo)', valor: fmtMoney(filas.reduce((s, f) => s + (f.valor ?? 0), 0)) },
       ]} />
 
       <Grid gap="md" align="flex-start">
@@ -64,7 +67,7 @@ export function Stock({ visible }: { visible: boolean }) {
   );
 }
 
-type Columna = { key: string; titulo: string; num?: boolean };
+interface Columna { key: string; titulo: string; num?: boolean }
 
 function Inventario({ filas }: { filas: FilaStock[] }) {
   const { cargando } = useBase();
@@ -89,24 +92,24 @@ function Inventario({ filas }: { filas: FilaStock[] }) {
     .filter((f) => !filtro
       || (filtro === 'con' && f.total > 0)
       || (filtro === 'neg' && DEPS.some((d) => f.s[d] < 0))
-      || (filtro === 'bajo' && f.minimo && f.total < f.minimo))
+      || (filtro === 'bajo' && bajoMinimo(f)))
     .sort((a, b) => {
       const va = valor(a);
       const vb = valor(b);
-      if (va === null || va === undefined) return 1;
-      if (vb === null || vb === undefined) return -1;
+      if (va === null) return 1;
+      if (vb === null) return -1;
       return (typeof va === 'string' ? va.localeCompare(vb as string, 'es') : va - (vb as number)) * orden.dir;
     });
 
-  const ordenar = (key: string) => setOrden((o) => ({ key, dir: o.key === key ? -o.dir : 1 }));
+  const ordenar = (key: string) => { setOrden((o) => ({ key, dir: o.key === key ? -o.dir : 1 })); };
 
   return (
     <Paper>
       <Encabezado titulo="Inventario">
         <Group gap="xs">
           <TextInput type="search" w={200} placeholder="Buscar producto…" aria-label="Buscar producto"
-            value={buscar} onChange={(e) => setBuscar(e.currentTarget.value)} />
-          <NativeSelect aria-label="Filtrar" value={filtro} onChange={(e) => setFiltro(e.currentTarget.value)} data={[
+            value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
+          <NativeSelect aria-label="Filtrar" value={filtro} onChange={(e) => { setFiltro(e.currentTarget.value); }} data={[
             { value: '', label: 'Todos' }, { value: 'con', label: 'Con stock' },
             { value: 'neg', label: 'Stock negativo' }, { value: 'bajo', label: 'Bajo el mínimo' },
           ]} />
@@ -117,9 +120,9 @@ function Inventario({ filas }: { filas: FilaStock[] }) {
           <Table.Thead>
             <Table.Tr>
               {cols.map((c) => (
-                <Table.Th key={c.key} className={c.num ? 'num' : undefined}>
-                  <UnstyledButton fz="xs" fw={600} c="dimmed" tt="uppercase" onClick={() => ordenar(c.key)}>
-                    <Group gap={2} wrap="nowrap" justify={c.num ? 'flex-end' : undefined}>
+                <Table.Th key={c.key} className={c.num === true ? 'num' : undefined}>
+                  <UnstyledButton fz="xs" fw={600} c="dimmed" tt="uppercase" onClick={() => { ordenar(c.key); }}>
+                    <Group gap={2} wrap="nowrap" justify={c.num === true ? 'flex-end' : undefined}>
                       {c.titulo}
                       {orden.key === c.key && (orden.dir > 0 ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />)}
                     </Group>
@@ -137,7 +140,7 @@ function Inventario({ filas }: { filas: FilaStock[] }) {
                   <Table.Td key={d} className="num" c={f.s[d] < 0 ? 'red' : undefined} fw={f.s[d] < 0 ? 600 : undefined}>{fmtNum(f.s[d])}</Table.Td>
                 ))}
                 <Table.Td className="num" fw={600} c={f.total < 0 ? 'red' : undefined}>{fmtNum(f.total)}</Table.Td>
-                <Table.Td className="num" c="dimmed">{f.minimo ? fmtNum(f.minimo) : '–'}</Table.Td>
+                <Table.Td className="num" c="dimmed">{minimoDe(f) !== 0 ? fmtNum(f.minimo) : '–'}</Table.Td>
                 <Table.Td><Badge variant="light" color={f.estado.color} size="sm">{f.estado.texto}</Badge></Table.Td>
                 <Table.Td className="num" c="dimmed">{fmtMoney(f.costo)}</Table.Td>
                 <Table.Td className="num">{fmtMoney(f.valor)}</Table.Td>
@@ -146,7 +149,7 @@ function Inventario({ filas }: { filas: FilaStock[] }) {
           </Table.Tbody>
         </Table>
       </ScrollArea.Autosize>
-      {!visibles.length && <Text c="dimmed" mt="xs">No hay productos que coincidan.</Text>}
+      {visibles.length === 0 && <Text c="dimmed" mt="xs">No hay productos que coincidan.</Text>}
     </Paper>
   );
 }
@@ -156,22 +159,24 @@ function AjusteStock() {
   const { guardando, msg, guardar, error } = useGuardar();
   const [producto, setProducto] = useState('');
   const [deposito, setDeposito] = useState(DEPS[0]);
-  const [cantidadTxt, setCantidad] = useState<number | string>('');
+  const [cantidadTxt, setCantidadTxt] = useState<number | string>('');
   const [motivo, setMotivo] = useState('');
   const nombres = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
 
   const p = buscarProducto(producto);
   const cantidad = aNumero(cantidadTxt);
-  const antes = p ? stock.get(p.id)?.[deposito] || 0 : 0;
+  const antes = p ? stock.get(p.id)?.[deposito] ?? 0 : 0;
+  const hayCantidad = cantidad !== 0 && !Number.isNaN(cantidad);
 
-  function enviar(e: React.FormEvent) {
+  function enviar(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const mot = motivo.trim();
-    const falta = !p ? 'Elegí un producto de la lista.' : !cantidad ? 'Ingresá una cantidad distinta de 0.' : !mot ? 'Indicá el motivo.' : null;
-    if (falta || !p) return error(falta!);
+    if (!p) { error('Elegí un producto de la lista.'); return; }
+    if (!hayCantidad) { error('Ingresá una cantidad distinta de 0.'); return; }
+    if (!mot) { error('Indicá el motivo.'); return; }
     guardar(async () => {
       await DB.agregarFilas('Ajustes', [M.filas.ajuste({ fecha: new Date(), deposito, id: p.id, producto: p.producto, cantidad, motivo: mot })]);
-      setCantidad('');
+      setCantidadTxt('');
       setMotivo('');
       return `✓ Ajuste registrado: ${cantidad > 0 ? '+' : ''}${fmtNum(cantidad)} ${p.unidad} de ${p.producto}.`;
     });
@@ -181,17 +186,17 @@ function AjusteStock() {
     <Paper>
       <Encabezado titulo="Ajuste de stock" />
       <Text size="xs" c="dimmed" mt={-8} mb="sm">Para corregir diferencias (rotura, conteo, faltantes). Usá cantidades negativas para restar.</Text>
-      <form onSubmit={enviar} noValidate>
+      <form onSubmit={enviar} noValidate aria-label="Ajuste de stock">
         <Stack gap="sm">
           <Autocomplete label="Producto" placeholder="Buscar producto…" data={nombres} value={producto} onChange={setProducto} />
           <Group grow gap="xs" align="flex-start">
-            <NativeSelect label="Depósito" data={DEPS} value={deposito} onChange={(e) => setDeposito(e.currentTarget.value)} />
-            <NumberInput label="Cantidad" placeholder="−5 ó 10" value={cantidadTxt} onChange={setCantidad}
+            <NativeSelect label="Depósito" data={DEPS} value={deposito} onChange={(e) => { setDeposito(e.currentTarget.value); }} />
+            <NumberInput label="Cantidad" placeholder="−5 ó 10" value={cantidadTxt} onChange={setCantidadTxt}
               rightSection={<Text size="xs" c="dimmed">{p?.unidad}</Text>} rightSectionPointerEvents="none" />
           </Group>
           <TextInput label="Motivo" maxLength={150} placeholder="Ej.: conteo físico, rotura" value={motivo}
-            onChange={(e) => setMotivo(e.currentTarget.value)} />
-          {p && cantidad ? (
+            onChange={(e) => { setMotivo(e.currentTarget.value); }} />
+          {p && hayCantidad ? (
             <Text size="sm" className="suave" px="sm" py={8}>
               Stock en {deposito}: {fmtNum(antes)} → <strong>{fmtNum(M.redondear(antes + cantidad, 3))} {p.unidad}</strong>
             </Text>
@@ -210,7 +215,7 @@ const COLORES = ['var(--c1)', 'var(--c2)', 'var(--c3)'];
 
 function GraficoStock({ filas }: { filas: FilaStock[] }) {
   const unidades = unicos(filas.map((f) => f.unidad));
-  const [elegida, setUnidad] = useState<string | null>(null);
+  const [elegida, setElegida] = useState<string | null>(null);
   const unidad = elegida && unidades.includes(elegida) ? elegida : unidades.includes('kg') ? 'kg' : unidades[0];
 
   const items = filas
@@ -222,7 +227,7 @@ function GraficoStock({ filas }: { filas: FilaStock[] }) {
   return (
     <Paper>
       <Encabezado titulo="Productos con más stock">
-        {unidades.length > 1 && <SegmentedControl size="xs" value={unidad} onChange={setUnidad} data={unidades} aria-label="Unidad" />}
+        {unidades.length > 1 && <SegmentedControl size="xs" value={unidad} onChange={setElegida} data={unidades} aria-label="Unidad" />}
       </Encabezado>
       <BarChart
         h={Math.max(180, items.length * 36 + 70)}

@@ -1,13 +1,9 @@
 import { Autocomplete, Button, CloseButton, Fieldset, Grid, Group, NativeSelect, NumberInput, Stack, Text } from '@mantine/core';
 import { useMemo } from 'react';
 import { useBase } from '../base';
-import { aNumero, fmtMoney, fmtNum, unicos } from '../formato';
+import { fmtMoney, fmtNum, numeroOCero, unicos } from '../formato';
 import { redondear } from '../modelo';
-
-export interface Item { clave: number; producto: string; cantidad: number | string; precio: number | string; unidad: string }
-
-let siguienteClave = 0;
-export const itemVacio = (): Item => ({ clave: siguienteClave++, producto: '', cantidad: '', precio: '', unidad: 'kg' });
+import { type Item, itemVacio } from './item';
 
 // Líneas de productos de una venta o compra.
 export function Items({ tipo, deposito, items, onChange }:
@@ -17,18 +13,22 @@ export function Items({ tipo, deposito, items, onChange }:
 
   function ultimoPrecio(id: string) {
     const fuente = tipo === 'venta' ? datos.ventas : datos.compras;
-    for (let i = fuente.length - 1; i >= 0; i--) if (fuente[i].id === id && fuente[i].precio) return fuente[i].precio;
+    // Un precio 0 no sirve como sugerencia: se sigue buscando.
+    for (let i = fuente.length - 1; i >= 0; i--) {
+      const { precio } = fuente[i];
+      if (fuente[i].id === id && precio !== null && precio !== 0) return precio;
+    }
     return null;
   }
 
-  const cambiar = (i: number, cambios: Partial<Item>) => onChange(items.map((it, j) => (j === i ? { ...it, ...cambios } : it)));
+  const cambiar = (i: number, cambios: Partial<Item>) => { onChange(items.map((it, j) => (j === i ? { ...it, ...cambios } : it))); };
 
   function cambiarProducto(i: number, producto: string) {
     const cambios: Partial<Item> = { producto };
     const p = buscarProducto(producto);
     if (p && items[i].precio === '') {
       const precio = ultimoPrecio(p.id);
-      if (precio) cambios.precio = precio;
+      if (precio !== null) cambios.precio = precio;
     }
     cambiar(i, cambios);
   }
@@ -45,35 +45,35 @@ export function Items({ tipo, deposito, items, onChange }:
                 <Grid.Col span={{ base: 12, xs: 5 }}>
                   <Autocomplete
                     placeholder="Producto" aria-label="Producto" data={nombres}
-                    value={it.producto} onChange={(v) => cambiarProducto(i, v)}
+                    value={it.producto} onChange={(v) => { cambiarProducto(i, v); }}
                   />
                 </Grid.Col>
                 <Grid.Col span={{ base: 'auto', xs: 3 }}>
                   <NumberInput
                     placeholder="Cant." aria-label="Cantidad" allowNegative={false}
-                    value={it.cantidad} onChange={(v) => cambiar(i, { cantidad: v })}
+                    value={it.cantidad} onChange={(v) => { cambiar(i, { cantidad: v }); }}
                     rightSection={<Text size="xs" c="dimmed">{unidad}</Text>} rightSectionPointerEvents="none"
                   />
                 </Grid.Col>
                 <Grid.Col span="auto">
                   <NumberInput
                     placeholder="Precio unit." aria-label="Precio unitario" allowNegative={false}
-                    value={it.precio} onChange={(v) => cambiar(i, { precio: v })}
+                    value={it.precio} onChange={(v) => { cambiar(i, { precio: v }); }}
                     leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none"
                   />
                 </Grid.Col>
                 <Grid.Col span="content">
                   <CloseButton
                     mt={4} title="Quitar" aria-label="Quitar" disabled={items.length === 1}
-                    onClick={() => onChange(items.filter((_, j) => j !== i))}
+                    onClick={() => { onChange(items.filter((_, j) => j !== i)); }}
                   />
                 </Grid.Col>
               </Grid>
-              <Info tipo={tipo} item={it} deposito={deposito} onUnidad={(u) => cambiar(i, { unidad: u })} />
+              <Info tipo={tipo} item={it} deposito={deposito} onUnidad={(u) => { cambiar(i, { unidad: u }); }} />
             </div>
           );
         })}
-        <Button variant="default" size="xs" style={{ alignSelf: 'flex-start' }} onClick={() => onChange([...items, itemVacio()])}>
+        <Button variant="default" size="xs" style={{ alignSelf: 'flex-start' }} onClick={() => { onChange([...items, itemVacio()]); }}>
           + Agregar producto
         </Button>
       </Stack>
@@ -94,13 +94,13 @@ function Info({ tipo, item, deposito, onUnidad }:
           <Text size="xs" c="yellow.8" fw={500}>Producto nuevo.</Text>
           <Text size="xs" c="dimmed">Unidad:</Text>
           <NativeSelect size="xs" aria-label="Unidad del producto nuevo" data={['kg', 'unid.']} value={item.unidad}
-            onChange={(e) => onUnidad(e.currentTarget.value)} />
+            onChange={(e) => { onUnidad(e.currentTarget.value); }} />
         </Group>
       );
   }
-  const disp = stock.get(p.id)?.[deposito] || 0;
+  const disp = stock.get(p.id)?.[deposito] ?? 0;
   const costo = costos.get(p.id);
-  const cant = aNumero(item.cantidad) || 0;
+  const cant = numeroOCero(item.cantidad);
   if (tipo === 'venta') {
     const falta = cant > disp;
     return (

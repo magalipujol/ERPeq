@@ -33,7 +33,8 @@ Es una página estática (sin servidor) hecha con React, TypeScript y Mantine, q
   - `modelo.ts`: lectura/escritura de filas y cálculos (sin dependencias del navegador).
   - `google.ts`: login y Sheets API.
   - `App.tsx`: pantallas de acceso y navegación; `vistas/`: Stock, Ventas y Compras.
-- `.github/workflows/deploy.yml`: compila y publica en GitHub Pages en cada push a `main`
+- `.github/workflows/ci.yml`: lint, tipos y pruebas en cada pull request y push.
+- `.github/workflows/deploy.yml`: corre el CI y, si pasa, compila y publica en GitHub Pages en cada push a `main`
   (en *Settings → Pages*, la fuente tiene que ser **GitHub Actions**).
 - `herramientas/excel_a_base.py`: convierte el Excel histórico en la planilla inicial.
 - `GUIA-CONFIGURACION.md`: paso a paso para configurar Google y la planilla.
@@ -73,3 +74,14 @@ pnpm test:ui                            # para verlas paso a paso
 ```
 
 En GitHub corren antes de cada publicación: si alguna falla, no se publica.
+
+## Lint
+
+ESLint con las reglas más estrictas de typescript-eslint (`strictTypeChecked` + `stylisticTypeChecked`),
+`@eslint-react` (`strict-type-checked`), reglas de hooks de React, accesibilidad (`jsx-a11y` estricto) y
+Playwright para las pruebas. No se admiten warnings.
+
+```sh
+pnpm lint
+pnpm lint:fix    # arregla lo que se pueda solo
+```

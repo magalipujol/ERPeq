@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 import { expect, test } from './google-falso'
 
 test.beforeEach(async ({ page, ingresar }) => {
@@ -6,7 +7,7 @@ test.beforeEach(async ({ page, ingresar }) => {
 })
 
 // Columnas: Producto, Unidad, General, Rosario, Total, Mínimo, Estado, Costo prom., Valor
-const fila = (page: import('@playwright/test').Page, producto: string) =>
+const fila = (page: Page, producto: string) =>
   page.getByRole('row').filter({ has: page.getByRole('cell', { name: producto, exact: true }) })
 
 test('calcula stock, costo promedio y estado por producto', async ({ page }) => {
@@ -44,7 +45,7 @@ test('busca, filtra y ordena el inventario', async ({ page }) => {
 })
 
 test('registra un ajuste de stock', async ({ page, google }) => {
-  const form = page.locator('form', { has: page.getByRole('button', { name: 'Registrar ajuste' }) })
+  const form = page.getByRole('form', { name: 'Ajuste de stock' })
   await form.getByLabel('Producto', { exact: true }).fill('Almendras')
   await form.getByLabel('Cantidad', { exact: true }).fill('-2')
   await expect(form.getByText(/Stock en General: 16 → 14 kg/)).toBeVisible()
@@ -60,7 +61,7 @@ test('registra un ajuste de stock', async ({ page, google }) => {
 })
 
 test('el ajuste valida los datos antes de guardar', async ({ page, google }) => {
-  const form = page.locator('form', { has: page.getByRole('button', { name: 'Registrar ajuste' }) })
+  const form = page.getByRole('form', { name: 'Ajuste de stock' })
   await form.getByRole('button', { name: 'Registrar ajuste' }).click()
   await expect(form.getByText('Elegí un producto de la lista.')).toBeVisible()
 

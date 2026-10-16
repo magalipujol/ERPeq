@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 import { expect, test } from './google-falso'
 
 test.beforeEach(async ({ page, ingresar }) => {
@@ -5,8 +6,8 @@ test.beforeEach(async ({ page, ingresar }) => {
   await ingresar()
 })
 
-const formVenta = (page: import('@playwright/test').Page) =>
-  page.locator('form', { has: page.getByRole('button', { name: 'Registrar venta' }) })
+const formVenta = (page: Page) =>
+  page.getByRole('form', { name: 'Registrar venta' })
 
 test('KPIs y detalle del mes', async ({ page }) => {
   const kpi = (label: string) => page.getByRole('group', { name: label })
@@ -56,6 +57,17 @@ test('avisa cuando la venta deja stock negativo', async ({ page }) => {
   await form.getByLabel('Producto', { exact: true }).fill('Avena')
   await form.getByLabel('Cantidad', { exact: true }).fill('5')
   await expect(form.getByText('Stock en General: 0 kg — queda negativo')).toBeVisible()
+})
+
+test('una línea sin precio suma 0 en el resumen y no deja guardar', async ({ page, google }) => {
+  const form = formVenta(page)
+  await form.getByLabel('Cliente', { exact: true }).fill('Bruno')
+  await form.getByLabel('Producto', { exact: true }).fill('Miel')
+  await form.getByLabel('Cantidad', { exact: true }).fill('3')
+  await expect(form.getByRole('group', { name: 'Importe' })).toContainText(/\$\s0$/)
+  await form.getByRole('button', { name: 'Registrar venta' }).click()
+  await expect(form.getByText('Falta el precio de algún producto.')).toBeVisible()
+  expect(google.escrituras).toEqual([])
 })
 
 test('no guarda una venta con productos inexistentes', async ({ page, google }) => {

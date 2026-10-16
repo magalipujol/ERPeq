@@ -4,25 +4,27 @@ import {
 } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { DEPS, useBase, useGuardar } from '../base';
-import { Encabezado, Kpis, Mensaje, Resumen, SelectorMes, mesElegido } from '../componentes/comunes';
-import { type Item, Items, itemVacio } from '../componentes/Items';
-import { aNumero, deISO, fmtFecha, fmtMes, fmtMoney, fmtNum, hoyISO, unicos } from '../formato';
+import { Encabezado, Kpis, Mensaje, Resumen, SelectorMes } from '../componentes/comunes';
+import { mesElegido } from '../meses';
+import { type Item, itemVacio } from '../componentes/item';
+import { Items } from '../componentes/Items';
+import { aNumero, deISO, fmtFecha, fmtMes, fmtMoney, fmtNum, hoyISO, numeroOCero, porFechaDesc, sumable, unicos } from '../formato';
 import * as DB from '../google';
 import * as M from '../modelo';
 
 export function Ventas({ visible }: { visible: boolean }) {
   const { datos } = useBase();
-  const [mesSel, setMes] = useState<string | null>(null);
+  const [mesSel, setMesSel] = useState<string | null>(null);
   const fechas = useMemo(() => datos.ventas.map((v) => v.fecha), [datos]);
   const mes = mesElegido(fechas, mesSel);
-  const delMes = datos.ventas.filter((v) => v.fecha && M.claveMes(v.fecha) === mes);
-  const suma = (k: 'importe' | 'ganancia' | 'comision') => delMes.reduce((s, v) => s + (v[k] || 0), 0);
+  const delMes = datos.ventas.filter((v) => v.fecha !== null && M.claveMes(v.fecha) === mes);
+  const suma = (k: 'importe' | 'ganancia' | 'comision') => delMes.reduce((s, v) => s + (v[k] ?? 0), 0);
 
   return (
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={2}>Ventas</Title>
-        <SelectorMes fechas={fechas} value={mesSel} onChange={setMes} />
+        <SelectorMes fechas={fechas} value={mesSel} onChange={setMesSel} />
       </Group>
       <Kpis label="Resumen de ventas" items={[
         { label: 'Vendido', valor: fmtMoney(suma('importe')) },
@@ -41,14 +43,21 @@ export function Ventas({ visible }: { visible: boolean }) {
   );
 }
 
+interface Linea {
+  p: M.Producto | undefined; cantidad: number; precio: number; costo: number | null;
+  calc: ReturnType<typeof M.lineaVenta> | null;
+}
+const esCompleta = (l: Linea): l is Linea & { p: M.Producto; calc: NonNullable<Linea['calc']> } =>
+  l.p !== undefined && l.calc !== null;
+
 function FormVenta() {
   const { datos, costos, buscarProducto } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [fecha, setFecha] = useState(hoyISO);
   const [deposito, setDeposito] = useState(DEPS[0]);
   const [cliente, setCliente] = useState('');
-  const [tipoSel, setTipo] = useState<string | null>(null);
-  const [comisionTxt, setComision] = useState<number | string>('');
+  const [tipoSel, setTipoSel] = useState<string | null>(null);
+  const [comisionTxt, setComisionTxt] = useState<number | string>('');
   const [localidad, setLocalidad] = useState('');
   const [provincia, setProvincia] = useState('');
   const [carga, setCarga] = useState('');
@@ -65,8 +74,8 @@ function FormVenta() {
   const tipo = tipoSel && listas.tipos.includes(tipoSel) ? tipoSel : listas.tipos[0] ?? '';
   const comisionDeTipo = (t: string) => datos.tipos.find((x) => x.tipo === t)?.comision ?? 0;
 
-  const pct = aNumero(comisionTxt) || 0;
-  const lineas = items.map((it) => {
+  const pct = numeroOCero(comisionTxt);
+  const lineas = items.map((it): Linea => {
     const p = buscarProducto(it.producto);
     const cantidad = aNumero(it.cantidad);
     const precio = aNumero(it.precio);
@@ -74,20 +83,22 @@ function FormVenta() {
     return { p, cantidad, precio, costo, calc: p && cantidad > 0 ? M.lineaVenta({ cantidad, precio, comisionPct: pct, costo }) : null };
   });
 
+  const completas = lineas.filter(esCompleta);
+
   function elegirCliente(nombre: string) {
     setCliente(nombre);
     const n = nombre.trim().toLowerCase();
     const ultima = [...datos.ventas].reverse().find((v) => v.cliente.toLowerCase() === n);
     if (!ultima) return;
     const t = listas.tipos.includes(ultima.tipo) ? ultima.tipo : tipo;
-    setTipo(t);
-    setComision(comisionDeTipo(t));
+    setTipoSel(t);
+    setComisionTxt(comisionDeTipo(t));
     setLocalidad(ultima.localidad);
     setProvincia(ultima.provincia);
     if (!carga) setCarga(ultima.carga);
   }
 
-  function enviar(e: React.FormEvent) {
+  function enviar(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const nombre = cliente.trim();
     const falta = !fecha ? 'Elegí la fecha.'
@@ -96,18 +107,19 @@ function FormVenta() {
       : lineas.some((l) => !(l.cantidad > 0)) ? 'Todas las cantidades tienen que ser mayores a 0.'
       : lineas.some((l) => !(l.precio >= 0)) ? 'Falta el precio de algún producto.'
       : null;
-    if (falta) return error(falta);
+    if (falta) { error(falta); return; }
 
     const base = {
       fecha: deISO(fecha), deposito, cliente: nombre, tipo,
       localidad: localidad.trim(), provincia: provincia.trim(), carga: carga.trim(), nota: nota.trim(),
     };
     guardar(async () => {
-      await DB.agregarFilas('Ventas', lineas.map((l) => M.filas.venta({
-        ...base, id: l.p!.id, producto: l.p!.producto, cantidad: l.cantidad, precio: l.precio,
-        importe: l.calc!.importe, comision: l.calc!.comision, costo: l.costo, ganancia: l.calc!.ganancia,
+      // Pasada la validación, todas las líneas están completas.
+      await DB.agregarFilas('Ventas', completas.map((l) => M.filas.venta({
+        ...base, id: l.p.id, producto: l.p.producto, cantidad: l.cantidad, precio: l.precio,
+        importe: l.calc.importe, comision: l.calc.comision, costo: l.costo, ganancia: l.calc.ganancia,
       })));
-      const total = lineas.reduce((s, l) => s + l.calc!.importe, 0);
+      const total = completas.reduce((s, l) => s + l.calc.importe, 0);
       setItems([itemVacio()]);
       setCliente('');
       setNota('');
@@ -115,25 +127,24 @@ function FormVenta() {
     });
   }
 
-  const validas = lineas.filter((l) => l.calc);
-  const sumar = (k: 'importe' | 'comision' | 'ganancia') => validas.reduce((s, l) => s + (l.calc![k] || 0), 0);
-  const sinCosto = validas.some((l) => l.calc!.ganancia === null);
+  const sumar = (k: 'importe' | 'comision' | 'ganancia') => completas.reduce((s, l) => s + sumable(l.calc[k]), 0);
+  const sinCosto = completas.some((l) => l.calc.ganancia === null);
 
   return (
     <Paper>
       <Encabezado titulo="Registrar venta" />
-      <form onSubmit={enviar} noValidate>
+      <form onSubmit={enviar} noValidate aria-label="Registrar venta">
         <Stack gap="sm">
           <Group grow gap="xs" align="flex-start">
-            <TextInput label="Fecha" type="date" value={fecha} onChange={(e) => setFecha(e.currentTarget.value)} />
-            <NativeSelect label="Depósito" data={DEPS} value={deposito} onChange={(e) => setDeposito(e.currentTarget.value)} />
+            <TextInput label="Fecha" type="date" value={fecha} onChange={(e) => { setFecha(e.currentTarget.value); }} />
+            <NativeSelect label="Depósito" data={DEPS} value={deposito} onChange={(e) => { setDeposito(e.currentTarget.value); }} />
           </Group>
           <Autocomplete label="Cliente" maxLength={120} placeholder="Nombre del cliente" data={listas.clientes}
-            value={cliente} onChange={setCliente} onOptionSubmit={elegirCliente} onBlur={() => elegirCliente(cliente)} />
+            value={cliente} onChange={setCliente} onOptionSubmit={elegirCliente} onBlur={() => { elegirCliente(cliente); }} />
           <Group grow gap="xs" align="flex-start">
             <NativeSelect label="Tipo de cliente" data={listas.tipos} value={tipo}
-              onChange={(e) => { setTipo(e.currentTarget.value); setComision(comisionDeTipo(e.currentTarget.value)); }} />
-            <NumberInput label="Comisión" min={0} max={100} allowNegative={false} value={comisionTxt} onChange={setComision}
+              onChange={(e) => { setTipoSel(e.currentTarget.value); setComisionTxt(comisionDeTipo(e.currentTarget.value)); }} />
+            <NumberInput label="Comisión" min={0} max={100} allowNegative={false} value={comisionTxt} onChange={setComisionTxt}
               rightSection={<Text size="xs" c="dimmed">%</Text>} rightSectionPointerEvents="none" />
           </Group>
           <Group grow gap="xs" align="flex-start">
@@ -144,8 +155,8 @@ function FormVenta() {
 
           <Items tipo="venta" deposito={deposito} items={items} onChange={setItems} />
 
-          <TextInput label="Nota" maxLength={200} placeholder="Opcional" value={nota} onChange={(e) => setNota(e.currentTarget.value)} />
-          {validas.length > 0 && (
+          <TextInput label="Nota" maxLength={200} placeholder="Opcional" value={nota} onChange={(e) => { setNota(e.currentTarget.value); }} />
+          {completas.length > 0 && (
             <Group className="suave" px="md" py="xs" gap="xl">
               <Resumen label="Importe" valor={fmtMoney(sumar('importe'))} />
               <Resumen label="Comisión" valor={fmtMoney(sumar('comision'))} />
@@ -191,13 +202,13 @@ function DetalleVentas({ ventas }: { ventas: M.Venta[] }) {
   const q = buscar.trim().toLowerCase();
   const filas = ventas
     .filter((v) => !q || v.cliente.toLowerCase().includes(q) || v.producto.toLowerCase().includes(q))
-    .sort((a, b) => b.fecha!.getTime() - a.fecha!.getTime());
+    .sort(porFechaDesc);
 
   return (
     <Paper>
       <Encabezado titulo="Detalle del mes">
         <TextInput type="search" w={220} placeholder="Buscar cliente o producto…" aria-label="Buscar en ventas"
-          value={buscar} onChange={(e) => setBuscar(e.currentTarget.value)} />
+          value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
       </Encabezado>
       <ScrollArea.Autosize mah={560} type="auto">
         <Table stickyHeader highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1, whiteSpace: 'nowrap' }}>
@@ -210,8 +221,8 @@ function DetalleVentas({ ventas }: { ventas: M.Venta[] }) {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {filas.map((v, i) => (
-              <Table.Tr key={i}>
+            {filas.map((v) => (
+              <Table.Tr key={v.fila}>
                 <Table.Td c="dimmed">{fmtFecha(v.fecha)}</Table.Td>
                 <Table.Td>
                   {v.cliente}
@@ -221,7 +232,7 @@ function DetalleVentas({ ventas }: { ventas: M.Venta[] }) {
                 <Table.Td className="num">{fmtNum(v.cantidad)}</Table.Td>
                 <Table.Td className="num">{fmtMoney(v.precio)}</Table.Td>
                 <Table.Td className="num" fw={600}>{fmtMoney(v.importe)}</Table.Td>
-                <Table.Td className="num" c="dimmed">{v.comision ? fmtMoney(v.comision) : '–'}</Table.Td>
+                <Table.Td className="num" c="dimmed">{v.comision !== 0 ? fmtMoney(v.comision) : '–'}</Table.Td>
                 <Table.Td className="num" c={(v.ganancia ?? 0) < 0 ? 'red' : undefined} fw={(v.ganancia ?? 0) < 0 ? 600 : undefined}>
                   {fmtMoney(v.ganancia)}
                 </Table.Td>
@@ -231,7 +242,7 @@ function DetalleVentas({ ventas }: { ventas: M.Venta[] }) {
           </Table.Tbody>
         </Table>
       </ScrollArea.Autosize>
-      {!filas.length && <Text c="dimmed" mt="xs">No hay ventas en este mes.</Text>}
+      {filas.length === 0 && <Text c="dimmed" mt="xs">No hay ventas en este mes.</Text>}
     </Paper>
   );
 }

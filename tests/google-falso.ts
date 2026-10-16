@@ -39,7 +39,7 @@ export function planillaInicial(): Record<string, Fila[]> {
   }
 }
 
-export interface Escritura { tipo: 'append' | 'batchUpdate'; hoja?: string; body: any }
+export interface Escritura { tipo: 'append' | 'batchUpdate'; hoja?: string; body: unknown }
 
 export interface GoogleFalso {
   hojas: Record<string, Fila[]>
@@ -62,7 +62,11 @@ window.google = { accounts: { oauth2: {
 const comoLoGuardaSheets = (v: string | number) =>
   (typeof v !== 'string' ? v : v.startsWith("'") ? v.slice(1) : /^\d{4}-\d{2}-\d{2}$/.test(v) ? fecha(v) : v)
 
-const hojaDeRango = (rango: string) => rango.match(/^'(.+)'!/)![1]
+const hojaDeRango = (rango: string) => {
+  const m = /^'(.+)'!/.exec(rango)
+  if (!m) throw new Error(`rango sin hoja: ${rango}`)
+  return m[1]
+}
 
 export async function instalarGoogleFalso(page: Page): Promise<GoogleFalso> {
   const hojas = planillaInicial()
@@ -70,15 +74,15 @@ export async function instalarGoogleFalso(page: Page): Promise<GoogleFalso> {
   let falla: { status: number; veces: number } | null = null
 
   await page.clock.setFixedTime(HOY)
-  await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort())
-  await page.route('https://accounts.google.com/gsi/client', (r) =>
+  await page.route(/fonts\.(googleapis|gstatic)\.com/, async (r) => r.abort())
+  await page.route('https://accounts.google.com/gsi/client', async (r) =>
     r.fulfill({ contentType: 'application/javascript', body: GIS }))
 
   await page.route('https://sheets.googleapis.com/**', async (route: Route) => {
     const req = route.request()
     const url = new URL(req.url())
     const ruta = decodeURIComponent(url.pathname).replace(`/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}`, '')
-    const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+    const json = async (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
 
     if (req.headers().authorization !== 'Bearer token-falso') return json({ error: { message: 'sin token' } }, 401)
     if (falla) {
@@ -99,18 +103,18 @@ export async function instalarGoogleFalso(page: Page): Promise<GoogleFalso> {
         valueRanges: url.searchParams.getAll('ranges').map((r) => ({ range: r, values: hojas[hojaDeRango(r)] })),
       })
     }
-    const append = ruta.match(/^\/values\/(.+):append$/)
+    const append = /^\/values\/(.+):append$/.exec(ruta)
     if (append && req.method() === 'POST') {
       const hoja = hojaDeRango(append[1])
-      const body = req.postDataJSON()
+      const body = req.postDataJSON() as { values: Fila[] }
       escrituras.push({ tipo: 'append', hoja, body })
       const desde = hojas[hoja].length + 2
-      hojas[hoja].push(...body.values.map((f: Fila) => f.map(comoLoGuardaSheets)))
+      hojas[hoja].push(...body.values.map((f) => f.map(comoLoGuardaSheets)))
       const hasta = hojas[hoja].length + 1
       return json({ updates: { updatedRange: `'${hoja}'!A${desde}:Z${hasta}` } })
     }
     if (ruta === ':batchUpdate' && req.method() === 'POST') {
-      escrituras.push({ tipo: 'batchUpdate', body: req.postDataJSON() })
+      escrituras.push({ tipo: 'batchUpdate', body: req.postDataJSON() as unknown })
       return json({ replies: [{}] })
     }
     return json({ error: { message: `ruta no simulada: ${req.method()} ${ruta}` } }, 500)
