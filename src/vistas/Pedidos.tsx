@@ -5,6 +5,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { normalizar, useBase, useGuardar } from '../base';
 import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
+import { ExportarWhatsApp } from '../componentes/ExportarWhatsApp';
 import { type Item, itemVacio } from '../componentes/item';
 import { Items } from '../componentes/Items';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, numeroOCero, porFechaDesc, sumable, unicos } from '../formato';
@@ -355,6 +356,7 @@ function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir:
             value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
           <SegmentedControl size="xs" value={filtro} onChange={setFiltro} aria-label="Mostrar"
             data={[{ value: 'abiertos', label: 'Abiertos' }, { value: 'todos', label: 'Todos' }]} />
+          <ExportarWhatsApp />
         </Group>
       </Encabezado>
       <ScrollArea.Autosize mah={560} type="auto">

@@ -42,8 +42,9 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 | `src/main.tsx` | Raíz de composición: crea el adaptador y se lo pasa a `App`. |
 | `src/base.ts`, `src/BaseProvider.tsx` | Contexto de React con los datos cargados, los cálculos derivados y las operaciones del puerto (`db`). |
 | `src/vistas/` | Pantallas: Stock, Pedidos (alta y entregas), Ventas, Compras, Fletes y Precios (precios y reglas de comisión). |
-| `src/componentes/` | Componentes compartidos (carga de ítems, navegación: selector del header y barra inferior del celular, etc.). |
+| `src/componentes/` | Componentes compartidos (carga de ítems, navegación: selector del header y barra inferior del celular, exportar pedidos a WhatsApp, etc.). |
 | `src/estilos.css`, `src/celular.css` | Estilos globales; `celular.css` tiene los ajustes para menos de 768 px (breakpoint `sm` de Mantine). |
+| `src/whatsapp.ts` | Arma el mensaje de pedidos para WhatsApp (qué pedidos entran y el texto). Sin dependencias del navegador: se prueba con Vitest. |
 | `src/config.ts` | Client ID de Google e ID de la planilla. No son secretos. |
 | `tests/` | Pruebas e2e. `tests/google-falso.ts` reemplaza a Google con una planilla en memoria (su estado inicial está resumido al principio de `historias.spec.ts`) y tiene `ir()` para cambiar de pantalla en escritorio o celular. `tests/historias.spec.ts` tiene las historias de usuario de punta a punta; el resto prueba una pantalla cada uno. |
 | `spec/` | Especificaciones. `spec/modelo-de-datos.md` es la referencia del modelo de datos; `spec/arquitectura.md`, la de las capas; `spec/legibilidad.md`, las pautas de tipografía y contraste (apto dislexia). |
