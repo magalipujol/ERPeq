@@ -5,7 +5,7 @@ import { useBase } from '../base';
 import { Encabezado, Kpis, SelectorMes } from '../componentes/comunes';
 import { fmtFecha, fmtMes, fmtMoney, fmtNum, porFechaDesc } from '../formato';
 import { mesElegido } from '../meses';
-import * as M from '../modelo';
+import * as M from '../dominio/modelo';
 
 // Las ventas son las entregas de los pedidos: se cargan desde la pantalla Pedidos.
 export function Ventas({ visible }: { visible: boolean }) {

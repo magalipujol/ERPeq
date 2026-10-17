@@ -2,7 +2,7 @@ import { Autocomplete, Button, CloseButton, Fieldset, Grid, Group, NativeSelect,
 import { useMemo } from 'react';
 import { useBase } from '../base';
 import { aNumero, fmtMoney, fmtNum, numeroOCero, unicos } from '../formato';
-import * as M from '../modelo';
+import * as M from '../dominio/modelo';
 import { type Item, itemVacio } from './item';
 
 // compra: puede crear productos nuevos y sugiere el último precio de compra.

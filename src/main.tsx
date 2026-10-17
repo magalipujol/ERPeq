@@ -6,7 +6,12 @@ import { MantineProvider } from '@mantine/core';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { CONFIG } from './config';
+import { crearBaseSheets } from './db/sheets';
 import { tema } from './tema';
+
+// Raíz de composición: el único lugar de la UI que elige el adaptador de la base.
+const db = crearBaseSheets(CONFIG);
 
 const raiz = document.getElementById('root');
 if (!raiz) throw new Error('Falta el elemento #root en index.html');
@@ -14,7 +19,7 @@ if (!raiz) throw new Error('Falta el elemento #root en index.html');
 createRoot(raiz).render(
   <StrictMode>
     <MantineProvider theme={tema} defaultColorScheme="auto">
-      <App />
+      <App db={db} />
     </MantineProvider>
   </StrictMode>,
 );

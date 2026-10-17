@@ -8,7 +8,7 @@ import { mesElegido } from '../meses';
 import { type Item, itemVacio } from '../componentes/item';
 import { Items } from '../componentes/Items';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, numeroOCero, porFechaDesc, unicos } from '../formato';
-import * as M from '../modelo';
+import * as M from '../dominio/modelo';
 
 export function Compras() {
   const { datos } = useBase();
@@ -38,7 +38,7 @@ export function Compras() {
 }
 
 function FormCompra() {
-  const { datos, pedidos, buscarProducto, buscarContacto, escribir } = useBase();
+  const { datos, pedidos, buscarProducto, buscarContacto, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [fecha, setFecha] = useState(hoyISO);
   const [depSel, setDepSel] = useState<string | null>(null);
@@ -81,10 +81,10 @@ function FormCompra() {
       const existente = buscarContacto('proveedor', prov);
       const contacto = existente ?? { id: M.siguienteId(datos.contactos.map((c) => c.id), 'C'), rol: 'proveedor', nombre: prov };
 
-      await escribir({
-        productos: nuevos.map(M.filas.producto),
-        ...(existente ? {} : { contactos: [M.filas.contacto(contacto)] }),
-        compras: lineas.map((l) => M.filas.compra({
+      await db.registrarCompra({
+        productosNuevos: nuevos,
+        proveedorNuevo: existente ? null : contacto,
+        lineas: lineas.map((l) => ({
           fecha: deISO(fecha), depositoId: deposito, proveedor: prov, contactoId: contacto.id, productoId: l.p.id,
           producto: l.p.producto, cantidad: l.cantidad, precio: l.precio, remito: remito.trim(), pedidoId: pedido, nota: nota.trim(),
         })),

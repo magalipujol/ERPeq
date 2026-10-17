@@ -26,7 +26,7 @@ DEPOSITOS = [('BB', 'General', 'Bahía Blanca'), ('ROS', 'Rosario', 'Rosario')]
 # Nombre de cada vendedor según la columna CARGA del Excel.
 VENDEDORES = {'GUADA/HERNAN': 'Guada/Hernán', 'LEO': 'Leo'}
 
-# Encabezados de cada hoja, en el orden de columnas de src/modelo.ts (HOJAS y filas).
+# Encabezados de cada hoja, en el orden de columnas de src/db/sheets/hojas.ts (HOJAS y filas).
 COLS = {
     'Depósitos': ['id', 'nombre', 'localidad'],
     'Productos': ['id', 'producto', 'unidad', 'minimo'],

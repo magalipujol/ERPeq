@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   aNumero, deISO, fmtMes, fmtMoney, fmtNum, mensajeDeError, numeroOCero, porFechaDesc, sumable, unicos,
 } from './formato';
-import { deSerie } from './google';
 
 describe('números de los inputs', () => {
   it('aNumero: vacío o incompleto da NaN', () => {
@@ -41,10 +40,6 @@ describe('fechas', () => {
     const d = deISO('2026-10-16');
 
     expect([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()]).toStrictEqual([2026, 9, 16, 12]);
-  });
-
-  it('deSerie: número de serie de Sheets a fecha local', () => {
-    expect(deSerie(45658)).toStrictEqual(new Date(2025, 0, 1));
   });
 
   it('porFechaDesc: más nuevas primero, sin fecha al final', () => {

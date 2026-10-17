@@ -8,7 +8,7 @@ import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
 import { type Item, itemVacio } from '../componentes/item';
 import { Items } from '../componentes/Items';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, numeroOCero, porFechaDesc, unicos } from '../formato';
-import * as M from '../modelo';
+import * as M from '../dominio/modelo';
 
 const COLOR_ESTADO: Record<M.EstadoFlete, string> = { preparacion: 'yellow', camino: 'blue', finalizado: 'green', cancelado: 'gray' };
 const ACCION: Record<M.EstadoFlete, string> = {
@@ -41,7 +41,7 @@ export function Fletes() {
 const nombreLugar = (nombreDeposito: (id: string) => string, id: string, afuera: string) => (id ? nombreDeposito(id) : afuera);
 
 function FormFlete() {
-  const { datos, pedidos, buscarProducto, buscarContacto, escribir } = useBase();
+  const { datos, pedidos, buscarProducto, buscarContacto, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [fecha, setFecha] = useState(hoyISO);
   const [transporte, setTransporte] = useState('');
@@ -94,19 +94,16 @@ function FormFlete() {
       const existente = buscarContacto('transporte', nombre);
       const contactoId = existente?.id ?? M.siguienteId(datos.contactos.map((c) => c.id), 'C');
       const id = M.siguienteId(datos.fletes.map((f) => f.id), 'F');
-      const ahora = new Date();
-      // Para un flete ya despachado o terminado quedan también los estados anteriores.
-      const camino: M.EstadoFlete[] = estadoInicial === 'preparacion' ? ['preparacion']
-        : estadoInicial === 'camino' ? ['preparacion', 'camino'] : ['preparacion', 'camino', 'finalizado'];
-      await escribir({
-        ...(existente ? {} : { contactos: [M.filas.contacto({ id: contactoId, rol: 'transporte', nombre })] }),
-        fletes: [M.filas.flete({
+      await db.registrarFlete({
+        transporteNuevo: existente ? null : { id: contactoId, rol: 'transporte', nombre },
+        flete: {
           id, fecha: dia, transporte: nombre, contactoId, origenId: origen, destinoId: destino,
           costo: Number.isNaN(costo) ? null : costo, guia: guia.trim(), nota: nota.trim(),
-        })],
-        fletesItems: lineas.map((l) => M.filas.fleteItem({ fleteId: id, productoId: l.p?.id ?? '', producto: l.p?.producto ?? '', cantidad: l.cantidad })),
-        fletesEstados: camino.map((est) => M.filas.estado(id, est, ahora)),
-        pedidosFletes: asignacion.map((a) => M.filas.pedidoFlete({ pedidoId: a.id, fleteId: id, costoAsignado: a.costo })),
+        },
+        items: lineas.map((l) => ({ fleteId: id, productoId: l.p?.id ?? '', producto: l.p?.producto ?? '', cantidad: l.cantidad })),
+        estados: M.caminoFlete(estadoInicial),
+        momento: new Date(),
+        pedidos: asignacion.map((a) => ({ pedidoId: a.id, fleteId: id, costoAsignado: a.costo })),
       });
       setItems([itemVacio()]);
       setPedidosSel([]);
@@ -173,7 +170,7 @@ function FormFlete() {
 }
 
 function ListaFletes() {
-  const { datos, estadosFletes, cargando, nombreDeposito, escribir } = useBase();
+  const { datos, estadosFletes, cargando, nombreDeposito, db } = useBase();
   const { guardando, msg, guardar } = useGuardar();
   const [filtro, setFiltro] = useState('activos');
   const items = new Map<string, M.FleteItem[]>();
@@ -188,7 +185,7 @@ function ListaFletes() {
 
   function cambiar(id: string, estado: M.EstadoFlete) {
     guardar(async () => {
-      await escribir({ fletesEstados: [M.filas.estado(id, estado, new Date())] });
+      await db.cambiarEstadoFlete(id, estado, new Date());
       return `✓ Flete ${id}: ${M.NOMBRE_ESTADO_FLETE[estado].toLowerCase()}.`;
     });
   }
