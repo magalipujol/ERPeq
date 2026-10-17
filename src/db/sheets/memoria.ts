@@ -15,7 +15,7 @@ export function crearPlanillaEnMemoria(inicial: Partial<Hojas> = {}): BaseDeDato
   return {
     hojas, escrituras,
     configurada: true,
-    iniciar: async () => Promise.resolve(),
+    iniciar: async () => Promise.resolve(false),
     ingresar: async () => Promise.resolve(),
     salir: async () => Promise.resolve(),
     abrir: async () => Promise.resolve({ titulo: 'ERPeq (en memoria)', url: '', faltantes: [] }),

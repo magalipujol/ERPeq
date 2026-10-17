@@ -1,6 +1,7 @@
 // Acceso a Google: login con Google Identity Services y Sheets API.
-// El token vive solo en memoria y dura ~1 hora. El permiso pedido es "spreadsheets" (ver y editar las
-// hojas de cálculo del usuario); la app solo usa la planilla configurada, y Google solo la deja abrir
+// El token dura ~1 hora y se guarda en localStorage para que recargar la página o abrir otra pestaña no
+// vuelva a pedir el login: se borra al salir y cuando vence. El permiso pedido es "spreadsheets" (ver y
+// editar las hojas de cálculo del usuario); la app solo usa la planilla configurada, y Google solo la deja abrir
 // si está compartida con esa cuenta.
 import type { Config } from '../../config';
 import { SesionVencida, SinAcceso } from '../puerto';
@@ -9,6 +10,7 @@ import { type ClaveHoja, type Escritura, nombreHoja } from './hojas';
 
 const SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
+const CLAVE_SESION = 'erpeq.sesion';
 
 interface Pendiente {
   resolve: (resp: google.accounts.oauth2.TokenResponse) => void;
@@ -28,6 +30,44 @@ export interface InfoPlanilla {
   sheets: { properties: { sheetId: number; title: string } }[];
 }
 
+interface SesionGuardada { token: string; vence: number }
+
+// localStorage puede no estar disponible (modo privado, almacenamiento bloqueado): sin él, la sesión
+// dura lo que la página.
+function leerGuardada() {
+  try {
+    const guardada = JSON.parse(localStorage.getItem(CLAVE_SESION) ?? 'null') as SesionGuardada | null;
+    return guardada && typeof guardada.token === 'string' && typeof guardada.vence === 'number' ? guardada : null;
+  } catch {
+    return null;
+  }
+}
+
+function guardarSesion() {
+  try {
+    if (token) localStorage.setItem(CLAVE_SESION, JSON.stringify({ token, vence } satisfies SesionGuardada));
+  } catch { /* sin almacenamiento */ }
+}
+
+// Toma la sesión guardada si está vigente: puede ser de antes de recargar o de otra pestaña que reconectó.
+// Devuelve si hay sesión vigente.
+function restaurarSesion() {
+  const guardada = leerGuardada();
+  if (guardada && guardada.vence > Date.now()) {
+    token = guardada.token;
+    vence = guardada.vence;
+  }
+  return token !== null && Date.now() <= vence;
+}
+
+// Solo borra lo guardado si es este mismo token: otra pestaña pudo haber guardado uno nuevo.
+function olvidarSesion() {
+  try {
+    if (leerGuardada()?.token === token) localStorage.removeItem(CLAVE_SESION);
+  } catch { /* sin almacenamiento */ }
+  token = null;
+}
+
 async function esperar(cond: () => boolean, ms: number, error: string) {
   return new Promise<void>((resolve, reject) => {
     const limite = Date.now() + ms;
@@ -39,9 +79,11 @@ async function esperar(cond: () => boolean, ms: number, error: string) {
   });
 }
 
+// Devuelve true si quedó guardada una sesión vigente (al recargar la página o en otra pestaña).
 export async function init(config: Config, { onSesionVencida }: { onSesionVencida: () => void }) {
   cfg = config;
   alVencer = onSesionVencida;
+  const conSesion = restaurarSesion();
   // Los tipos de GIS declaran `google` siempre presente, pero no existe hasta que carga el script.
   await esperar(() => 'google' in window, 10000,
     'No se pudo cargar el login de Google. Revisá la conexión o algún bloqueador.');
@@ -51,6 +93,7 @@ export async function init(config: Config, { onSesionVencida }: { onSesionVencid
     callback: (resp) => pendiente?.resolve(resp),
     error_callback: (err) => pendiente?.reject(err),
   });
+  return conSesion;
 }
 
 // Abre la ventana de Google. Tiene que llamarse desde un click para que el navegador no la bloquee.
@@ -64,6 +107,7 @@ export async function login() {
         }
         token = resp.access_token;
         vence = Date.now() + (Number(resp.expires_in) - 60) * 1000;
+        guardarSesion();
         resolve();
       },
       reject: (err) => { reject(new Error(err.type === 'popup_closed' ? 'Se cerró la ventana de Google.' : (err.message || 'No se pudo ingresar.'))); },
@@ -81,15 +125,15 @@ export async function logout() {
   return new Promise<void>((resolve) => {
     if (!token) { resolve(); return; }
     google.accounts.oauth2.revoke(token, () => { resolve(); });
-    token = null;
+    olvidarSesion();
   });
 }
 
 interface ErrorGoogle { error?: { message?: string } }
 
 async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {
-  if (!token || Date.now() > vence) {
-    token = null;
+  if (!restaurarSesion()) {
+    olvidarSesion();
     alVencer();
     throw new SesionVencida();
   }
@@ -97,7 +141,7 @@ async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {
   if (opts.body !== undefined && opts.body !== null) headers['Content-Type'] = 'application/json';
   const res = await fetch(url, { ...opts, headers });
   if (res.status === 401) {
-    token = null;
+    olvidarSesion();
     alVencer();
     throw new SesionVencida();
   }

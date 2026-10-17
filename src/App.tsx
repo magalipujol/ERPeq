@@ -5,7 +5,7 @@ import { IconBrandGoogleFilled, IconExternalLink, IconRefresh } from '@tabler/ic
 import { useCallback, useEffect, useState } from 'react';
 import { BaseProvider } from './BaseProvider';
 import { BarraInferior, NavSuperior } from './componentes/Navegacion';
-import { type BaseDeDatos, type InfoBase, SinAcceso } from './db/puerto';
+import { type BaseDeDatos, type InfoBase, SesionVencida, SinAcceso } from './db/puerto';
 import type * as M from './dominio/modelo';
 import { hora, mensajeDeError } from './formato';
 import { Analisis } from './vistas/Analisis';
@@ -49,13 +49,6 @@ export function App({ db }: { db: BaseDeDatos }) {
   // Cada "Tomar pedido nuevo" de Inicio lo incrementa para que Pedidos enfoque el formulario.
   const [nuevoPedido, setNuevoPedido] = useState(0);
 
-  useEffect(() => {
-    if (faltaConfig) return;
-    db.iniciar(() => { setVencida(true); })
-      .then(() => { setListo(true); })
-      .catch((err: unknown) => { setMsg(mensajeDeError(err)); });
-  }, [db, faltaConfig]);
-
   const cargar = useCallback(async () => {
     setEstado({ texto: 'Leyendo la planilla…', error: false });
     setCargando(true);
@@ -71,7 +64,7 @@ export function App({ db }: { db: BaseDeDatos }) {
   }, [db]);
 
   // Devuelve false si la planilla no está compartida con la cuenta que ingresó.
-  async function abrirBase() {
+  const abrirBase = useCallback(async () => {
     try {
       setInfo(await db.abrir());
     } catch (err) {
@@ -84,7 +77,31 @@ export function App({ db }: { db: BaseDeDatos }) {
     await cargar();
     setPantalla('app');
     return true;
-  }
+  }, [db, cargar]);
+
+  useEffect(() => {
+    if (faltaConfig) return;
+    db.iniciar(() => { setVencida(true); })
+      .then(async (conSesion) => {
+        setListo(true);
+        if (!conSesion) return;
+        // Sesión guardada (de antes de recargar o de otra pestaña): se abre la planilla sin pasar por "Ingresar con Google".
+        setOcupado(true);
+        try {
+          await abrirBase();
+        } catch (err) {
+          // Si Google ya no acepta el token, se ingresa de nuevo como siempre.
+          if (err instanceof SesionVencida) setVencida(false);
+          else setMsg(mensajeDeError(err));
+          setInfo(null);
+          setDatos(null);
+          setEstado(ESTADO_INICIAL);
+        } finally {
+          setOcupado(false);
+        }
+      })
+      .catch((err: unknown) => { setMsg(mensajeDeError(err)); });
+  }, [db, faltaConfig, abrirBase]);
 
   async function conBoton(fn: () => Promise<void>) {
     setMsg('');
