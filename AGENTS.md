@@ -37,17 +37,18 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 | Ruta | Contenido |
 |---|---|
 | `src/dominio/modelo.ts` | **Dominio**: tipos y cálculos (stock, estados, precios, comisiones, ganancia, entregas, IDs). No sabe nada de hojas, columnas ni del navegador: se prueba con Vitest. |
+| `src/dominio/analisis.ts` | **Dominio**: cálculos de la pantalla Análisis (ganancia y ventas por producto, clientes activos e inactivos). Puro, se prueba con Vitest. Ver `spec/analisis.md`. |
 | `src/db/puerto.ts` | **Puerto**: la interfaz `BaseDeDatos` que usa la UI (sesión, `leer()` y una operación atómica por caso de uso: `registrarPedido`, `registrarEntrega`, `registrarFlete`, …) y los errores `SinAcceso` y `SesionVencida`. |
 | `src/db/sheets/` | **Adaptador Google Sheets**. `hojas.ts`: hojas y columnas (`HOJAS`), lectura (`parsear`) y filas a escribir (`filas`). `operaciones.ts`: qué filas agrega cada operación. `celdas.ts`: valores de celda y fechas como número de serie. `google.ts`: login (Google Identity Services) y Sheets API (`escribir` agrega filas en varias hojas en un solo `batchUpdate`). `index.ts`: `crearBaseSheets`. `memoria.ts`: la misma planilla en memoria, para pruebas unitarias. |
 | `src/main.tsx` | Raíz de composición: crea el adaptador y se lo pasa a `App`. |
 | `src/base.ts`, `src/BaseProvider.tsx` | Contexto de React con los datos cargados, los cálculos derivados y las operaciones del puerto (`db`). |
-| `src/vistas/` | Pantallas: Inicio (por defecto: pedido nuevo, pedidos pendientes y fletes en curso), Stock, Pedidos (alta y entregas), Ventas, Compras, Fletes y Precios (precios y reglas de comisión). |
+| `src/vistas/` | Pantallas: Inicio (por defecto: pedido nuevo, pedidos pendientes y fletes en curso), Stock, Pedidos (alta y entregas), Ventas, Compras, Fletes, Precios (precios y reglas de comisión) y Análisis. |
 | `src/componentes/` | Componentes compartidos (carga de ítems, navegación: selector del header y barra inferior del celular, exportar pedidos a WhatsApp, etc.). |
 | `src/estilos.css`, `src/celular.css` | Estilos globales; `celular.css` tiene los ajustes para menos de 768 px (breakpoint `sm` de Mantine). |
 | `src/whatsapp.ts` | Arma el mensaje de pedidos para WhatsApp (qué pedidos entran y el texto). Sin dependencias del navegador: se prueba con Vitest. |
 | `src/config.ts` | Client ID de Google e ID de la planilla. No son secretos. |
 | `tests/` | Pruebas e2e. `tests/google-falso.ts` reemplaza a Google con una planilla en memoria (su estado inicial está resumido al principio de `historias.spec.ts`) y tiene `ir()` para cambiar de pantalla en escritorio o celular. `tests/historias.spec.ts` tiene las historias de usuario de punta a punta; el resto prueba una pantalla cada uno. |
-| `spec/` | Especificaciones. `spec/modelo-de-datos.md` es la referencia del modelo de datos; `spec/arquitectura.md`, la de las capas; `spec/legibilidad.md`, las pautas de tipografía y contraste (apto dislexia). |
+| `spec/` | Especificaciones. `spec/modelo-de-datos.md` es la referencia del modelo de datos; `spec/arquitectura.md`, la de las capas; `spec/legibilidad.md`, las pautas de tipografía y contraste (apto dislexia); `spec/analisis.md`, la de los análisis. |
 | `herramientas/excel_a_base.py` | Convierte el Excel histórico en la planilla inicial. |
 | `README.md` | Qué es, cómo funciona, estructura de la planilla, cómo correrlo. |
 | `GUIA-CONFIGURACION.md` | Paso a paso para configurar Google Cloud y la planilla (para el dueño, no técnico). |

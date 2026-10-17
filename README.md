@@ -37,16 +37,17 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
 - `src/`: la app.
   - `config.ts`: Client ID de Google y ID de la planilla.
   - `dominio/modelo.ts`: tipos y cálculos del negocio (sin base de datos ni navegador).
+  - `dominio/analisis.ts`: cálculos de la pantalla Análisis (sin base de datos ni navegador).
   - `db/puerto.ts`: lo que la app necesita de la base (leer y una operación por caso de uso).
   - `db/sheets/`: la implementación sobre Google Sheets (hojas y columnas, login, Sheets API) y una
     planilla en memoria para las pruebas.
   - `main.tsx`: arranca la app con la base de Google Sheets; `App.tsx`: pantallas de acceso y navegación;
     `vistas/`: Inicio (pantalla por defecto: acceso directo a un pedido nuevo, pedidos pendientes y fletes en
-    curso), Stock, Pedidos, Ventas, Compras, Fletes y Precios.
+    curso), Stock, Pedidos, Ventas, Compras, Fletes, Precios y Análisis.
   - `componentes/`: piezas compartidas (carga de ítems, navegación entre pantallas, KPIs).
   - `celular.css`: ajustes para pantallas de menos de 768 px (barra inferior, campos de 44 px).
   - `whatsapp.ts`: arma el mensaje con los pedidos para mandar a un grupo de WhatsApp (botón *Exportar a WhatsApp* en Pedidos).
-- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md` y `legibilidad.md`).
+- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`, `legibilidad.md` y `analisis.md`).
 - `.github/workflows/ci.yml`: lint, tipos y pruebas en cada pull request y push.
 - `.github/workflows/deploy.yml`: corre el CI y, si pasa, compila y publica en GitHub Pages en cada push a `main`
   (en *Settings → Pages*, la fuente tiene que ser **GitHub Actions**).
@@ -79,7 +80,7 @@ y abrir http://localhost:5500 (tiene que estar autorizado como origen en el proy
 
 ## Pruebas
 
-- **Unitarias** (Vitest, `src/**/*.test.ts`): los cálculos del dominio, `formato.ts`, `meses.ts`, `whatsapp.ts` y el adaptador
+- **Unitarias** (Vitest, `src/**/*.test.ts`): los cálculos del dominio (`modelo.ts` y `analisis.ts`), `formato.ts`, `meses.ts`, `whatsapp.ts` y el adaptador
   de Sheets (lectura de filas, celdas y las filas que agrega cada operación, sobre una planilla en memoria).
   Tardan menos de un segundo.
 - **De punta a punta** (Playwright, `tests/`): la app entera contra el build. Google está simulado

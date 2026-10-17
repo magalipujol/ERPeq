@@ -172,7 +172,7 @@ export const test = base.extend<{ google: GoogleFalso; ingresar: () => Promise<v
 
 export { expect } from '@playwright/test'
 
-export type Pantalla = 'Inicio' | 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | 'Fletes' | 'Precios'
+export type Pantalla = 'Inicio' | 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | 'Fletes' | 'Precios' | 'Análisis'
 
 // Cambia de pantalla con el selector del header (escritorio) o la barra inferior (celular): el que esté visible.
 export const ir = async (page: Page, pantalla: Pantalla) =>
