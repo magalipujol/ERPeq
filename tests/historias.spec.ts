@@ -4,13 +4,8 @@
 //   Avena: 25 kg en Rosario; PE0002 (Ana, Guada/Hernán) pide 10 kg sin entregar. Costo promedio $500.
 //   Precios de lista: Almendras $3.000, Avena $800. Miel sin precio.
 //   Reglas: Leo 10% general; Guada/Hernán 3% general y 7% en Almendras.
-import type { Page } from '@playwright/test'
-import { AHORA, expect, HOY_SERIE, test } from './google-falso'
-
-type Pantalla = 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | 'Fletes' | 'Precios'
-
-const ir = async (page: Page, pantalla: Pantalla) =>
-  page.getByRole('radiogroup', { name: 'Pantalla' }).getByText(pantalla, { exact: true }).click()
+import { devices, type Page } from '@playwright/test'
+import { AHORA, expect, HOY_SERIE, ir, test } from './google-falso'
 
 const filaCon = (page: Page, texto: string) =>
   page.getByRole('row').filter({ has: page.getByRole('cell', { name: texto, exact: true }) })
@@ -341,4 +336,54 @@ test('una compra hecha para un pedido cubre lo que faltaba', async ({ page }) =>
   await expect(kpi(page, 'Faltan para pedidos')).toContainText('0')
   await ir(page, 'Pedidos')
   await expect(kpi(page, 'Con faltante de stock')).toContainText('0')
+})
+
+test.describe('desde el celular', () => {
+  // Corre en los dos proyectos, siempre con la pantalla de un Pixel 7.
+  const { defaultBrowserType: _navegador, ...pixel7 } = devices['Pixel 7']
+  test.use(pixel7)
+
+  test('Leo toma un pedido de un cliente nuevo y lo entrega en el momento', async ({ page, google }) => {
+    // 1. Llega a Pedidos con la barra inferior; la página no se desborda a lo ancho.
+    await ir(page, 'Stock')
+    await ir(page, 'Pedidos')
+    await expect(page.getByRole('navigation', { name: 'Pantalla' }).getByRole('button', { name: 'Pedidos' }))
+      .toHaveAttribute('aria-current', 'page')
+    const desborde = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    expect(desborde).toBeLessThanOrEqual(0)
+
+    // 2. Bruno, cliente nuevo, pide 2 kg de almendras que salen de Bahía Blanca. Comisiona Leo.
+    const pedido = formPedido(page)
+    await pedido.getByLabel('Entrega desde', { exact: true }).selectOption({ label: 'General' })
+    await elegirCliente(page, 'Bruno')
+    await elegirOpcion(page, pedido.getByLabel('Vendedores', { exact: true }), 'Leo')
+    await pedido.getByLabel('Producto', { exact: true }).fill('Almendras')
+    await pedido.getByLabel('Cantidad', { exact: true }).fill('2')
+    await expect(pedido.getByLabel('Precio unitario', { exact: true })).toHaveValue('3000')
+    await pedido.getByRole('button', { name: 'Registrar pedido' }).click()
+    await expect(pedido.getByText(/✓ Pedido PE0003 de Bruno registrado \(1 producto, \$\s6\.000\)\./)).toBeVisible()
+    expect(google.escrituras[0]).toMatchObject({
+      'Contactos': [['C0005', 'cliente', 'Bruno', 'Minorista', '', '', '', '', '', '']],
+      'Pedidos': [['PE0003', HOY_SERIE, 'C0005', 'Bruno', 'Minorista', '', '', 'BB', '']],
+      'Pedidos vendedores': [['PE0003', 'VEN01']],
+    })
+
+    // 3. En la lista compacta ve el pedido con su estado; al tocar Entregar, el formulario sube a la vista.
+    const fila = filaCon(page, 'PE0003')
+    await expect(fila).toContainText('2 Almendras')
+    await expect(fila.getByText('Pendiente').filter({ visible: true })).toBeVisible()
+    await fila.getByRole('button', { name: 'Entregar' }).click()
+    const entrega = formEntrega(page)
+    await expect(entrega.getByLabel('Entregar Almendras')).toBeInViewport()
+    await expect(entrega.getByRole('group', { name: 'Comisión' })).toContainText('600')
+    await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
+    // Era todo lo pendiente: el pedido queda entregado y sale de la lista de abiertos.
+    await expect(page.getByText('El pedido PE0003 quedó entregado.')).toBeVisible()
+    await expect(fila).toBeHidden()
+    expect(google.escrituras[1]).toEqual({
+      'Ventas': [['V0002', HOY_SERIE, 'PE0003', 'BB', '']],
+      'Ventas ítems': [['V0002', 1, 1, 'P001', 'Almendras', 2, 3000, 6000, 1500]],
+      'Ventas comisiones': [['V0002', 1, 'VEN01', 'Leo', 10, 10, 600]],
+    })
+  })
 })

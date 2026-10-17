@@ -1,8 +1,8 @@
 import {
-  Autocomplete, Badge, Button, Checkbox, Grid, Group, MultiSelect, NativeSelect, NumberInput, Paper, ScrollArea,
+  Autocomplete, Badge, Box, Button, Checkbox, Grid, Group, MultiSelect, NativeSelect, NumberInput, Paper, ScrollArea,
   SegmentedControl, Stack, Table, Text, TextInput, Title,
 } from '@mantine/core';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { normalizar, useBase, useGuardar } from '../base';
 import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
 import { type Item, itemVacio } from '../componentes/item';
@@ -224,6 +224,9 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
   const dia = fecha ? deISO(fecha) : null;
   const vendedores = datos.vendedores.filter((v) => resumen.vendedores.includes(v.id));
   const pendientes = resumen.lineas.filter((l) => l.pendiente > 0);
+  // Se elige desde la lista, que en celular queda debajo: lo trae a la vista.
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, []);
 
   const lineas = pendientes.map((l) => {
     const cantidad = numeroOCero(cantidades[l.linea] ?? l.pendiente);
@@ -267,7 +270,7 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
   }
 
   return (
-    <Paper>
+    <Paper ref={ref} className="ancla">
       <Encabezado titulo={`Entregar ${pedido.id}`}>
         <Button size="xs" variant="default" onClick={onCerrar}>Cerrar</Button>
       </Encabezado>
@@ -348,7 +351,7 @@ function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir:
     <Paper>
       <Encabezado titulo="Pedidos">
         <Group gap="xs">
-          <TextInput type="search" w={220} placeholder="Buscar cliente, pedido o producto…" aria-label="Buscar pedidos"
+          <TextInput type="search" w={{ base: 260, xs: 220 }} placeholder="Buscar cliente, pedido o producto…" aria-label="Buscar pedidos"
             value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
           <SegmentedControl size="xs" value={filtro} onChange={setFiltro} aria-label="Mostrar"
             data={[{ value: 'abiertos', label: 'Abiertos' }, { value: 'todos', label: 'Todos' }]} />
@@ -358,38 +361,41 @@ function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir:
         <Table stickyHeader highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1, whiteSpace: 'nowrap' }}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Pedido</Table.Th><Table.Th>Fecha</Table.Th><Table.Th>Cliente</Table.Th><Table.Th>Productos</Table.Th>
-              <Table.Th>Estado</Table.Th><Table.Th className="num">Importe</Table.Th><Table.Th className="num">Entregado</Table.Th>
-              <Table.Th className="num">Ganancia</Table.Th><Table.Th>Desde</Table.Th><Table.Th />
+              <Table.Th>Pedido</Table.Th><Table.Th visibleFrom="sm">Fecha</Table.Th><Table.Th>Cliente</Table.Th>
+              <Table.Th visibleFrom="sm">Productos</Table.Th><Table.Th visibleFrom="sm">Estado</Table.Th>
+              <Table.Th className="num" visibleFrom="sm">Importe</Table.Th><Table.Th className="num" visibleFrom="sm">Entregado</Table.Th>
+              <Table.Th className="num" visibleFrom="sm">Ganancia</Table.Th><Table.Th visibleFrom="sm">Desde</Table.Th><Table.Th />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {filas.map((r) => (
               <Table.Tr key={r.pedido.id} bg={r.pedido.id === elegido ? 'var(--erp-soft)' : undefined}>
                 <Table.Td fw={500}>{r.pedido.id}</Table.Td>
-                <Table.Td c="dimmed">{fmtFecha(r.pedido.fecha)}</Table.Td>
-                <Table.Td>
+                <Table.Td c="dimmed" visibleFrom="sm">{fmtFecha(r.pedido.fecha)}</Table.Td>
+                <Table.Td style={{ whiteSpace: 'normal' }}>
                   {r.pedido.cliente}
                   {r.vendedores.length > 0 && <Text size="xs" c="dimmed">{r.vendedores.map(nombreVendedor).join(', ')}</Text>}
+                  {/* En celular, los datos de las columnas ocultas van debajo del cliente. */}
+                  <Box hiddenFrom="sm" mt={4}>
+                    <ProductosPedido resumen={r} />
+                    <Group gap={6} mt={4}>
+                      <EstadoPedido estado={r.estado} />
+                      <Text size="sm" fw={500}>{fmtMoney(r.importePedido)}</Text>
+                    </Group>
+                    <Text size="xs" c="dimmed">{fmtFecha(r.pedido.fecha)} · desde {nombreDeposito(r.pedido.depositoId)}</Text>
+                  </Box>
                 </Table.Td>
-                <Table.Td style={{ whiteSpace: 'normal' }} miw={200}>
-                  {r.lineas.map((l) => (
-                    <Text key={l.linea} size="xs">
-                      {fmtNum(l.cantidad)} {l.producto}
-                      {l.pendiente > 0 && l.entregado > 0 && <Text span inherit c="dimmed"> (faltan {fmtNum(l.pendiente)})</Text>}
-                    </Text>
-                  ))}
-                </Table.Td>
-                <Table.Td><EstadoPedido estado={r.estado} /></Table.Td>
-                <Table.Td className="num">{fmtMoney(r.importePedido)}</Table.Td>
-                <Table.Td className="num">{fmtMoney(r.importeEntregado)}</Table.Td>
-                <Table.Td className="num" c={r.ganancia < 0 ? 'red' : undefined}>
+                <Table.Td style={{ whiteSpace: 'normal' }} miw={200} visibleFrom="sm"><ProductosPedido resumen={r} /></Table.Td>
+                <Table.Td visibleFrom="sm"><EstadoPedido estado={r.estado} /></Table.Td>
+                <Table.Td className="num" visibleFrom="sm">{fmtMoney(r.importePedido)}</Table.Td>
+                <Table.Td className="num" visibleFrom="sm">{fmtMoney(r.importeEntregado)}</Table.Td>
+                <Table.Td className="num" c={r.ganancia < 0 ? 'red' : undefined} visibleFrom="sm">
                   {r.ventas.length > 0 ? `${fmtMoney(r.ganancia)}${r.sinCosto ? '*' : ''}` : '–'}
                 </Table.Td>
-                <Table.Td c="dimmed">{nombreDeposito(r.pedido.depositoId)}</Table.Td>
+                <Table.Td c="dimmed" visibleFrom="sm">{nombreDeposito(r.pedido.depositoId)}</Table.Td>
                 <Table.Td>
                   {M.pedidoAbierto(r.estado) && (
-                    <Button size="compact-xs" variant="light" onClick={() => { onElegir(r.pedido.id); }}>Entregar</Button>
+                    <Button size="compact-sm" variant="light" onClick={() => { onElegir(r.pedido.id); }}>Entregar</Button>
                   )}
                 </Table.Td>
               </Table.Tr>
@@ -401,4 +407,13 @@ function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir:
       {filas.some((r) => r.sinCosto) && <Text size="xs" c="dimmed" mt="xs">* Hay productos sin costo de compra: la ganancia no los descuenta.</Text>}
     </Paper>
   );
+}
+
+function ProductosPedido({ resumen }: { resumen: M.ResumenPedido }) {
+  return resumen.lineas.map((l) => (
+    <Text key={l.linea} size="xs">
+      {fmtNum(l.cantidad)} {l.producto}
+      {l.pendiente > 0 && l.entregado > 0 && <Text span inherit c="dimmed"> (faltan {fmtNum(l.pendiente)})</Text>}
+    </Text>
+  ));
 }

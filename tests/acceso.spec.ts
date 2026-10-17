@@ -1,10 +1,10 @@
-import { expect, test } from './google-falso'
+import { expect, ir, test } from './google-falso'
 
 test('ingresa con Google y muestra el stock', async ({ page, ingresar }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Ingresá con tu cuenta de Google' })).toBeVisible()
   await ingresar()
-  await expect(page.getByText('ERPeq - Pruebas')).toBeVisible()
+  await expect(page.getByText('ERPeq - Pruebas').filter({ visible: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Inventario' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Planilla' })).toHaveAttribute('href', 'https://docs.google.com/spreadsheets/d/prueba/edit')
 })
@@ -51,7 +51,7 @@ test('abre la sección que indica el #hash y lo actualiza al navegar', async ({ 
   await ingresar()
   await expect(page.getByRole('heading', { name: 'Compras', exact: true })).toBeVisible()
 
-  await page.getByRole('radiogroup', { name: 'Pantalla' }).getByText('Ventas').click()
+  await ir(page, 'Ventas')
   await expect(page.getByRole('heading', { name: 'Ventas', exact: true })).toBeVisible()
   await expect(page).toHaveURL(/#ventas$/)
 })

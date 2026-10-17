@@ -1,10 +1,10 @@
 import {
-  ActionIcon, Alert, AppShell, Box, Button, Code, Container, Group, Paper, ScrollArea, SegmentedControl, Stack, Text,
-  ThemeIcon, Title, Tooltip,
+  ActionIcon, Alert, AppShell, Box, Button, Code, Container, Group, Paper, Stack, Text, ThemeIcon, Title, Tooltip,
 } from '@mantine/core';
 import { IconBrandGoogleFilled, IconExternalLink, IconRefresh } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { BaseProvider } from './BaseProvider';
+import { BarraInferior, NavSuperior } from './componentes/Navegacion';
 import { type BaseDeDatos, type InfoBase, SinAcceso } from './db/puerto';
 import type * as M from './dominio/modelo';
 import { hora, mensajeDeError } from './formato';
@@ -128,31 +128,34 @@ export function App({ db }: { db: BaseDeDatos }) {
   const enApp = pantalla === 'app' && info !== null && datos !== null;
 
   return (
-    <AppShell header={{ height: { base: enApp ? 116 : 68, lg: 68 } }}>
+    <AppShell header={{ height: { base: 68, sm: enApp ? 116 : 68, lg: 68 } }} footer={enApp ? { height: { base: 64, sm: 0 } } : undefined}>
       <AppShell.Header>
         <Container size="xl" h="100%">
-          <Group h="100%" justify="space-between" gap="xs" py={8}>
-            <Group gap="sm" wrap="nowrap">
+          <Group h="100%" justify="space-between" gap="xs" py={8} className="fila-header">
+            <Group gap="sm" wrap="nowrap" miw={0}>
               <ThemeIcon size={42} radius="md" variant="light" aria-hidden>🌿</ThemeIcon>
-              <div>
+              <Box miw={0}>
                 <Title order={1} size="h3">ERPeq</Title>
-                <Text size="xs" c={estado.error ? 'red' : 'dimmed'} lineClamp={1}>{estado.texto}</Text>
-              </div>
+                <Text size="xs" c={estado.error ? 'red' : 'dimmed'} lineClamp={1}>
+                  {info && <Text span inherit c="dimmed" hiddenFrom="md">{info.titulo} · </Text>}
+                  <span>{estado.texto}</span>
+                </Text>
+              </Box>
             </Group>
-            {enApp && (
-              <ScrollArea type="never" maw="100%">
-                <SegmentedControl value={vista} onChange={(v) => { irA(v); }} data={[...NAV]} aria-label="Pantalla" />
-              </ScrollArea>
-            )}
+            {enApp && <NavSuperior opciones={NAV} value={vista} onChange={irA} />}
             {(pantalla === 'app' || pantalla === 'sin-acceso') && (
-              <Group gap={6}>
+              <Group gap={6} wrap="nowrap">
                 {info && (
                   <>
-                    <Text size="xs" c="dimmed" maw={220} truncate>{info.titulo}</Text>
+                    <Text size="xs" c="dimmed" maw={220} truncate visibleFrom="md">{info.titulo}</Text>
                     <Button component="a" href={info.url} target="_blank" rel="noopener" size="xs" variant="default"
-                      rightSection={<IconExternalLink size={14} />}>Planilla</Button>
+                      rightSection={<IconExternalLink size={14} />} visibleFrom="sm">Planilla</Button>
+                    <ActionIcon component="a" href={info.url} target="_blank" rel="noopener" variant="default"
+                      size="lg" hiddenFrom="sm" aria-label="Planilla">
+                      <IconExternalLink size={18} />
+                    </ActionIcon>
                     <Tooltip label="Volver a leer la planilla">
-                      <ActionIcon variant="default" size="md" onClick={() => { void cargar().catch(() => undefined); }} loading={cargando} aria-label="Refrescar">
+                      <ActionIcon variant="default" size="lg" onClick={() => { void cargar().catch(() => undefined); }} loading={cargando} aria-label="Refrescar">
                         <IconRefresh size={16} />
                       </ActionIcon>
                     </Tooltip>
@@ -164,6 +167,12 @@ export function App({ db }: { db: BaseDeDatos }) {
           </Group>
         </Container>
       </AppShell.Header>
+
+      {enApp && (
+        <AppShell.Footer hiddenFrom="sm">
+          <BarraInferior opciones={NAV} value={vista} onChange={irA} />
+        </AppShell.Footer>
+      )}
 
       <AppShell.Main>
         {vencida && (
