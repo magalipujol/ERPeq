@@ -1,4 +1,4 @@
-import { expect, HOY, ir, test } from './google-falso'
+import { expect, HOY, instalarGoogleFalso, ir, test } from './google-falso'
 
 test('ingresa con Google y abre Inicio', async ({ page, ingresar }) => {
   await page.goto('/')
@@ -52,6 +52,16 @@ test('recargar la página mantiene la sesión mientras dure el token', async ({ 
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Compras', exact: true })).toBeVisible()
   await expect(page.getByText(/^Sincronizado/)).toBeVisible()
+})
+
+test('otra pestaña usa la misma sesión', async ({ page, context, ingresar }) => {
+  await page.goto('/')
+  await ingresar()
+  const otra = await context.newPage()
+  await instalarGoogleFalso(otra)
+  await otra.goto('/#compras')
+  await expect(otra.getByRole('heading', { name: 'Compras', exact: true })).toBeVisible()
+  await expect(otra.getByText(/^Sincronizado/)).toBeVisible()
 })
 
 test('después de salir, recargar vuelve a pedir el login', async ({ page, ingresar }) => {

@@ -5,7 +5,7 @@ Es una página estática (sin servidor) hecha con React, TypeScript y Mantine, q
 
 ## Cómo funciona
 
-- Cada usuario entra con su cuenta de Google (Google Identity Services). El token dura una hora y se guarda en `sessionStorage`: recargar la página no vuelve a pedir el login, y se borra al cerrar la pestaña, al salir o cuando vence.
+- Cada usuario entra con su cuenta de Google (Google Identity Services). El token dura una hora y se guarda en `localStorage`: recargar la página o abrir otra pestaña no vuelve a pedir el login. Se borra al salir o cuando vence.
 - La app pide el permiso `spreadsheets` y trabaja solo sobre la planilla configurada, que tiene que estar compartida
   con la cuenta del usuario. El proyecto queda en modo Prueba: solo entran los usuarios de prueba cargados.
 - Lee y escribe directo con la Sheets API desde el navegador. Las escrituras son siempre filas nuevas, y cada

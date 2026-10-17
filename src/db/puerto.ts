@@ -57,7 +57,7 @@ export interface CompraNueva {
 export interface Sesion {
   readonly configurada: boolean;
   // Prepara el login; `alVencer` se llama cuando la sesión vence y hay que reconectar. Devuelve true si
-  // sigue vigente una sesión anterior (por ejemplo, al recargar la página): se puede abrir sin ingresar.
+  // sigue vigente una sesión anterior (al recargar la página o en otra pestaña): se puede abrir sin ingresar.
   iniciar: (alVencer: () => void) => Promise<boolean>;
   // Tiene que llamarse desde un click: puede abrir una ventana.
   ingresar: () => Promise<void>;

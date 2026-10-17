@@ -20,8 +20,9 @@ el token de sesión sirve para cualquier planilla de esa cuenta. Lo que limita e
 
 - La app está en modo **Prueba**: solo pueden iniciar sesión las cuentas cargadas como usuarios de prueba.
 - El código solo usa la planilla configurada en `config.ts`, y es público para revisarlo.
-- El token dura una hora y "Salir" lo revoca. Para que recargar la página no pida el login de nuevo, se
-  guarda en el almacenamiento de la pestaña (`sessionStorage`), que se borra al cerrarla.
+- El token dura una hora y "Salir" lo revoca. Para que recargar la página o abrir otra pestaña no pida
+  el login de nuevo, se guarda en el navegador (`localStorage`) hasta que vence o se toca "Salir". En una
+  compu compartida, tocá "Salir" al terminar.
 - La página bloquea scripts de terceros (Content-Security-Policy), salvo el login de Google.
 
 ---

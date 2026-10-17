@@ -85,7 +85,7 @@ export function App({ db }: { db: BaseDeDatos }) {
       .then(async (conSesion) => {
         setListo(true);
         if (!conSesion) return;
-        // Sesión guardada de antes de recargar: se abre la planilla sin pasar por "Ingresar con Google".
+        // Sesión guardada (de antes de recargar o de otra pestaña): se abre la planilla sin pasar por "Ingresar con Google".
         setOcupado(true);
         try {
           await abrirBase();
