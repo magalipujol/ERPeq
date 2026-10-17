@@ -1,10 +1,17 @@
-:root {
+/* Colores: fondo crema y texto gris muy oscuro (sin blanco puro sobre negro puro); el texto secundario
+   (dimmed) y los placeholders con contraste de al menos 4,5:1 sobre el fondo de las tarjetas.
+   Con el selector de esquema para ganarle a los valores que Mantine define para modo claro. */
+:root,
+:root[data-mantine-color-scheme='light'] {
   --erp-bg: #f6f3ec;
   --erp-soft: #e8f0e1;
   --c1: #4f7a3a;
   --c2: #d49a2a;
   --c3: #6c8fb3;
   --mantine-color-body: #fffdf8;
+  --mantine-color-text: #1f241c;
+  --mantine-color-dimmed: #545a50;
+  --mantine-color-placeholder: #6e746a;
 }
 
 :root[data-mantine-color-scheme='dark'] {
@@ -14,9 +21,39 @@
   --c2: #e2b04a;
   --c3: #8fb1d6;
   --mantine-color-body: #20241d;
+  --mantine-color-text: #e6e4dc;
+  --mantine-color-dimmed: #b3b8ab;
+  --mantine-color-placeholder: #8f9589;
 }
 
-body { background: var(--erp-bg); }
+/* Espaciado generoso entre letras y palabras. */
+body {
+  background: var(--erp-bg);
+  letter-spacing: 0.02em;
+  word-spacing: 0.1em;
+}
+
+/* Números tabulares en tablas para que las cifras queden alineadas en columna. */
+table { font-variant-numeric: tabular-nums; }
+
+/* Los controles de formulario no heredan el espaciado por defecto del navegador. */
+input, textarea, select, button {
+  letter-spacing: inherit;
+  word-spacing: inherit;
+}
+
+/* Sin itálicas: el énfasis va en negrita. */
+em, i, cite { font-style: normal; font-weight: 600; }
+
+/* Etiquetas de estado más grandes y sin recortar (Mantine las corta con "…" dentro de las tablas). */
+.mantine-Badge-root {
+  --badge-fz-sm: 0.8125rem;
+  --badge-fz-md: 0.875rem;
+  --badge-height-sm: 1.375rem;
+  --badge-height-md: 1.5rem;
+  overflow: visible;
+}
+.mantine-Badge-label { overflow: visible; }
 
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .suave { background: var(--erp-soft); border-radius: var(--mantine-radius-md); }

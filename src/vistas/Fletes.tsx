@@ -136,7 +136,7 @@ function FormFlete() {
 
           {transferencia
             ? <Items modo="flete" deposito={origen} fecha={null} items={items} onChange={setItems} />
-            : <Text size="xs" c="dimmed">Solo un flete entre dos depósitos mueve stock. Las entregas a clientes descuentan stock con la venta.</Text>}
+            : <Text size="sm" c="dimmed">Solo los fletes entre depósitos mueven stock.</Text>}
 
           <MultiSelect label="Pedidos que lleva" placeholder={pedidosSel.length > 0 ? undefined : 'Ninguno'} data={opcionesPedidos} searchable
             value={pedidosSel} onChange={setPedidosSel} />
