@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Fondo a sangre: Android le aplica su máscara (círculo, gota…) y iOS redondea las esquinas.
+       La hoja queda dentro del 60 % central, la zona segura de los íconos "maskable". -->
+  <rect width="512" height="512" fill="#4f7a3a"/>
+  <g transform="rotate(-35 256 256)">
+    <path d="M256 104C352 160 372 300 256 408C140 300 160 160 256 104Z" fill="#f6f3ec"/>
+    <path d="M256 150V404M256 230L206 190M256 230L306 190M256 300L196 252M256 300L316 252" stroke="#4f7a3a"
+      stroke-width="14" stroke-linecap="round" fill="none"/>
+  </g>
+</svg>

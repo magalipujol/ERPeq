@@ -53,6 +53,8 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 | `tests/` | Pruebas e2e. `tests/google-falso.ts` reemplaza a Google con una planilla en memoria (su estado inicial está resumido al principio de `historias.spec.ts`) y tiene `ir()` para cambiar de pantalla en escritorio o celular. `tests/historias.spec.ts` tiene las historias de usuario de punta a punta; el resto prueba una pantalla cada uno. |
 | `spec/` | Especificaciones. `spec/modelo-de-datos.md` es la referencia del modelo de datos; `spec/arquitectura.md`, la de las capas; `spec/legibilidad.md`, las pautas de tipografía y contraste (apto dislexia); `spec/analisis.md`, la de los análisis; `spec/mapa.md`, la del mapa de Inicio. |
 | `herramientas/excel_a_base.py` | Convierte el Excel histórico en la planilla inicial. |
+| `public/` | Se copia tal cual a `dist/`: `manifest.webmanifest` (app instalable, sin service worker), `icono.svg` (original del ícono y favicon) y los PNG que genera `herramientas/iconos.mjs` (192, 512 —también *maskable*— y `apple-touch-icon` de 180). Las rutas son relativas porque la app vive en `/ERPeq/`. |
+| `herramientas/iconos.mjs` | Genera los íconos PNG desde `public/icono.svg` con el Chromium de Playwright: `node herramientas/iconos.mjs`. |
 | `herramientas/mapa_argentina.py` | Baja provincias (IGN) y localidades censales (INDEC) del servicio Georef y genera `src/mapa/argentina.json`. |
 | `herramientas/normalizar_planilla.gs` | Apps Script que migra una planilla vieja: saca las columnas con nombres copiados. |
 | `README.md` | Qué es, cómo funciona, estructura de la planilla, cómo correrlo. |

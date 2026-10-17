@@ -14,6 +14,10 @@ Es una página estática (sin servidor) hecha con React, TypeScript y Mantine, q
 - Las pantallas no conocen la planilla: usan una interfaz con una operación por caso de uso (registrar un pedido,
   una entrega, un flete…), y el adaptador de Google Sheets la traduce en filas. Ver
   [spec/arquitectura.md](spec/arquitectura.md).
+- Se puede instalar en el celular como app (manifiesto en `public/manifest.webmanifest`). No tiene service worker:
+  cada vez que se abre carga la versión publicada, así que se actualiza sola con cada deploy. Una app que quedó
+  abierta en segundo plano sigue con la versión anterior hasta que se cierra o se recarga. Ver
+  [GUIA-CONFIGURACION.md](GUIA-CONFIGURACION.md#instalar-en-el-celular).
 
 ## Estructura de la planilla
 
@@ -57,11 +61,15 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
   - `celular.css`: ajustes para pantallas de menos de 768 px (barra inferior con menú *Más*, campos de 44 px).
   - `fuentes/`: la tipografía OpenDyslexic (regular y negrita) y su licencia (SIL Open Font License).
   - `whatsapp.ts`: arma el mensaje con los pedidos para mandar a un grupo de WhatsApp (botón *Exportar a WhatsApp* en Pedidos).
+- `public/`: lo que se publica tal cual: el manifiesto de la app instalable y sus íconos (`icono.svg` es el
+  original; los PNG los genera `herramientas/iconos.mjs`).
 - `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`, `legibilidad.md`, `analisis.md` y `mapa.md`).
 - `.github/workflows/ci.yml`: lint, tipos y pruebas en cada pull request y push.
 - `.github/workflows/deploy.yml`: corre el CI y, si pasa, compila y publica en GitHub Pages en cada push a `main`
   (en *Settings → Pages*, la fuente tiene que ser **GitHub Actions**).
 - `herramientas/excel_a_base.py`: convierte el Excel histórico en la planilla inicial.
+- `herramientas/iconos.mjs`: genera los íconos PNG desde `public/icono.svg` (`node herramientas/iconos.mjs`, usa
+  el Chromium de Playwright).
 - `herramientas/mapa_argentina.py`: genera `src/mapa/argentina.json` con los datos abiertos de Georef (IGN e INDEC).
 - `herramientas/normalizar_planilla.gs`: Apps Script que saca de una planilla vieja las columnas con nombres
   copiados (ver "Migrar una planilla con nombres copiados").

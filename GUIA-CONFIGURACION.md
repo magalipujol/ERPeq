@@ -135,6 +135,17 @@ Abrí la app → **Ingresar con Google** → elegí tu cuenta. Como la app está
 Google muestra un aviso de "Google no verificó esta app": tocá *Continuar* y aceptá el permiso
 de hojas de cálculo.
 
+## Instalar en el celular
+
+ERPeq se puede instalar como una app, con su ícono y sin la barra del navegador:
+
+- **Android (Chrome):** abrí la app → menú ⋮ → **Instalar app** (o *Agregar a pantalla principal*).
+- **iPhone (Safari):** abrí la app → botón *Compartir* → **Agregar a inicio**.
+
+Se actualiza sola: cada vez que la abrís carga la última versión publicada (puede tardar hasta unos 10 minutos
+después de publicar). Si la dejaste abierta en segundo plano, cerrala y abrila de nuevo para ver los cambios.
+En iPhone, si cambia el ícono hay que borrarla y volver a agregarla.
+
 ## Sumar a otra persona
 
 1. Compartile la planilla desde Drive (*Compartir* → su correo → *Editor*).
