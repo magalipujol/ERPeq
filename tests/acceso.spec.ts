@@ -9,6 +9,18 @@ test('ingresa con Google y abre Inicio', async ({ page, ingresar }) => {
   await expect(page.getByRole('link', { name: 'Planilla' })).toHaveAttribute('href', 'https://docs.google.com/spreadsheets/d/prueba/edit')
 })
 
+// La fuente se sirve desde el propio sitio: si la Content-Security-Policy la bloquea, la app se ve igual pero
+// con Verdana, y ninguna otra prueba lo nota.
+test('carga OpenDyslexic en regular y negrita', async ({ page, ingresar }) => {
+  await page.goto('/')
+  await ingresar()
+  const estados = await page.evaluate(async () => {
+    await Promise.all([document.fonts.load('400 16px OpenDyslexic'), document.fonts.load('700 16px OpenDyslexic')])
+    return [...document.fonts].filter((f) => f.family === 'OpenDyslexic').map((f) => `${f.weight} ${f.status}`)
+  })
+  expect(estados.sort()).toEqual(['400 loaded', '700 loaded'])
+})
+
 test('cuenta sin acceso a la planilla: avisa y deja reintentar', async ({ page, google }) => {
   google.fallarProxima(403)
   await page.goto('/')

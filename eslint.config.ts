@@ -10,7 +10,7 @@ import tseslint from 'typescript-eslint'
 import vitest from '@vitest/eslint-plugin'
 
 export default defineConfig(
-  globalIgnores(['dist', 'playwright-report', 'test-results', 'herramientas']),
+  globalIgnores(['dist', '.claude', 'playwright-report', 'test-results', 'herramientas']),
 
   {
     linterOptions: {

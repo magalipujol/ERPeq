@@ -1,5 +1,5 @@
 import { BarChart } from '@mantine/charts';
-import { Grid, Group, Paper, ScrollArea, SegmentedControl, Stack, Table, Text, Title } from '@mantine/core';
+import { Grid, Group, Paper, ScrollArea, SegmentedControl, Stack, Table, Text, Title, useMatches } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import * as A from '../dominio/analisis';
 import { useBase } from '../base';
@@ -19,6 +19,8 @@ export function Analisis({ visible }: { visible: boolean }) {
   const clientes = useMemo(() => A.analizarClientes(datos, desde), [datos, desde]);
   const inactivos = useMemo(() => A.clientesInactivos(datos, hoy), [datos, hoy]);
   const fletes = A.fletesDelPeriodo(datos, desde);
+  // En celular los cuatro períodos entran en una fila solo en tamaño chico.
+  const tamPeriodo = useMatches({ base: 'xs', sm: 'sm' });
 
   const suma = (k: 'importe' | 'ganancia' | 'importeConCosto') => productos.reduce((s, p) => s + p[k], 0);
   const ganancia = suma('ganancia');
@@ -28,7 +30,7 @@ export function Analisis({ visible }: { visible: boolean }) {
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={2}>Análisis</Title>
-        <SegmentedControl aria-label="Período" value={periodo} onChange={(v) => { setPeriodo(v); }}
+        <SegmentedControl aria-label="Período" size={tamPeriodo} value={periodo} onChange={(v) => { setPeriodo(v); }}
           data={[...A.PERIODOS]} />
       </Group>
       <Kpis label="Resumen del período" items={[

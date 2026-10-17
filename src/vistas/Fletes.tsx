@@ -1,6 +1,6 @@
 import {
   Autocomplete, Badge, Button, Grid, Group, MultiSelect, NativeSelect, NumberInput, Paper, ScrollArea, SegmentedControl, Stack,
-  Table, Text, TextInput, Title,
+  Table, Text, TextInput, Title, useMatches,
 } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
@@ -51,6 +51,8 @@ export function Recorrido({ flete }: { flete: M.Flete }) {
 
 function FormFlete() {
   const { datos, pedidos, buscarProducto, buscarContacto, db } = useBase();
+  // En celular los tres estados no entran en una fila.
+  const enCelular = useMatches({ base: true, sm: false });
   const { guardando, msg, guardar, error } = useGuardar();
   const [fecha, setFecha] = useState(hoyISO);
   const [transporte, setTransporte] = useState('');
@@ -162,6 +164,7 @@ function FormFlete() {
           <div>
             <Text size="sm" fw={500} mb={4}>Estado</Text>
             <SegmentedControl size="xs" value={estadoInicial} onChange={setEstadoInicial} aria-label="Estado inicial"
+              orientation={enCelular ? 'vertical' : 'horizontal'} fullWidth={enCelular}
               data={(['preparacion', 'camino', 'finalizado'] as const).map((e) => ({ value: e, label: M.NOMBRE_ESTADO_FLETE[e] }))} />
           </div>
           {pedidosSel.length > 0 && (

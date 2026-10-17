@@ -151,21 +151,23 @@ function ReglasComision() {
           <Mensaje msg={msg} />
         </Stack>
       </form>
-      <Table highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }} aria-label="Reglas vigentes">
-        <Table.Thead>
-          <Table.Tr><Table.Th>Vendedor</Table.Th><Table.Th>Producto</Table.Th><Table.Th className="num">%</Table.Th><Table.Th>Desde</Table.Th></Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {filas.map((r) => (
-            <Table.Tr key={`${r.vendedorId}|${r.productoId}`}>
-              <Table.Td>{nombreVendedor(r.vendedorId)}</Table.Td>
-              <Table.Td c={r.productoId ? undefined : 'dimmed'}>{r.productoId ? nombreProducto.get(r.productoId) ?? r.productoId : 'Todos (general)'}</Table.Td>
-              <Table.Td className="num">{fmtNum(r.porcentaje)}</Table.Td>
-              <Table.Td c="dimmed">{fmtFecha(r.desde)}</Table.Td>
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
+      <ScrollArea type="auto">
+        <Table highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }} aria-label="Reglas vigentes">
+          <Table.Thead>
+            <Table.Tr><Table.Th>Vendedor</Table.Th><Table.Th>Producto</Table.Th><Table.Th className="num">%</Table.Th><Table.Th>Desde</Table.Th></Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {filas.map((r) => (
+              <Table.Tr key={`${r.vendedorId}|${r.productoId}`}>
+                <Table.Td>{nombreVendedor(r.vendedorId)}</Table.Td>
+                <Table.Td c={r.productoId ? undefined : 'dimmed'}>{r.productoId ? nombreProducto.get(r.productoId) ?? r.productoId : 'Todos (general)'}</Table.Td>
+                <Table.Td className="num">{fmtNum(r.porcentaje)}</Table.Td>
+                <Table.Td c="dimmed">{fmtFecha(r.desde)}</Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </ScrollArea>
       {filas.length === 0 && <Text c="dimmed" mt="xs" size="sm">No hay reglas: las comisiones se proponen en 0%.</Text>}
     </Paper>
   );

@@ -47,7 +47,8 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
     `vistas/`: Inicio (pantalla por defecto: acceso directo a un pedido nuevo, pedidos pendientes y fletes en
     curso), Stock, Pedidos, Ventas, Compras, Fletes, Precios, Caja y Análisis.
   - `componentes/`: piezas compartidas (carga de ítems, navegación entre pantallas, KPIs).
-  - `celular.css`: ajustes para pantallas de menos de 768 px (barra inferior, campos de 44 px).
+  - `celular.css`: ajustes para pantallas de menos de 768 px (barra inferior con menú *Más*, campos de 44 px).
+  - `fuentes/`: la tipografía OpenDyslexic (regular y negrita) y su licencia (SIL Open Font License).
   - `whatsapp.ts`: arma el mensaje con los pedidos para mandar a un grupo de WhatsApp (botón *Exportar a WhatsApp* en Pedidos).
 - `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`, `legibilidad.md` y `analisis.md`).
 - `.github/workflows/ci.yml`: lint, tipos y pruebas en cada pull request y push.
