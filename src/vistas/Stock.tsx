@@ -131,7 +131,7 @@ function Inventario({ filas }: { filas: FilaStock[] }) {
             <Table.Tr>
               {cols.map((c) => (
                 <Table.Th key={c.key} className={c.num === true ? 'num' : undefined}>
-                  <UnstyledButton fz="xs" fw={600} c="dimmed" tt="uppercase" onClick={() => { ordenar(c.key); }}>
+                  <UnstyledButton fz="sm" fw={700} onClick={() => { ordenar(c.key); }}>
                     <Group gap={2} wrap="nowrap" justify={c.num === true ? 'flex-end' : undefined}>
                       {c.titulo}
                       {orden.key === c.key && (orden.dir > 0 ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />)}
@@ -202,7 +202,7 @@ function AjusteStock() {
   return (
     <Paper>
       <Encabezado titulo="Ajuste de stock" />
-      <Text size="xs" c="dimmed" mt={-8} mb="sm">Para corregir diferencias (rotura, conteo, faltantes). Usá cantidades negativas para restar.</Text>
+      <Text size="sm" c="dimmed" mt={-8} mb="sm">Para corregir diferencias. Para restar, usá un número negativo.</Text>
       <form onSubmit={enviar} noValidate aria-label="Ajuste de stock">
         <Stack gap="sm">
           <Autocomplete label="Producto" placeholder="Buscar producto…" data={nombres} value={producto} onChange={setProducto} />

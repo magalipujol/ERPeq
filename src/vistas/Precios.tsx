@@ -11,9 +11,8 @@ export function Precios() {
   return (
     <Stack gap="md">
       <Title order={2}>Precios y comisiones</Title>
-      <Text size="sm" c="dimmed">
-        Son los valores que se proponen al cargar un pedido (precio) y una entrega (comisión). En cada pedido o entrega se
-        pueden cambiar; lo que se cambia acá no modifica lo ya cargado.
+      <Text c="dimmed" maw="70ch">
+        Se proponen al cargar pedidos y entregas. Cambiarlos no modifica lo ya cargado.
       </Text>
       <Grid gap="md" align="flex-start">
         <Grid.Col span={{ base: 12, md: 6 }}><ListaPrecios /></Grid.Col>

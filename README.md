@@ -44,7 +44,7 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
     `vistas/`: Stock, Pedidos, Ventas, Compras, Fletes y Precios.
   - `componentes/`: piezas compartidas (carga de ítems, navegación entre pantallas, KPIs).
   - `celular.css`: ajustes para pantallas de menos de 768 px (barra inferior, campos de 44 px).
-- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`).
+- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md` y `legibilidad.md`).
 - `.github/workflows/ci.yml`: lint, tipos y pruebas en cada pull request y push.
 - `.github/workflows/deploy.yml`: corre el CI y, si pasa, compila y publica en GitHub Pages en cada push a `main`
   (en *Settings → Pages*, la fuente tiene que ser **GitHub Actions**).
