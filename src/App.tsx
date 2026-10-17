@@ -8,6 +8,7 @@ import { BarraInferior, NavSuperior } from './componentes/Navegacion';
 import { type BaseDeDatos, type InfoBase, SinAcceso } from './db/puerto';
 import type * as M from './dominio/modelo';
 import { hora, mensajeDeError } from './formato';
+import { Analisis } from './vistas/Analisis';
 import { Compras } from './vistas/Compras';
 import { Fletes } from './vistas/Fletes';
 import { Inicio } from './vistas/Inicio';
@@ -20,6 +21,7 @@ type Pantalla = 'config' | 'login' | 'sin-acceso' | 'app';
 const NAV = [
   { value: 'inicio', label: 'Inicio' }, { value: 'stock', label: 'Stock' }, { value: 'pedidos', label: 'Pedidos' }, { value: 'ventas', label: 'Ventas' },
   { value: 'compras', label: 'Compras' }, { value: 'fletes', label: 'Fletes' }, { value: 'precios', label: 'Precios' },
+  { value: 'analisis', label: 'Análisis' },
 ] as const;
 type Vista = (typeof NAV)[number]['value'];
 const VISTAS: readonly string[] = NAV.map((n) => n.value);
@@ -131,7 +133,7 @@ export function App({ db }: { db: BaseDeDatos }) {
   const enApp = pantalla === 'app' && info !== null && datos !== null;
 
   return (
-    <AppShell header={{ height: { base: 68, sm: enApp ? 116 : 68, lg: 68 } }} footer={enApp ? { height: { base: 64, sm: 0 } } : undefined}>
+    <AppShell header={{ height: { base: 68, sm: enApp ? 116 : 68, xl: 68 } }} footer={enApp ? { height: { base: 64, sm: 0 } } : undefined}>
       <AppShell.Header>
         <Container size="xl" h="100%">
           <Group h="100%" justify="space-between" gap="xs" py={8} className="fila-header">
@@ -232,6 +234,7 @@ export function App({ db }: { db: BaseDeDatos }) {
               <Box display={vista === 'compras' ? undefined : 'none'}><Compras /></Box>
               <Box display={vista === 'fletes' ? undefined : 'none'}><Fletes /></Box>
               <Box display={vista === 'precios' ? undefined : 'none'}><Precios /></Box>
+              <Box display={vista === 'analisis' ? undefined : 'none'}><Analisis visible={vista === 'analisis'} /></Box>
             </BaseProvider>
           )}
         </Container>

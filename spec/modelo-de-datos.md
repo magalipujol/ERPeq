@@ -585,6 +585,9 @@ transferencia para reponer stock) cuenta como gasto de logística del mes. Contr
 | Faltante por depósito | `faltante(p, d)` para los pedidos abiertos |
 | Tiempo de entrega | fecha de la última venta − fecha del pedido |
 
+La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e inactivos) está descripta en
+[analisis.md](analisis.md).
+
 ## Carga inicial desde el Excel
 
 [herramientas/excel_a_base.py](../herramientas/excel_a_base.py) genera la planilla completa a partir de

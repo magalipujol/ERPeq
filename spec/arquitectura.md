@@ -25,7 +25,7 @@ flowchart LR
       memoria["memoria.ts<br/>planilla en memoria"]
     end
   end
-  dominio["src/dominio/modelo.ts<br/>tipos y cálculos"]
+  dominio["src/dominio/<br/>modelo.ts: tipos y cálculos<br/>analisis.ts: análisis"]
 
   main --> index
   main --> app
@@ -48,7 +48,7 @@ flowchart LR
 
 | Capa | Dónde | Qué tiene | Puede importar |
 |---|---|---|---|
-| Dominio | `src/dominio/` | Tipos (`Pedido`, `Venta`, `Flete`…) y cálculos puros: stock por depósito, estados, precio vigente, comisiones, ganancia, armado de una entrega, IDs. | Nada de fuera de su carpeta. |
+| Dominio | `src/dominio/` | Tipos (`Pedido`, `Venta`, `Flete`…) y cálculos puros: stock por depósito, estados, precio vigente, comisiones, ganancia, armado de una entrega, IDs (`modelo.ts`) y los análisis de ventas y clientes (`analisis.ts`). | Nada de fuera de su carpeta. |
 | Puerto | `src/db/puerto.ts` | La interfaz `BaseDeDatos` (sesión, `leer()` y operaciones), los datos de cada operación y los errores `SinAcceso` y `SesionVencida`. | Solo el dominio. |
 | Adaptador Google Sheets | `src/db/sheets/` | Hojas y columnas, lectura de filas, filas que agrega cada operación, celdas y fechas, login y Sheets API. | Dominio, puerto y `src/config.ts`. Nunca la UI. |
 | UI | `src/App.tsx`, `src/base.ts`, `src/BaseProvider.tsx`, `src/vistas/`, `src/componentes/` | Pantallas y estado de la pantalla. Arma los objetos del dominio (con sus IDs) y llama al puerto. | Dominio y puerto. Nunca un adaptador. |
@@ -111,7 +111,7 @@ flowchart LR
 
 | Capa | Prueba |
 |---|---|
-| Dominio | `src/dominio/modelo.test.ts` (Vitest), con objetos del dominio. |
+| Dominio | `src/dominio/modelo.test.ts` y `src/dominio/analisis.test.ts` (Vitest), con objetos del dominio. |
 | Adaptador Sheets | `src/db/sheets/*.test.ts` (Vitest): lectura de filas (`hojas.test.ts`), celdas y fechas (`celdas.test.ts`) y las filas exactas que agrega cada operación (`operaciones.test.ts`), sobre la planilla en memoria de `memoria.ts`, que usa las mismas hojas, columnas y lectura que el adaptador real. |
 | Todo junto | `tests/` (Playwright): la app compilada contra Google simulado (`tests/google-falso.ts`), verificando las filas que llegan a cada `batchUpdate`. |
 
