@@ -13,3 +13,6 @@ dist/
 test-results/
 playwright-report/
 .clasp.json
+
+# Worktrees de agentes de Claude Code
+.claude/worktrees/
