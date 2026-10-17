@@ -2,8 +2,8 @@
 // conoce esta interfaz; cómo se guarda (hojas, columnas, celdas, API) es asunto de cada adaptador.
 // Ver spec/arquitectura.md.
 import type {
-  Ajuste, Cobro, Compra, ContactoNuevo, Datos, Entrega, EstadoFlete, Flete, FleteItem, Pedido, PedidoFlete, PedidoItem, Precio,
-  Producto, ReglaComision, Rendicion,
+  Ajuste, Cobro, Compra, ContactoNuevo, Datos, Entrega, EstadoFlete, Flete, FleteItem, Pedido, PedidoFlete, PedidoItem,
+  Precio, Producto, Receta, RecetaItem, ReglaComision, Rendicion,
 } from '../dominio/modelo';
 
 export class SesionVencida extends Error {
@@ -13,16 +13,22 @@ export class SinAcceso extends Error {
   constructor() { super('Esta cuenta no tiene acceso a la planilla de ERPeq.'); }
 }
 
+// Áreas que funcionan solo si la base tiene sus datos: la caja (socios, cobros y rendiciones) y las recetas
+// (recetas y sus insumos).
+export type AreaOpcional = 'caja' | 'recetas';
+
 // Algo que la base todavía no tiene y hay que crear a mano (en Sheets, una hoja con sus encabezados).
-export interface Faltante { nombre: string; encabezados: string[] }
+export interface Faltante { area: AreaOpcional; nombre: string; encabezados: string[] }
 
 export interface InfoBase {
   titulo: string;
   url: string;
-  // Lo que falta para la caja (socios, cobros y rendiciones). Mientras falte algo, esos datos se leen
-  // vacíos y no se registran cobros ni rendiciones; el resto de la app funciona igual.
+  // Lo que falta de cada área. Mientras falte algo, esos datos se leen vacíos y el área no registra nada;
+  // el resto de la app funciona igual.
   faltantes: Faltante[];
 }
+
+export const faltantesDe = (info: InfoBase, area: AreaOpcional) => info.faltantes.filter((f) => f.area === area);
 
 export interface PedidoNuevo {
   pedido: Pedido;
@@ -46,6 +52,9 @@ export interface FleteNuevo {
   pedidos: PedidoFlete[];
   transporteNuevo: ContactoNuevo | null;
 }
+
+// Una versión nueva de una receta (alta, cambio o baja).
+export interface RecetaNueva { receta: Receta; items: RecetaItem[] }
 
 export interface CompraNueva {
   lineas: Omit<Compra, 'fila' | 'importe'>[]; // el importe lo calcula la base: cantidad × precio
@@ -80,6 +89,9 @@ export interface Operaciones {
   registrarReglaComision: (r: ReglaComision) => Promise<void>;
   registrarCobro: (c: Cobro) => Promise<void>;
   registrarRendicion: (r: Rendicion) => Promise<void>;
+  registrarReceta: (r: RecetaNueva) => Promise<void>;
+  // Los ajustes de una fabricación (armarFabricacion): descuentan los insumos y suman el producto.
+  registrarFabricacion: (ajustes: Ajuste[]) => Promise<void>;
 }
 
 export interface BaseDeDatos extends Sesion, Operaciones {

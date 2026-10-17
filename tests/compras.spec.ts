@@ -37,10 +37,10 @@ test('registra una compra con un producto y un proveedor nuevos en una sola escr
   await expect(form.getByText('✓ Compra a Prov C registrada (2 productos, 1 nuevo).')).toBeVisible()
 
   expect(google.escrituras).toEqual([{
-    'Productos': [['P004', 'Pasas', 'kg', '']],
+    'Productos': [['P005', 'Pasas', 'kg', '']],
     'Contactos': [['C0005', 'proveedor', 'Prov C', '', '', '', '', '', '', '']],
     'Compras': [
-      [HOY_SERIE, 'BB', 'C0005', 'P004', 5, 100, 500, 'R-9', 'PE0002', ''],
+      [HOY_SERIE, 'BB', 'C0005', 'P005', 5, 100, 500, 'R-9', 'PE0002', ''],
       [HOY_SERIE, 'BB', 'C0005', 'P002', 10, 500, 5000, 'R-9', 'PE0002', ''],
     ],
   }])

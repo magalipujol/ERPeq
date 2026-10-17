@@ -57,6 +57,8 @@ COLS = {
     'Socios': ['id', 'nombre', 'vendedor_id', 'rol'],
     'Cobros': ['fecha', 'venta_id', 'importe', 'medio', 'socio_id', 'nota'],
     'Rendiciones': ['fecha', 'de_socio_id', 'a_socio_id', 'importe', 'medio', 'nota'],
+    'Recetas': ['id', 'version', 'desde', 'producto_id', 'cantidad', 'activa'],
+    'Recetas ítems': ['receta_id', 'version', 'producto_id', 'cantidad'],
 }
 COLS_FECHA = {'fecha', 'desde'}
 COLS_PLATA = {'precio', 'importe', 'costo', 'monto', 'precio_lista', 'costo_asignado'}
@@ -345,6 +347,8 @@ def main(origen, destino):
         'Socios': [[sid, nombre, vendedor_id[v], rol] for sid, nombre, v, rol in SOCIOS],
         'Cobros': [],
         'Rendiciones': [],
+        'Recetas': [],
+        'Recetas ítems': [],
     }
     out = openpyxl.Workbook()
     out.remove(out.active)

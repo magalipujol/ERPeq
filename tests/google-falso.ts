@@ -42,6 +42,8 @@ export const ENCABEZADOS: Record<string, string[]> = {
   'Socios': ['id', 'nombre', 'vendedor_id', 'rol'],
   'Cobros': ['fecha', 'venta_id', 'importe', 'medio', 'socio_id', 'nota'],
   'Rendiciones': ['fecha', 'de_socio_id', 'a_socio_id', 'importe', 'medio', 'nota'],
+  'Recetas': ['id', 'version', 'desde', 'producto_id', 'cantidad', 'activa'],
+  'Recetas ítems': ['receta_id', 'version', 'producto_id', 'cantidad'],
 }
 
 // Filas de datos de cada hoja (sin el encabezado).
@@ -52,6 +54,7 @@ export function planillaInicial(): Record<string, Fila[]> {
       ['P001', 'Almendras', 'kg', ''],
       ['P002', 'Avena', 'kg', 50],
       ['P003', 'Miel', 'unid.', ''],
+      ['P004', 'Mix europeo', 'kg', ''],
     ],
     'Contactos': [
       ['C0001', 'cliente', 'Ana', 'Minorista', '', '', '', 'Funes', 'Santa Fe', ''],
@@ -64,6 +67,7 @@ export function planillaInicial(): Record<string, Fila[]> {
     'Precios': [
       ['P001', 3000, serie('2026-01-01')],
       ['P002', 800, serie('2026-01-01')],
+      ['P004', 2500, serie('2026-01-01')],
     ],
     'Reglas de comisión': [
       ['VEN01', '', 10, serie('2026-01-01')],
@@ -99,6 +103,8 @@ export function planillaInicial(): Record<string, Fila[]> {
     'Socios': [['SOC01', 'Sampatti', 'VEN01', 'dueño'], ['SOC02', 'Guada/Hernán', 'VEN02', 'socio']],
     'Cobros': [],
     'Rendiciones': [],
+    'Recetas': [],
+    'Recetas ítems': [],
   }
 }
 
@@ -206,10 +212,10 @@ export const test = base.extend<{ google: GoogleFalso; ingresar: () => Promise<v
 
 export { expect } from '@playwright/test'
 
-export type Pantalla = 'Inicio' | 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | 'Fletes' | 'Precios' | 'Caja' | 'Análisis'
+export type Pantalla = 'Inicio' | 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | 'Recetas' | 'Fletes' | 'Precios' | 'Caja' | 'Análisis'
 
 // En celular, estas pantallas están en el menú «Más» de la barra inferior.
-const EN_MAS: readonly Pantalla[] = ['Compras', 'Fletes', 'Precios', 'Caja', 'Análisis']
+const EN_MAS: readonly Pantalla[] = ['Compras', 'Recetas', 'Fletes', 'Precios', 'Caja', 'Análisis']
 
 // Cambia de pantalla con el selector del header (escritorio) o la barra inferior (celular): el que esté visible.
 export const ir = async (page: Page, pantalla: Pantalla) => {

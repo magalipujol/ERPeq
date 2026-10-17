@@ -2,9 +2,11 @@
 // planilla de google-falso.ts como punto de partida. Ahí está el estado inicial:
 //   Almendras: 10 kg en General (BB), 0 en Rosario, 6 en camino a Rosario (F0001). Costo promedio $1.500.
 //   Avena: 25 kg en Rosario; PE0002 (Ana, Guada/Hernán) pide 10 kg sin entregar. Costo promedio $500.
-//   Precios de lista: Almendras $3.000, Avena $800. Miel sin precio.
+//   Mix europeo: sin stock ni compras (se fabrica con una receta).
+//   Precios de lista: Almendras $3.000, Avena $800, Mix europeo $2.500. Miel sin precio.
 //   Reglas: Leo 10% general; Guada/Hernán 3% general y 7% en Almendras.
 //   Socios: Sampatti (la empresa de Leo, dueña de la mercadería) y Guada/Hernán. Sin cobros ni rendiciones.
+//   Sin recetas ni fabricaciones.
 import { devices, type Page } from '@playwright/test'
 import { AHORA, expect, HOY_SERIE, ir, test } from './google-falso'
 
@@ -239,12 +241,12 @@ test('se compra un producto nuevo y se vende en el momento a un cliente nuevo', 
   expect(google.escrituras[1]).toEqual({
     'Contactos': [['C0006', 'cliente', 'Bruno', 'Minorista', '', '', '', '', '', '']],
     'Pedidos': [['PE0003', HOY_SERIE, 'C0006', 'ROS', '']],
-    'Pedidos ítems': [['PE0003', 1, 'P004', 3, '', 1800]],
+    'Pedidos ítems': [['PE0003', 1, 'P005', 3, '', 1800]],
     'Pedidos estados': [['PE0003', AHORA, 'abierto']],
     'Pedidos vendedores': [['PE0003', 'VEN01']],
-    'Precios': [['P004', 1800, HOY_SERIE]],
+    'Precios': [['P005', 1800, HOY_SERIE]],
     'Ventas': [['V0002', HOY_SERIE, 'PE0003', 'ROS', '']],
-    'Ventas ítems': [['V0002', 1, 1, 'P004', 3, 1800, 5400, 1000]],
+    'Ventas ítems': [['V0002', 1, 1, 'P005', 3, 1800, 5400, 1000]],
     // Leo cobra su 10% general.
     'Ventas comisiones': [['V0002', 1, 'VEN01', 10, 10, 540]],
   })
@@ -549,4 +551,57 @@ test('corregir en la planilla el nombre de un cliente y de un producto cambia to
   expect(Object.keys(google.escrituras[0])).not.toContain('Contactos')
   expect(google.escrituras[0].Pedidos).toEqual([['PE0003', HOY_SERIE, 'C0001', 'ROS', '']])
   expect(google.escrituras[0]['Pedidos ítems']).toEqual([['PE0003', 1, 'P002', 2, 800, 800]])
+})
+
+test('llegan las almendras a Rosario, se arma la receta del mix europeo y se fabrica con más merma de la prevista', async ({ page, google }) => {
+  // 1. Llega el flete F0001: Rosario queda con 6 kg de almendras y 25 de avena.
+  await ir(page, 'Fletes')
+  await page.getByRole('button', { name: 'Recibido F0001' }).click()
+  await expect(page.getByText('✓ Flete F0001: finalizado.')).toBeVisible()
+
+  // 2. Receta del mix europeo (ya está en Productos, con precio de lista), cargada en gramos: 600 g de almendras y 400 de avena por tanda.
+  //    Sin merma saldría 1 kg; se estima un 5 %: salen 950 g.
+  await ir(page, 'Recetas')
+  const receta = page.getByRole('form', { name: 'Receta' })
+  await receta.getByLabel('Producto que sale').fill('Mix europeo')
+  await expect(receta.getByText(/Precio de lista: \$\s2\.500 por kg/)).toBeVisible()
+  await page.getByRole('radiogroup', { name: 'Cantidades en' }).getByText('g', { exact: true }).click()
+  await receta.getByLabel('Producto', { exact: true }).fill('Almendras')
+  await receta.getByLabel('Cantidad', { exact: true }).fill('600')
+  await receta.getByRole('button', { name: '+ Agregar producto' }).click()
+  await receta.getByLabel('Producto', { exact: true }).nth(1).fill('Avena')
+  await receta.getByLabel('Cantidad', { exact: true }).nth(1).fill('400')
+  await receta.getByLabel('Sale por tanda').fill('950')
+  await receta.getByRole('button', { name: 'Guardar receta' }).click()
+  await expect(receta.getByText('✓ Receta de Mix europeo guardada.')).toBeVisible()
+
+  // 3. Se fabrican 2 tandas en Rosario: usa 1,2 kg de almendras y 0,8 de avena. Se esperaban 1,9 kg pero salen 1,85
+  //    (7,5 % de merma). Los insumos cuestan 1,2 × $1.500 + 0,8 × $500 = $2.200 / 1,85 kg = $1.189,19 el kg.
+  const fabricar = page.getByRole('form', { name: 'Fabricar' })
+  await fabricar.getByLabel('Depósito').selectOption('Rosario')
+  await fabricar.getByLabel('Tandas').fill('2')
+  await expect(fabricar.getByLabel('Salió')).toHaveAttribute('placeholder', '1,9')
+  const insumos = fabricar.getByRole('table', { name: 'Insumos a descontar' })
+  await expect(insumos.getByRole('row', { name: /Almendras/ })).toContainText('1,2 kg')
+  await expect(insumos.getByRole('row', { name: /Almendras/ })).toContainText('6')
+  await fabricar.getByLabel('Salió').fill('1.85')
+  await expect(fabricar.getByText(/Merma: 7,5 % · Insumos: \$\s1\.189 por kg/)).toBeVisible()
+  await fabricar.getByRole('button', { name: 'Registrar fabricación' }).click()
+  await expect(fabricar.getByText('✓ FA0001: 1,85 kg de Mix europeo en Rosario.')).toBeVisible()
+
+  // Una sola escritura con los ajustes que mueven el stock; el motivo dice qué receta y versión se usó.
+  expect(google.escrituras.at(-1)).toEqual({
+    'Ajustes': [
+      [HOY_SERIE, 'ROS', 'P001', -1.2, 'Fabricación FA0001 (RE0001 v1)'],
+      [HOY_SERIE, 'ROS', 'P002', -0.8, 'Fabricación FA0001 (RE0001 v1)'],
+      [HOY_SERIE, 'ROS', 'P004', 1.85, 'Fabricación FA0001 (RE0001 v1)'],
+    ],
+  })
+  await expect(page.getByRole('table', { name: 'Últimas fabricaciones' })).toContainText('RE0001 v1')
+
+  // 4. Stock en Rosario: 6 − 1,2 = 4,8 kg de almendras; 25 − 0,8 = 24,2 de avena; 1,85 de mix.
+  await ir(page, 'Stock')
+  await esperarStock(page, 'Almendras', { general: '10', rosario: '4,8', camino: '–', comprometido: '–' })
+  await esperarStock(page, 'Avena', { general: '0', rosario: '24,2', camino: '–', comprometido: '10' })
+  await esperarStock(page, 'Mix europeo', { general: '0', rosario: '1,85', camino: '–', comprometido: '–' })
 })

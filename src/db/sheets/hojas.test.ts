@@ -69,6 +69,14 @@ describe('socios, cobros y rendiciones', () => {
     expect(d.rendiciones[0]).toMatchObject({ deId: 'SOC02', aId: 'SOC01', importe: 5000, nota: 'Rendición semanal' });
   });
 
+  it('agrupa las hojas opcionales que faltan por área', () => {
+    const titulos = H.CLAVES.map(H.nombreHoja).filter((t) => !['Cobros', 'Recetas', 'Recetas ítems'].includes(t));
+
+    expect(H.hojasFaltantes(titulos).map((k) => [k, H.OPCIONALES[k]])).toStrictEqual([
+      ['cobros', 'caja'], ['recetas', 'recetas'], ['recetasItems', 'recetas'],
+    ]);
+  });
+
   it('las hojas opcionales que faltan no se piden y se leen vacías', async () => {
     expect.hasAssertions();
 

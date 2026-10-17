@@ -5,9 +5,10 @@
 // siempre de su hoja.
 import {
   type Ajuste, type Cobro, type Compra, type ContactoNuevo, type Datos, type Flete, type FleteItem, type Pedido,
-  type PedidoFlete, type PedidoItem, type PedidoVendedor, type Precio, type Producto, redondear, type ReglaComision,
-  type Rendicion, type Socio, type Venta, type VentaComision, type VentaItem,
+  type PedidoFlete, type PedidoItem, type PedidoVendedor, type Precio, type Producto, type Receta, type RecetaItem, redondear,
+  type ReglaComision, type Rendicion, type Socio, type Venta, type VentaComision, type VentaItem,
 } from '../../dominio/modelo';
+import type { AreaOpcional } from '../puerto';
 import { type Celda, deSerie, type Fila, type ValorCelda } from './celdas';
 
 // Nombre de cada hoja y encabezados de las columnas que lee la app, en orden (la fila 1 es el encabezado).
@@ -35,6 +36,8 @@ export const HOJAS = {
   socios: ['Socios', ['id', 'nombre', 'vendedor_id', 'rol']],
   cobros: ['Cobros', ['fecha', 'venta_id', 'importe', 'medio', 'socio_id', 'nota']],
   rendiciones: ['Rendiciones', ['fecha', 'de_socio_id', 'a_socio_id', 'importe', 'medio', 'nota']],
+  recetas: ['Recetas', ['id', 'version', 'desde', 'producto_id', 'cantidad', 'activa']],
+  recetasItems: ['Recetas ítems', ['receta_id', 'version', 'producto_id', 'cantidad']],
 } as const satisfies Record<string, readonly [string, readonly string[]]>;
 
 export type ClaveHoja = keyof typeof HOJAS;
@@ -42,12 +45,18 @@ export const CLAVES = Object.keys(HOJAS) as ClaveHoja[];
 export const nombreHoja = (k: ClaveHoja) => HOJAS[k][0];
 export const encabezados = (k: ClaveHoja): readonly string[] => HOJAS[k][1];
 
-// Hojas que la planilla puede no tener todavía: si faltan, se leen vacías. Con las demás, que falte una
-// es un error (si se leyera vacía, el stock o las ventas saldrían mal sin aviso).
-export const OPCIONALES = ['socios', 'cobros', 'rendiciones'] as const satisfies readonly ClaveHoja[];
+// Hojas que la planilla puede no tener todavía, por área: si faltan, se leen vacías y esa área no deja
+// registrar nada. Con las demás, que falte una es un error (si se leyera vacía, el stock o las ventas
+// saldrían mal sin aviso).
+export const OPCIONALES = {
+  socios: 'caja', cobros: 'caja', rendiciones: 'caja',
+  recetas: 'recetas', recetasItems: 'recetas',
+} as const satisfies Partial<Record<ClaveHoja, AreaOpcional>>;
+type Opcional = keyof typeof OPCIONALES;
 
 // Hojas opcionales que no están entre los títulos de la planilla.
-export const hojasFaltantes = (titulos: readonly string[]) => OPCIONALES.filter((k) => !titulos.includes(nombreHoja(k)));
+export const hojasFaltantes = (titulos: readonly string[]) =>
+  (Object.keys(OPCIONALES) as Opcional[]).filter((k) => !titulos.includes(nombreHoja(k)));
 
 const columna = (n: number) => String.fromCharCode(64 + n);
 export const rango = (k: ClaveHoja) => `'${nombreHoja(k)}'!A1:${columna(encabezados(k).length)}`;
@@ -141,6 +150,11 @@ export function parsear(crudo: Fila[][]): Datos {
     rendiciones: de('rendiciones', 1, (f) => ({
       fecha: fecha(f[0]), deId: txt(f[1]), aId: txt(f[2]), importe: num(f[3]) ?? 0, medio: txt(f[4]).toLowerCase(), nota: txt(f[5]),
     })),
+    recetas: de('recetas', 0, (f) => ({
+      id: txt(f[0]), version: num(f[1]) ?? 1, desde: fecha(f[2]), productoId: txt(f[3]), cantidad: num(f[4]) ?? 0,
+      activa: txt(f[5]) === '' || bool(f[5]),
+    })),
+    recetasItems: de('recetasItems', 0, (f) => ({ recetaId: txt(f[0]), version: num(f[1]) ?? 1, productoId: txt(f[2]), cantidad: num(f[3]) ?? 0 })),
   };
 }
 
@@ -188,6 +202,8 @@ export const filas = {
   ajuste: (a: Ajuste): ValorCelda[] => [a.fecha, a.depositoId, a.productoId, a.cantidad, a.motivo],
   cobro: (c: Cobro): ValorCelda[] => [c.fecha, c.ventaId, c.importe, c.medio, c.socioId, c.nota],
   rendicion: (r: Rendicion): ValorCelda[] => [r.fecha, r.deId, r.aId, r.importe, r.medio, r.nota],
+  receta: (r: Receta): ValorCelda[] => [r.id, r.version, r.desde, r.productoId, r.cantidad, r.activa ? 'sí' : 'no'],
+  recetaItem: (i: RecetaItem): ValorCelda[] => [i.recetaId, i.version, i.productoId, i.cantidad],
 };
 
 // Filas por hoja que se escriben juntas en una operación.

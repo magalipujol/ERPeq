@@ -65,8 +65,9 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
 `BaseDeDatos` junta tres partes:
 
 - **Sesión:** `configurada`, `iniciar(alVencer)`, `ingresar()`, `salir()` y `abrir()`, que devuelve el
-  título y la URL de la base y lo que le falta para la caja (`faltantes`: en Sheets, las hojas opcionales
-  *Socios*, *Cobros* y *Rendiciones* que no existen, con sus encabezados), o lanza `SinAcceso` si la cuenta
+  título y la URL de la base y lo que le falta a cada área opcional (`faltantes`, cada uno con su `area`:
+  `caja` para *Socios*, *Cobros* y *Rendiciones*, `recetas` para *Recetas* y *Recetas ítems*;
+  en Sheets, las hojas que no existen, con sus encabezados; la UI los filtra con `faltantesDe`), o lanza `SinAcceso` si la cuenta
   no puede abrirla. Una llamada con la sesión vencida lanza `SesionVencida` y avisa con `alVencer`.
   `iniciar` devuelve `true` si sigue vigente una sesión anterior (al recargar la página o en otra pestaña):
   la UI abre la base sin pasar por `ingresar()`. En Sheets, el token se guarda en `localStorage` hasta que
@@ -92,6 +93,8 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
 | `registrarReglaComision` | `ReglaComision` | *Reglas de comisión*. |
 | `registrarCobro` | `Cobro` | *Cobros*. |
 | `registrarRendicion` | `Rendicion` | *Rendiciones*. |
+| `registrarReceta` | `receta` (una versión), `items` | *Recetas*, *Recetas ítems* (si hay). |
+| `registrarFabricacion` | `ajustes` (de `armarFabricacion`) | *Ajustes* (uno negativo por insumo y uno positivo por el producto). |
 
 Los IDs (`PE0003`, `V0004`, `C0012`…) los genera la UI con `siguienteId` del dominio a partir de los datos
 leídos, así el mensaje de confirmación puede nombrarlos. El momento de los estados lo pasa la UI (`new Date()`).

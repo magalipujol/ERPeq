@@ -121,6 +121,11 @@ erDiagram
     SOCIO ||--o{ RENDICION : entrega
     SOCIO ||--o{ RENDICION : recibe
 
+    PRODUCTO ||--o{ RECETA : "sale de"
+    RECETA ||--o{ RECETA_ITEM : "lleva (por versión)"
+    PRODUCTO ||--o{ RECETA_ITEM : "insumo"
+    RECETA ||--o{ AJUSTE : "se fabrica con (motivo)"
+
     DEPOSITO {
         string id PK "BB, ROS"
         string nombre "General, Rosario"
@@ -246,7 +251,7 @@ erDiagram
         string deposito_id FK
         string producto_id FK
         number cantidad "+/-"
-        string motivo
+        string motivo "o Fabricación FA0001 (RE0001 v1)"
     }
     SOCIO {
         string id PK "SOC01"
@@ -269,6 +274,20 @@ erDiagram
         number importe
         string medio "efectivo, transferencia"
         string nota
+    }
+    RECETA {
+        string id PK "RE0001 (con version)"
+        number version PK "1, 2, ..."
+        date desde
+        string producto_id FK "lo que sale"
+        number cantidad "sale por tanda"
+        string activa "sí, no"
+    }
+    RECETA_ITEM {
+        string receta_id FK
+        number version FK
+        string producto_id FK "insumo"
+        number cantidad "por tanda"
     }
 ```
 
@@ -315,7 +334,17 @@ columnas corridas guardaría cada dato en otra columna.
 | **Fletes ítems** | `flete_id`, `producto_id`, `cantidad` | Solo para mercadería que va **entre depósitos**. |
 | **Fletes estados** | `flete_id`, `fecha`, `estado` | Cada cambio de estado es una fila nueva. El estado actual es el de la última fila. Un flete que se carga ya despachado o terminado escribe también los estados anteriores. |
 | **Pedidos fletes** | `pedido_id`, `flete_id`, `costo_asignado` | Une pedidos y fletes (N a N). `costo_asignado` es la parte del flete que se carga a ese pedido. |
-| **Ajustes** | `fecha`, `deposito_id`, `producto_id`, `cantidad`, `motivo` | Correcciones de stock (roturas, conteos). |
+| **Ajustes** | `fecha`, `deposito_id`, `producto_id`, `cantidad`, `motivo` | Correcciones de stock (roturas, conteos) y fabricaciones: una fila negativa por insumo y una positiva por el producto, con `motivo` = "Fabricación FA0001 (RE0001 v1)" (ID de la fabricación, receta y versión). |
+
+### Recetas
+
+También son **opcionales**: si faltan, la pantalla Recetas avisa cuáles crear y no deja guardar recetas ni
+fabricar. Las fabricaciones no tienen hoja propia: son filas de *Ajustes*. El detalle está en [recetas.md](recetas.md).
+
+| Hoja | Columnas | Notas |
+|---|---|---|
+| **Recetas** | `id`, `version`, `desde`, `producto_id`, `cantidad`, `activa` | Una fila por versión. `producto_id` es lo que sale: un producto de *Productos* con precio de lista. Cambiar una receta o darla de baja agrega una versión nueva; la vigente es la de `desde` más reciente (y, a igual fecha, la de `version` más alta). `cantidad` es lo que sale de una tanda, en la unidad del producto, con la merma descontada. `activa`: vacío o `sí`, o `no` si se dio de baja. |
+| **Recetas ítems** | `receta_id`, `version`, `producto_id`, `cantidad` | Insumos de cada versión, por tanda, en la unidad de cada producto. |
 
 ### Caja
 
@@ -599,12 +628,13 @@ flowchart LR
     T -- "flete finalizado" --> D2
     D1 -- "− ventas" --> CL[Clientes]
     D2 -- "− ventas" --> CL
-    AJ[Ajustes] -- "±" --> D1
+    AJ[Ajustes, incluidas las fabricaciones] -- "±" --> D1
     AJ -- "±" --> D2
     PE[Pedidos abiertos] -. "comprometen<br/>(no mueven)" .-> D2
 ```
 
-El **costo promedio** se sigue calculando con todas las compras con precio, sumando los dos depósitos. Una
+El **costo promedio** se sigue calculando con todas las compras con precio, sumando los dos depósitos. Un producto
+que solo se fabrica no tiene costo promedio (ver [recetas.md](recetas.md#costo)). Una
 transferencia no cambia el costo de la mercadería: su costo es un gasto de logística (ver abajo).
 
 ## Cobros y cuentas entre socios
@@ -722,6 +752,8 @@ La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e 
 8. **Socios:** fijos en el script: `SOC01` Sampatti (dueño, con el vendedor de LEO) y `SOC02` Guada/Hernán
    (con el de GUADA/HERNAN). *Cobros* y *Rendiciones* quedan vacías: el Excel no dice quién cobró cada venta,
    así que las ventas históricas aparecen como "a cobrar" hasta que se carguen sus cobros.
+9. **Recetas:** *Recetas* y *Recetas ítems* quedan vacías (solo el encabezado): el Excel no
+   tiene recetas; se cargan desde la app.
 
 ## Planillas con nombres copiados
 
@@ -766,5 +798,10 @@ y el contacto con tipo "Minorista" y provincia "Santa Fe"; la app muestra "Ana M
   agregan a la lista.
 - **Rendiciones entre socios que no son el dueño.** La hoja las admite y el cálculo las cuenta, pero la
   pantalla solo carga rendiciones entre un socio y el dueño.
+- **Fabricar sin stock.** La app avisa si un insumo no alcanza en el depósito pero deja fabricar igual (el stock
+  queda negativo, como con una venta). Falta decidir si se bloquea.
+- **Costo de lo fabricado.** Las fabricaciones no guardan costo: un producto que solo se fabrica no tiene costo
+  promedio y sus ventas quedan sin costo (la ganancia no lo descuenta). Si hace falta, se puede guardar el costo
+  de los insumos en el momento de fabricar.
 - **Volver de "en camino" a "preparación".** Está en el diagrama para el caso de un flete que vuelve sin
   entregar; si no pasa nunca, se saca.

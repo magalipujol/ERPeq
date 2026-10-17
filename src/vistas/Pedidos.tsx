@@ -4,6 +4,7 @@ import {
 } from '@mantine/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBase, useGuardar } from '../base';
+import { faltantesDe } from '../db/puerto';
 import { CamposCobro, type DatosCobro } from '../componentes/Cobro';
 import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
 import { ExportarWhatsApp } from '../componentes/ExportarWhatsApp';
@@ -226,7 +227,7 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
   const { guardando, msg, guardar, error } = useGuardar();
   const { pedido } = resumen;
   // Cobro opcional en la misma operación; solo si la base ya tiene lo necesario para la caja.
-  const conCobro = datos.socios.length > 0 && info.faltantes.length === 0;
+  const conCobro = datos.socios.length > 0 && faltantesDe(info, 'caja').length === 0;
   const [cobro, setCobro] = useState<DatosCobro>(() => ({
     importe: '', medio: 'efectivo', socioId: M.socioPropuesto(datos.socios, resumen.vendedores)?.id ?? '',
   }));

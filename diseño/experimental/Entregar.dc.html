@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Entregar pedido</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1F7A55}a:hover{color:#14553B}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #F6F3EC; color: #1E2420; font-family: 'Lexend', Verdana, sans-serif; font-variant-numeric: tabular-nums; line-height: 1.5">
+
+  <header style="height: 72px; padding: 0 12px; display: flex; align-items: center; gap: 8px">
+    <a href="Main.dc.html" aria-label="Volver" style="width: 48px; height: 48px; border-radius: 24px; display: flex; align-items: center; justify-content: center">
+      <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1E2420" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+    </a>
+    <span style="width: 36px; height: 36px; border-radius: 12px; background: #1F7A55; display: flex; align-items: center; justify-content: center">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"></path><path d="M3 7l9 4 9-4"></path><path d="M12 11v10"></path></svg>
+    </span>
+    <h1 style="margin: 0; font-size: 22px; font-weight: 600">Entregar</h1>
+  </header>
+
+  <div style="padding: 0 20px; display: flex; flex-direction: column; gap: 12px">
+    <div style="background: #FFFDF8; border-radius: 18px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; min-height: 64px; box-sizing: border-box; box-shadow: 0 1px 0 #E5E0D3">
+      <span style="width: 44px; height: 44px; border-radius: 22px; background: #E3EBF7; color: #1F4580; font-weight: 600; font-size: 15px; display: flex; align-items: center; justify-content: center">DS</span>
+      <span style="display: flex; flex-direction: column; flex-grow: 1">
+        <span style="font-size: 17px; font-weight: 600">Dietética Sol</span>
+        <span style="font-size: 14px; color: #555B52">Rosario · 10 oct</span>
+      </span>
+    </div>
+
+    <sc-for list="{{lines}}" as="line" hint-placeholder-count="2">
+      <div style="background: #FFFDF8; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 1px 0 #E5E0D3">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <span style="{{line.monoStyle}}">{{line.mono}}</span>
+          <span style="font-size: 17px; font-weight: 600; flex-grow: 1">{{line.name}}</span>
+          <button type="button" aria-label="Menos" onClick="{{line.sub}}" style="width: 48px; height: 48px; border-radius: 16px; border: 0; background: #DDF0E6; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14553B" stroke-width="2.6" stroke-linecap="round"><path d="M6 12h12"></path></svg></button>
+          <span style="min-width: 44px; text-align: center; font-size: 24px; font-weight: 700">{{line.now}}</span>
+          <button type="button" aria-label="Más" onClick="{{line.add}}" style="width: 48px; height: 48px; border-radius: 16px; border: 0; background: #1F7A55; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round"><path d="M6 12h12M12 6v12"></path></svg></button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <div style="flex-grow: 1; height: 12px; border-radius: 6px; background: #ECE8DE; display: flex; overflow: hidden">
+            <div style="{{line.doneStyle}}"></div>
+            <div style="{{line.nowStyle}}"></div>
+          </div>
+          <span style="font-size: 14px; color: #555B52; white-space: nowrap">{{line.of}}</span>
+        </div>
+      </div>
+    </sc-for>
+
+    <div style="display: flex; align-items: center; gap: 8px; padding-top: 4px">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#555B52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 4-6 8-6s8 2 8 6"></path></svg>
+      <span style="display: flex; align-items: center; gap: 6px; background: #ECE8DE; border-radius: 12px; padding: 6px 12px; font-size: 15px; font-weight: 600">Leo <span style="font-weight: 400; color: #555B52">5%</span></span>
+      <span style="display: flex; align-items: center; gap: 6px; background: #ECE8DE; border-radius: 12px; padding: 6px 12px; font-size: 15px; font-weight: 600">Guada <span style="font-weight: 400; color: #555B52">3%</span></span>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 20px 26px; background: #FFFDF8; border-top: 1px solid #E5E0D3; display: flex; align-items: center; gap: 14px">
+    <div style="display: flex; flex-direction: column; flex-grow: 1; line-height: 1.2">
+      <span style="font-size: 14px; color: #555B52">{{kg}}</span>
+      <span style="font-size: 26px; font-weight: 700">{{total}}</span>
+    </div>
+    <a href="Cobrar.dc.html" style="text-decoration: none; height: 60px; padding: 0 24px; border-radius: 20px; background: #1F7A55; color: #FFFFFF; font-size: 19px; font-weight: 600; display: flex; align-items: center; gap: 10px">
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Entregar</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { now: { 1: 15, 2: 25 } };
+  }
+  renderVals() {
+    const lineas = [
+      { linea: 1, mono: 'Ha', name: 'Harina', pedido: 25, antes: 10, precio: 4080, bg: '#F1E3C0', fg: '#5C420C' },
+      { linea: 2, mono: 'Ma', name: 'Maní', pedido: 25, antes: 0, precio: 5200, bg: '#EBD3BF', fg: '#5E3214' },
+    ];
+    const pesos = (n) => '$ ' + n.toLocaleString('es-AR');
+    let total = 0;
+    let kg = 0;
+    const lines = lineas.map((l) => {
+      const pendiente = l.pedido - l.antes;
+      const now = this.state.now[l.linea] ?? 0;
+      const set = (q) => this.setState({ now: { ...this.state.now, [l.linea]: Math.min(pendiente, Math.max(0, q)) } });
+      total += now * l.precio;
+      kg += now;
+      return {
+        mono: l.mono, name: l.name, now,
+        of: (l.antes + now) + ' / ' + l.pedido,
+        add: () => set(now + 5),
+        sub: () => set(now - 5),
+        doneStyle: 'height: 100%; background: #1E2420; width: ' + (100 * l.antes / l.pedido) + '%',
+        nowStyle: 'height: 100%; background: #1F7A55; width: ' + (100 * now / l.pedido) + '%',
+        monoStyle: 'flex-shrink: 0; width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; background: ' + l.bg + '; color: ' + l.fg,
+      };
+    });
+    return { lines, total: pesos(total), kg: kg + ' kg' };
+  }
+}
+</script>
+</body>
+</html>

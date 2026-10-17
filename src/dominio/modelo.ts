@@ -50,6 +50,11 @@ export interface Socio { id: string; nombre: string; vendedores: string[]; dueni
 export interface Cobro { fecha: Date | null; ventaId: string; importe: number; medio: string; socioId: string; nota: string }
 export interface Rendicion { fecha: Date | null; deId: string; aId: string; importe: number; medio: string; nota: string }
 export interface Ajuste { fecha: Date | null; depositoId: string; productoId: string; cantidad: number; motivo: string }
+// Cada versión de una receta es una fila: cambiarla o darla de baja agrega una versión nueva con su `desde`.
+// `productoId` es lo que sale: un producto de Productos, con su precio de lista. `cantidad` es lo que sale de
+// una tanda, en la unidad del producto (con la merma ya descontada).
+export interface Receta { id: string; version: number; desde: Date | null; productoId: string; cantidad: number; activa: boolean }
+export interface RecetaItem { recetaId: string; version: number; productoId: string; cantidad: number }
 
 export interface Datos {
   depositos: Deposito[]; productos: Producto[]; contactos: Contacto[]; tipos: string[]; vendedores: Vendedor[];
@@ -57,6 +62,7 @@ export interface Datos {
   pedidosEstados: RegistroEstado[]; pedidosVendedores: PedidoVendedor[]; ventas: Venta[]; ventasItems: VentaItem[];
   ventasComisiones: VentaComision[]; fletes: Flete[]; fletesItems: FleteItem[]; fletesEstados: RegistroEstado[];
   pedidosFletes: PedidoFlete[]; ajustes: Ajuste[]; socios: Socio[]; cobros: Cobro[]; rendiciones: Rendicion[];
+  recetas: Receta[]; recetasItems: RecetaItem[];
 }
 
 // Nombres de lo que las filas referencian por ID. Un ID que no existe se muestra tal cual.
@@ -357,6 +363,77 @@ export function generadorIds(ids: string[], prefijo: string, ancho = 4) {
     primero = false;
     return ultimo;
   };
+}
+
+// ---------- Recetas y fabricación ----------
+// La referencia es spec/recetas.md.
+
+export interface VersionReceta { receta: Receta; items: RecetaItem[] }
+
+// Versión vigente de cada receta a una fecha: la de `desde` más reciente que no sea posterior y, ante la misma
+// fecha, la de número de versión más alto. Incluye las dadas de baja (`activa` en false).
+export function recetasVigentes(datos: Pick<Datos, 'recetas' | 'recetasItems'>, fecha: Date | null): VersionReceta[] {
+  const mejor = new Map<string, Receta>();
+  for (const r of datos.recetas) {
+    if (fecha && r.desde && r.desde > fecha) continue;
+    const m = mejor.get(r.id);
+    const t = r.desde?.getTime() ?? 0;
+    const tm = m?.desde?.getTime() ?? 0;
+    if (!m || t > tm || (t === tm && r.version >= m.version)) mejor.set(r.id, r);
+  }
+  return [...mejor.values()].map((receta) => ({
+    receta,
+    items: datos.recetasItems.filter((it) => it.recetaId === receta.id && it.version === receta.version),
+  }));
+}
+
+// Número de la próxima versión de una receta (1 si es nueva).
+export const siguienteVersion = (recetas: Receta[], id: string) =>
+  recetas.filter((r) => r.id === id).reduce((m, r) => Math.max(m, r.version), 0) + 1;
+
+// Suma de los insumos que se miden en la unidad dada: lo que saldría de una tanda sin merma.
+export function sumaInsumos(items: { productoId: string; cantidad: number }[], productos: Producto[], unidad: string) {
+  const unidadDe = new Map(productos.map((p) => [p.id, p.unidad]));
+  return redondear(items.filter((it) => unidadDe.get(it.productoId) === unidad).reduce((s, it) => s + it.cantidad, 0), 3);
+}
+
+// Merma: qué parte de los insumos no sale como producto (0,1 = 10 %). Null si no hay con qué comparar.
+export const merma = (entra: number, sale: number) => (entra > 0 ? redondear(1 - sale / entra, 4) : null);
+
+export interface Insumo { productoId: string; cantidad: number }
+
+// Una fabricación es un grupo de ajustes en un depósito, con el mismo motivo: "Fabricación FA0001 (RE0001 v2)".
+export interface Fabricacion {
+  id: string; fecha: Date | null; depositoId: string; recetaId: string; version: number; productoId: string; cantidad: number;
+}
+
+const MOTIVO_FABRICACION = /^Fabricación (\S+) \((\S+) v(\d+)\)$/;
+
+// Los ajustes que descuentan los insumos y suman el producto en el depósito. Los insumos sin cantidad no generan
+// ajuste.
+export function armarFabricacion(f: Fabricacion, insumos: Insumo[]): Ajuste[] {
+  const motivo = `Fabricación ${f.id} (${f.recetaId} v${f.version})`;
+  const ajuste = (productoId: string, cantidad: number): Ajuste => ({ fecha: f.fecha, depositoId: f.depositoId, productoId, cantidad, motivo });
+  return [...insumos.filter((i) => i.cantidad > 0).map((i) => ajuste(i.productoId, -i.cantidad)), ajuste(f.productoId, f.cantidad)];
+}
+
+// Fabricaciones registradas, a partir de los ajustes con motivo de fabricación. Lo que sale es el ajuste positivo.
+export function fabricaciones(ajustes: Ajuste[]): Fabricacion[] {
+  const res = new Map<string, Fabricacion>();
+  for (const a of ajustes) {
+    const m = MOTIVO_FABRICACION.exec(a.motivo);
+    if (!m || a.cantidad <= 0) continue;
+    res.set(m[1], { id: m[1], fecha: a.fecha, depositoId: a.depositoId, recetaId: m[2], version: Number(m[3]), productoId: a.productoId, cantidad: a.cantidad });
+  }
+  return [...res.values()];
+}
+
+// Costo de los insumos por unidad de lo que sale, con los costos promedio de hoy. Null si algún insumo no tiene
+// costo o no sale nada. Es una estimación: no se guarda.
+export function costoInsumos(insumos: Insumo[], sale: number, costos: Map<string, number>) {
+  const usados = insumos.filter((i) => i.cantidad > 0);
+  if (sale <= 0 || usados.some((i) => !costos.has(i.productoId))) return null;
+  return redondear(usados.reduce((s, i) => s + i.cantidad * (costos.get(i.productoId) ?? 0), 0) / sale);
 }
 
 // ---------- Entregas ----------

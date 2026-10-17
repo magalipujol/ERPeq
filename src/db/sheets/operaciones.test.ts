@@ -98,6 +98,37 @@ describe('operaciones sobre la planilla', () => {
     expect((await db.leer()).compras[0]).toMatchObject({ fila: 2, cantidad: 3, precio: 1.1, importe: 3.3 });
   });
 
+  it('una receta y una fabricación se guardan cada una en una escritura', async () => {
+    expect.hasAssertions();
+
+    const db = crearPlanillaEnMemoria();
+    await db.registrarReceta({
+      receta: { id: 'RE0001', version: 1, desde: dia, productoId: 'P009', cantidad: 0.95, activa: true },
+      items: [{ recetaId: 'RE0001', version: 1, productoId: 'P001', cantidad: 0.6 }, { recetaId: 'RE0001', version: 1, productoId: 'P002', cantidad: 0.4 }],
+    });
+    await db.registrarReceta({ receta: { id: 'RE0001', version: 2, desde: dia, productoId: 'P009', cantidad: 0, activa: false }, items: [] });
+    await db.registrarFabricacion(M.armarFabricacion(
+      { id: 'FA0001', fecha: dia, depositoId: 'BB', recetaId: 'RE0001', version: 1, productoId: 'P009', cantidad: 0.95 },
+      [{ productoId: 'P001', cantidad: 0.6 }, { productoId: 'P002', cantidad: 0.4 }],
+    ));
+
+    expect(db.escrituras).toHaveLength(3);
+    expect(db.hojas).toMatchObject({
+      recetas: [['RE0001', 1, DIA, 'P009', 0.95, 'sí'], ['RE0001', 2, DIA, 'P009', 0, 'no']],
+      recetasItems: [['RE0001', 1, 'P001', 0.6], ['RE0001', 1, 'P002', 0.4]],
+      ajustes: [
+        [DIA, 'BB', 'P001', -0.6, 'Fabricación FA0001 (RE0001 v1)'],
+        [DIA, 'BB', 'P002', -0.4, 'Fabricación FA0001 (RE0001 v1)'],
+        [DIA, 'BB', 'P009', 0.95, 'Fabricación FA0001 (RE0001 v1)'],
+      ],
+    });
+
+    const leidos = await db.leer();
+
+    expect(leidos.recetas.map((r) => [r.version, r.activa])).toStrictEqual([[1, true], [2, false]]);
+    expect(M.fabricaciones(leidos.ajustes)).toMatchObject([{ id: 'FA0001', recetaId: 'RE0001', version: 1, productoId: 'P009', cantidad: 0.95 }]);
+  });
+
   it('las operaciones simples agregan una fila en su hoja', async () => {
     expect.hasAssertions();
 

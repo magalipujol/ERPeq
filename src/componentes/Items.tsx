@@ -8,11 +8,13 @@ import { type Item, itemVacio } from './item';
 // compra: puede crear productos nuevos y sugiere el último precio de compra.
 // pedido: sugiere el precio de lista vigente, que se puede sobreescribir.
 // flete: sin precio.
-export type ModoItems = 'compra' | 'pedido' | 'flete';
+// receta: sin precio ni stock; con `gramos`, las cantidades de productos en kg se cargan en gramos.
+export type ModoItems = 'compra' | 'pedido' | 'flete' | 'receta';
 
-// Líneas de productos de una compra, un pedido o un flete.
-export function Items({ modo, deposito, fecha, items, onChange }:
-  { modo: ModoItems; deposito: string; fecha: Date | null; items: Item[]; onChange: (items: Item[]) => void }) {
+// Líneas de productos de una compra, un pedido, un flete o una receta.
+export function Items({ modo, deposito, fecha, items, onChange, gramos = false }: {
+  modo: ModoItems; deposito: string; fecha: Date | null; items: Item[]; onChange: (items: Item[]) => void; gramos?: boolean;
+}) {
   const { datos, buscarProducto } = useBase();
   const productos = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
 
@@ -26,12 +28,13 @@ export function Items({ modo, deposito, fecha, items, onChange }:
     return null;
   }
 
+  const conPrecio = modo === 'compra' || modo === 'pedido';
   const cambiar = (i: number, cambios: Partial<Item>) => { onChange(items.map((it, j) => (j === i ? { ...it, ...cambios } : it))); };
 
   function cambiarProducto(i: number, producto: string) {
     const cambios: Partial<Item> = { producto };
     const p = buscarProducto(producto);
-    if (p && modo !== 'flete' && items[i].precio === '') {
+    if (p && conPrecio && items[i].precio === '') {
       const precio = precioSugerido(p.id);
       if (precio !== null) cambios.precio = precio;
     }
@@ -43,24 +46,24 @@ export function Items({ modo, deposito, fecha, items, onChange }:
       <Stack gap="sm">
         {items.map((it, i) => {
           const p = buscarProducto(it.producto);
-          const unidad = p ? p.unidad : (modo === 'compra' && it.producto ? it.unidad : '');
+          const unidad = p ? (gramos && p.unidad === 'kg' ? 'g' : p.unidad) : (modo === 'compra' && it.producto ? it.unidad : '');
           return (
             <div key={it.clave}>
               <Grid gap={6} align="flex-start">
-                <Grid.Col span={{ base: 12, xs: modo === 'flete' ? 8 : 5 }}>
+                <Grid.Col span={{ base: 12, xs: conPrecio ? 5 : 8 }}>
                   <Autocomplete
                     placeholder="Producto" aria-label="Producto" data={productos}
                     value={it.producto} onChange={(v) => { cambiarProducto(i, v); }}
                   />
                 </Grid.Col>
-                <Grid.Col span={{ base: 'auto', xs: modo === 'flete' ? 'auto' : 3 }}>
+                <Grid.Col span={{ base: 'auto', xs: conPrecio ? 3 : 'auto' }}>
                   <NumberInput
                     placeholder="Cant." aria-label="Cantidad" allowNegative={false}
                     value={it.cantidad} onChange={(v) => { cambiar(i, { cantidad: v }); }}
                     rightSection={<Text size="xs" c="dimmed">{unidad}</Text>} rightSectionPointerEvents="none"
                   />
                 </Grid.Col>
-                {modo !== 'flete' && (
+                {conPrecio && (
                   <Grid.Col span="auto">
                     <NumberInput
                       placeholder="Precio unit." aria-label="Precio unitario" allowNegative={false}
@@ -105,6 +108,7 @@ function Info({ modo, item, deposito, fecha, onUnidad }:
         </Group>
       );
   }
+  if (modo === 'receta') return null;
   const dep = nombres.deposito(deposito);
   const enDep = stock.enDeposito.get(p.id)?.[deposito] ?? 0;
   const cant = numeroOCero(item.cantidad);

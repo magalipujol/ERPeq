@@ -58,5 +58,7 @@ export function operaciones(escribir: (e: Escritura) => Promise<void>): Operacio
     registrarReglaComision: async (r) => escribir({ reglas: [filas.regla(r)] }),
     registrarCobro: async (c) => escribir({ cobros: [filas.cobro(c)] }),
     registrarRendicion: async (r) => escribir({ rendiciones: [filas.rendicion(r)] }),
+    registrarReceta: async (r) => escribir({ recetas: [filas.receta(r.receta)], recetasItems: r.items.map(filas.recetaItem) }),
+    registrarFabricacion: async (ajustes) => escribir({ ajustes: ajustes.map(filas.ajuste) }),
   };
 }

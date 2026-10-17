@@ -110,6 +110,22 @@ pero la pantalla Caja avisa que faltan y no deja registrar cobros. Para agregarl
 4. *Cobros* y *Rendiciones* quedan vacías (solo el encabezado): las llena la app.
 5. En la app, **Salir** y volver a ingresar (o recargar la página) para que lea las hojas nuevas.
 
+### Agregar las hojas de recetas a una planilla que ya existe
+
+La pantalla **Recetas** usa dos hojas: *Recetas* y *Recetas ítems*. Una base generada con el
+script ya las tiene. En una planilla anterior, la app funciona igual pero la pantalla Recetas avisa que faltan y
+no deja guardar recetas ni fabricar. Para agregarlas, igual que las de caja: una hoja nueva por cada una, con el
+nombre exacto y estos encabezados en la fila 1:
+
+| Hoja | Fila 1 (columnas A, B, C…) |
+|---|---|
+| `Recetas` | `id`, `version`, `desde`, `producto_id`, `cantidad`, `activa` |
+| `Recetas ítems` | `receta_id`, `version`, `producto_id`, `cantidad` |
+
+Quedan vacías: las recetas se cargan desde la app. El producto que sale de cada receta tiene que estar antes en
+*Productos* y tener precio de lista (en la pantalla Precios). Las fabricaciones se guardan en *Ajustes*. Después,
+recargá la página.
+
 ### Si la app dice que las columnas de una hoja no son las que espera
 
 La planilla es de una versión anterior, que guardaba una copia del nombre del cliente, producto, vendedor o

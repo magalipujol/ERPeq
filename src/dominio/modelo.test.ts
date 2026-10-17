@@ -8,6 +8,7 @@ const vacios = (): M.Datos => ({
   productos: [], contactos: [], tipos: [], vendedores: [], precios: [], reglas: [], compras: [], pedidos: [],
   pedidosItems: [], pedidosEstados: [], pedidosVendedores: [], ventas: [], ventasItems: [], ventasComisiones: [],
   fletes: [], fletesItems: [], fletesEstados: [], pedidosFletes: [], ajustes: [], socios: [], cobros: [], rendiciones: [],
+  recetas: [], recetasItems: [],
 });
 const datos = (d: Partial<M.Datos>): M.Datos => ({ ...vacios(), ...d });
 const producto = (id: string): M.Producto => ({ id, producto: id, unidad: 'kg', minimo: 0 });
@@ -379,5 +380,72 @@ describe('nombres', () => {
 
     expect(M.cuentasSocios(d)[0].movimientos.filter((m) => m.ref === 'V0001').map((m) => m.detalle))
       .toStrictEqual(['Ana María', 'Ana María']);
+  });
+});
+
+describe('recetas', () => {
+  const receta = (version: number, desde: Date | null, activa = true): M.Receta => ({
+    id: 'RE0001', version, desde, productoId: 'MIX', cantidad: 0.95, activa,
+  });
+  const insumo = (version: number, productoId: string, cantidad: number): M.RecetaItem => ({ recetaId: 'RE0001', version, productoId, cantidad });
+  const d = {
+    recetas: [receta(1, fecha(2026, 9, 1)), receta(2, fecha(2026, 10, 1)), receta(3, fecha(2026, 10, 1), false)],
+    recetasItems: [insumo(1, 'P001', 1), insumo(2, 'P001', 0.6), insumo(2, 'P002', 0.4)],
+  };
+
+  it('la versión vigente es la de desde más reciente y, ante la misma fecha, la de número más alto', () => {
+    const [sept] = M.recetasVigentes(d, fecha(2026, 9, 15));
+
+    expect(sept.receta.version).toBe(1);
+    expect(sept.items.map((i) => i.productoId)).toStrictEqual(['P001']);
+    // El 1/10 hay dos versiones: la 3 la da de baja.
+    expect(M.recetasVigentes(d, fecha(2026, 10, 5))[0].receta).toMatchObject({ version: 3, activa: false });
+    expect(M.recetasVigentes(d, fecha(2026, 8, 1))).toStrictEqual([]);
+  });
+
+  it('numera la versión siguiente', () => {
+    expect(M.siguienteVersion(d.recetas, 'RE0001')).toBe(4);
+    expect(M.siguienteVersion(d.recetas, 'RE0002')).toBe(1);
+  });
+
+  it('suma los insumos de la misma unidad y calcula la merma', () => {
+    const productos = [producto('P001'), producto('P002'), { ...producto('P003'), unidad: 'unid.' }];
+    const items = [{ productoId: 'P001', cantidad: 0.6 }, { productoId: 'P002', cantidad: 0.4 }, { productoId: 'P003', cantidad: 2 }];
+
+    // Las 2 unidades de P003 no se suman a los kilos.
+    expect(M.sumaInsumos(items, productos, 'kg')).toBe(1);
+    // Entra 1 kg y salen 950 g: 5 % de merma.
+    expect(M.merma(1, 0.95)).toBe(0.05);
+    expect(M.merma(0, 1)).toBeNull();
+  });
+});
+
+describe('fabricación', () => {
+  const fab: M.Fabricacion = { id: 'FA0001', fecha: fecha(2026, 10, 16), depositoId: 'BB', recetaId: 'RE0001', version: 2, productoId: 'MIX', cantidad: 1.9 };
+  const insumos = [{ productoId: 'P001', cantidad: 1.2 }, { productoId: 'P002', cantidad: 0.8 }, { productoId: 'P003', cantidad: 0 }];
+
+  it('descuenta los insumos y suma el producto con ajustes del mismo motivo', () => {
+    // El insumo con cantidad 0 no genera ajuste.
+    expect(M.armarFabricacion(fab, insumos).map((a) => [a.productoId, a.cantidad, a.depositoId, a.motivo])).toStrictEqual([
+      ['P001', -1.2, 'BB', 'Fabricación FA0001 (RE0001 v2)'],
+      ['P002', -0.8, 'BB', 'Fabricación FA0001 (RE0001 v2)'],
+      ['MIX', 1.9, 'BB', 'Fabricación FA0001 (RE0001 v2)'],
+    ]);
+  });
+
+  it('reconstruye las fabricaciones desde los ajustes e ignora los demás', () => {
+    const conteo: M.Ajuste = { fecha: null, depositoId: 'BB', productoId: 'P001', cantidad: 3, motivo: 'conteo' };
+    const ajustes = [...M.armarFabricacion(fab, insumos), conteo];
+
+    expect(M.fabricaciones(ajustes)).toStrictEqual([fab]);
+  });
+
+  it('estima el costo de los insumos por unidad de lo que sale', () => {
+    const costos = new Map([['P001', 10000], ['P002', 5000]]);
+
+    // 1,2 × $10.000 + 0,8 × $5.000 = $16.000 / 1,9 kg = $8.421,05 el kg.
+    expect(M.costoInsumos(insumos, 1.9, costos)).toBe(8421.05);
+    expect(M.costoInsumos(insumos, 1.9, new Map([['P001', 10000]]))).toBeNull();
+    expect(M.costoInsumos(insumos, 0, costos)).toBeNull();
   });
 });

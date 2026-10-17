@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Stock</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2F5DA8}a:hover{color:#1F4580}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #F6F3EC; color: #1E2420; font-family: 'Lexend', Verdana, sans-serif; font-variant-numeric: tabular-nums; line-height: 1.5">
+
+  <header style="padding: 18px 20px 0; display: flex; align-items: center; gap: 10px">
+    <h1 style="margin: 0; font-size: 26px; font-weight: 600; flex-grow: 1">Stock</h1>
+    <button type="button" aria-label="Buscar" style="width: 48px; height: 48px; border-radius: 24px; border: 0; background: #ECE8DE; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E2420" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg></button>
+  </header>
+
+  <div style="padding: 14px 20px 0">
+    <div role="radiogroup" aria-label="Depósito" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; background: #ECE8DE; border-radius: 16px; padding: 4px">
+      <sc-for list="{{deps}}" as="d" hint-placeholder-count="3">
+        <button type="button" role="radio" aria-checked="{{d.on}}" onClick="{{d.pick}}" style="{{d.style}}">{{d.label}}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="padding: 12px 20px 0; display: flex; gap: 8px">
+    <span style="display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 18px; background: #F9DAD6; color: #8C1D17; font-size: 15px; font-weight: 600">
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B3261E" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>{{nFalta}}</span>
+    <span style="display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 18px; background: #FBEBD3; color: #7A4006; font-size: 15px; font-weight: 600">
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B25E09" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"></path><path d="M12 10v4M12 17v.5"></path></svg>{{nBajo}}</span>
+  </div>
+
+  <ul style="list-style: none; margin: 0; padding: 12px 20px 0; display: flex; flex-direction: column; gap: 8px">
+    <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+      <li style="background: #FFFDF8; border-radius: 18px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 0 #E5E0D3">
+        <span style="{{r.monoStyle}}">{{r.mono}}</span>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0">
+          <div style="display: flex; align-items: baseline; gap: 6px">
+            <span style="font-size: 16px; font-weight: 600; flex-grow: 1">{{r.name}}</span>
+            <span style="font-size: 22px; font-weight: 700">{{r.cant}}</span>
+            <span style="font-size: 13px; color: #555B52">kg</span>
+          </div>
+          <div style="position: relative; height: 8px; border-radius: 4px; background: #ECE8DE">
+            <div style="{{r.barStyle}}"></div>
+            <div style="position: absolute; left: 33%; top: -3px; width: 2px; height: 14px; background: #1E2420"></div>
+          </div>
+        </div>
+        <span style="{{r.flagStyle}}">
+          <sc-if value="{{r.falta}}" hint-placeholder-val="{{false}}">
+            <svg role="img" aria-label="Sin stock" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B3261E" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+          </sc-if>
+          <sc-if value="{{r.bajo}}" hint-placeholder-val="{{false}}">
+            <svg role="img" aria-label="Bajo el mínimo" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B25E09" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"></path><path d="M12 10v4M12 17v.5"></path></svg>
+          </sc-if>
+        </span>
+      </li>
+    </sc-for>
+  </ul>
+
+  <nav style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: #FFFDF8; border-top: 1px solid #E5E0D3; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-bottom: 12px; box-sizing: border-box">
+    <a href="Main.dc.html" style="text-decoration: none; color: #555B52; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 13px">
+      <span style="width: 56px; height: 32px; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#555B52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path></svg></span>Inicio</a>
+    <a href="Stock.dc.html" style="text-decoration: none; color: #1E2420; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 13px; font-weight: 600">
+      <span style="width: 56px; height: 32px; border-radius: 16px; background: #1E2420; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F6F3EC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="13" width="8" height="8" rx="1"></rect><rect x="13" y="13" width="8" height="8" rx="1"></rect><rect x="8" y="3" width="8" height="8" rx="1"></rect></svg></span>Stock</a>
+    <a href="Fletes.dc.html" style="text-decoration: none; color: #555B52; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 13px">
+      <span style="width: 56px; height: 32px; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#555B52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h12v10H2z"></path><path d="M14 9h4l3 3v4h-7"></path><circle cx="6" cy="17" r="2"></circle><circle cx="17" cy="17" r="2"></circle></svg></span>Fletes</a>
+    <a href="Cobrar.dc.html" style="text-decoration: none; color: #555B52; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 13px">
+      <span style="width: 56px; height: 32px; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#555B52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="3"></circle></svg></span>Caja</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { dep: 'ROS' };
+  }
+  renderVals() {
+    const productos = [
+      { mono: 'Ha', name: 'Harina', bg: '#F1E3C0', fg: '#5C420C', min: 40, stock: { BB: 120, ROS: 30 } },
+      { mono: 'Ma', name: 'Maní', bg: '#EBD3BF', fg: '#5E3214', min: 30, stock: { BB: 80, ROS: 40 } },
+      { mono: 'Av', name: 'Avena', bg: '#E2E6CC', fg: '#434A12', min: 50, stock: { BB: 200, ROS: 60 } },
+      { mono: 'Al', name: 'Almendras', bg: '#EED7D2', fg: '#6A2519', min: 10, stock: { BB: 15, ROS: 0 } },
+      { mono: 'Ch', name: 'Chía', bg: '#D9E1EA', fg: '#263447', min: 10, stock: { BB: 25, ROS: 5 } },
+      { mono: 'Az', name: 'Mascabo', bg: '#E7DACB', fg: '#4F3A22', min: 20, stock: { BB: 50, ROS: 20 } },
+    ];
+    const dep = this.state.dep;
+    const deps = [['todos', 'Todos'], ['BB', 'Bahía B.'], ['ROS', 'Rosario']].map(([id, label]) => ({
+      label, on: dep === id ? 'true' : 'false',
+      pick: () => this.setState({ dep: id }),
+      style: 'height: 44px; border: 0; border-radius: 12px; font-size: 15px; font-weight: 600; ' +
+        (dep === id ? 'background: #FFFDF8; color: #1E2420; box-shadow: 0 1px 2px rgba(30,36,32,0.15)' : 'background: transparent; color: #555B52'),
+    }));
+    let nFalta = 0;
+    let nBajo = 0;
+    const rows = productos.map((p) => {
+      const cant = dep === 'todos' ? p.stock.BB + p.stock.ROS : p.stock[dep];
+      const min = dep === 'todos' ? p.min * 2 : p.min;
+      const falta = cant === 0;
+      const bajo = !falta && cant < min;
+      if (falta) nFalta += 1;
+      if (bajo) nBajo += 1;
+      const color = falta ? '#B3261E' : bajo ? '#B25E09' : '#1F7A55';
+      return {
+        mono: p.mono, name: p.name, cant, falta, bajo,
+        barStyle: 'height: 100%; border-radius: 4px; background: ' + color + '; width: ' + Math.min(100, (100 * cant) / (min * 3)) + '%',
+        flagStyle: 'flex-shrink: 0; width: 32px; height: 32px; border-radius: 16px; display: flex; align-items: center; justify-content: center; background: ' +
+          (falta ? '#F9DAD6' : bajo ? '#FBEBD3' : 'transparent'),
+        monoStyle: 'flex-shrink: 0; width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; background: ' + p.bg + '; color: ' + p.fg,
+      };
+    });
+    return { deps, rows, nFalta, nBajo };
+  }
+}
+</script>
+</body>
+</html>

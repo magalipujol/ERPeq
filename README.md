@@ -30,6 +30,7 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
 | Pedidos, Pedidos ítems, Pedidos estados, Pedidos vendedores | Lo que pide el cliente, con el precio fijado al crearlo. Reserva stock. |
 | Ventas, Ventas ítems, Ventas comisiones | Cada entrega de un pedido: descuenta stock y genera la comisión. |
 | Compras, Ajustes | Entradas y correcciones de stock. |
+| Recetas, Recetas ítems | Recetas de productos de *Productos* (insumos por tanda y cuánto sale, con versiones). Cada fabricación se guarda en *Ajustes*. Si faltan, la app las lee vacías y la pantalla Recetas avisa. |
 | Fletes, Fletes ítems, Fletes estados, Pedidos fletes | Viajes con su costo; los que van entre depósitos mueven stock según su estado. |
 | Socios, Cobros, Rendiciones | Quién cobró cada venta (efectivo o transferencia) y lo que los socios se rinden entre sí. Si faltan, la app las lee vacías y la pantalla Caja avisa. |
 
@@ -37,7 +38,7 @@ Cada fila guarda los IDs de lo que referencia (producto, contacto, vendedor, soc
 se corrige en *Productos*, *Contactos*, *Vendedores* o *Socios* y cambia en toda la app. La app revisa los
 encabezados de cada hoja y no abre una planilla con las columnas distintas a las que espera.
 
-**Stock** = compras − entregas + ajustes ± fletes entre depósitos (en camino: sale del origen; finalizado: entra en el destino).
+**Stock** = compras − entregas + ajustes (incluidas las fabricaciones) ± fletes entre depósitos (en camino: sale del origen; finalizado: entra en el destino).
 **Costo promedio** = promedio ponderado de todas las compras con precio del producto.
 **Ganancia de un pedido** = lo entregado − comisiones − cantidad × costo promedio − fletes asignados.
 **Saldo de un socio con el dueño** = lo que cobró − las comisiones de sus vendedores − lo que le rindió + lo que recibió del dueño.
@@ -56,14 +57,16 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
     planilla en memoria para las pruebas.
   - `main.tsx`: arranca la app con la base de Google Sheets; `App.tsx`: pantallas de acceso y navegación;
     `vistas/`: Inicio (pantalla por defecto: acceso directo a un pedido nuevo, mapa con depósitos, pedidos
-    pendientes y fletes en curso, y sus listas), Stock, Pedidos, Ventas, Compras, Fletes, Precios, Caja y Análisis.
+    pendientes y fletes en curso, y sus listas), Stock, Pedidos, Ventas, Compras, Recetas, Fletes, Precios, Caja y Análisis.
   - `componentes/`: piezas compartidas (carga de ítems, navegación entre pantallas, KPIs, el mapa de Inicio).
   - `celular.css`: ajustes para pantallas de menos de 768 px (barra inferior con menú *Más*, campos de 44 px).
   - `fuentes/`: la tipografía OpenDyslexic (regular y negrita) y su licencia (SIL Open Font License).
   - `whatsapp.ts`: arma el mensaje con los pedidos para mandar a un grupo de WhatsApp (botón *Exportar a WhatsApp* en Pedidos).
 - `public/`: lo que se publica tal cual: el manifiesto de la app instalable y sus íconos (`icono.svg` es el
   original; los PNG los genera `herramientas/iconos.mjs`).
-- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`, `legibilidad.md`, `analisis.md` y `mapa.md`).
+- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`, `legibilidad.md`, `analisis.md`, `mapa.md` y `recetas.md`).
+- `diseño/experimental/`: propuesta de rediseño para celular, una pantalla por archivo `.dc.html` y una hoja
+  con colores, íconos y letra (`Sistema.dc.html`). Es referencia: no se abre sola en el navegador.
 - `.github/workflows/ci.yml`: lint, tipos y pruebas en cada pull request y push.
 - `.github/workflows/deploy.yml`: corre el CI y, si pasa, compila y publica en GitHub Pages en cada push a `main`
   (en *Settings → Pages*, la fuente tiene que ser **GitHub Actions**).

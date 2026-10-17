@@ -1,6 +1,7 @@
 import { Alert, Button, Code, Grid, Group, NativeSelect, NumberInput, Paper, ScrollArea, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
+import { faltantesDe } from '../db/puerto';
 import { CamposCobro, type DatosCobro } from '../componentes/Cobro';
 import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
 import { aNumero, deISO, fmtFecha, fmtMoney, hoyISO, porFechaDesc } from '../formato';
@@ -15,7 +16,7 @@ const textoSaldo = (cuenta: M.CuentaSocio, duenio: string) =>
 // Cobros de las ventas y cuentas entre socios: quién tiene la plata de cada venta y cuánto le debe al dueño.
 export function Caja() {
   const { datos, info } = useBase();
-  const faltan = info.faltantes;
+  const faltan = faltantesDe(info, 'caja');
   const aCobrar = useMemo(() => M.ventasACobrar(datos), [datos]);
   const cuentas = useMemo(() => M.cuentasSocios(datos), [datos]);
   const duenio = M.duenio(datos.socios);

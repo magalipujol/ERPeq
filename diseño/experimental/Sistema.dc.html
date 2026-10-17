@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Sistema visual</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2F5DA8}a:hover{color:#1F4580}
+</style>
+</helmet>
+<div style="width: 860px; height: 844px; box-sizing: border-box; padding: 44px 48px; background: #F6F3EC; color: #1E2420; font-family: 'Lexend', Verdana, sans-serif; font-variant-numeric: tabular-nums; line-height: 1.5; display: flex; flex-direction: column; gap: 32px">
+
+  <h1 style="margin: 0; font-size: 32px; font-weight: 600">Un color y un ícono por acción</h1>
+
+  <section style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px">
+    <div style="background: #E3EBF7; color: #1F4580; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+      <span style="width: 52px; height: 52px; border-radius: 16px; background: #2F5DA8; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4h6v3H9z"></path><path d="M12 11v6M9 14h6"></path></svg></span>
+      <span style="font-size: 19px; font-weight: 600">Pedido</span>
+      <span style="font-size: 14px">#2F5DA8</span>
+    </div>
+    <div style="background: #DDF0E6; color: #14553B; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+      <span style="width: 52px; height: 52px; border-radius: 16px; background: #1F7A55; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"></path><path d="M3 7l9 4 9-4"></path><path d="M12 11v10"></path></svg></span>
+      <span style="font-size: 19px; font-weight: 600">Entrega</span>
+      <span style="font-size: 14px">#1F7A55</span>
+    </div>
+    <div style="background: #FBEBD3; color: #7A4006; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+      <span style="width: 52px; height: 52px; border-radius: 16px; background: #B25E09; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="3"></circle></svg></span>
+      <span style="font-size: 19px; font-weight: 600">Cobro</span>
+      <span style="font-size: 14px">#B25E09</span>
+    </div>
+    <div style="background: #ECE6F6; color: #4A3180; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+      <span style="width: 52px; height: 52px; border-radius: 16px; background: #6B4BA8; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h12v10H2z"></path><path d="M14 9h4l3 3v4h-7"></path><circle cx="6" cy="17" r="2"></circle><circle cx="17" cy="17" r="2"></circle></svg></span>
+      <span style="font-size: 19px; font-weight: 600">Flete</span>
+      <span style="font-size: 14px">#6B4BA8</span>
+    </div>
+  </section>
+
+  <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px">
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-size: 19px; font-weight: 600">Estado: forma + color</h2>
+      <div style="display: flex; gap: 10px">
+        <span style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 22px; background: #DDF0E6; color: #14553B; font-size: 15px; font-weight: 600"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F7A55" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Hay</span>
+        <span style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 22px; background: #FBEBD3; color: #7A4006; font-size: 15px; font-weight: 600"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B25E09" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"></path><path d="M12 10v4M12 17v.5"></path></svg>Poco</span>
+        <span style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 22px; background: #F9DAD6; color: #8C1D17; font-size: 15px; font-weight: 600"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B3261E" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>Falta</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 6px">
+        <div style="display: flex; height: 12px; border-radius: 6px; background: #ECE8DE; overflow: hidden"><div style="width: 40%; background: #1E2420"></div><div style="width: 30%; background: #1F7A55"></div></div>
+        <span style="font-size: 14px; color: #555B52">Negro: ya entregado · verde: ahora · gris: falta</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-size: 19px; font-weight: 600">Cada producto, su ficha</h2>
+      <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px">
+        <span style="height: 52px; border-radius: 16px; background: #F1E3C0; color: #5C420C; font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center">Ha</span>
+        <span style="height: 52px; border-radius: 16px; background: #EBD3BF; color: #5E3214; font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center">Ma</span>
+        <span style="height: 52px; border-radius: 16px; background: #E2E6CC; color: #434A12; font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center">Av</span>
+        <span style="height: 52px; border-radius: 16px; background: #EED7D2; color: #6A2519; font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center">Al</span>
+        <span style="height: 52px; border-radius: 16px; background: #D9E1EA; color: #263447; font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center">Ch</span>
+        <span style="height: 52px; border-radius: 16px; background: #E7DACB; color: #4F3A22; font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center">Az</span>
+      </div>
+      <span style="font-size: 14px; color: #555B52">Dos letras y un tono fijo: se reconoce sin leer el nombre.</span>
+    </div>
+  </section>
+
+  <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px">
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 19px; font-weight: 600">Letra: Lexend</h2>
+      <div style="display: flex; align-items: baseline; gap: 16px"><span style="font-size: 44px; font-weight: 700">$ 191.200</span><span style="font-size: 14px; color: #555B52">44 · monto</span></div>
+      <div style="display: flex; align-items: baseline; gap: 16px"><span style="font-size: 22px; font-weight: 600">Entregar</span><span style="font-size: 14px; color: #555B52">22 · título</span></div>
+      <div style="display: flex; align-items: baseline; gap: 16px"><span style="font-size: 17px">Dietética Sol</span><span style="font-size: 14px; color: #555B52">17 · texto</span></div>
+      <div style="display: flex; align-items: baseline; gap: 16px"><span style="font-size: 14px; color: #555B52">Rosario · 10 oct</span><span style="font-size: 14px; color: #555B52">14 · apoyo</span></div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 19px; font-weight: 600">Base</h2>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+        <div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 56px; border-radius: 14px; background: #F6F3EC; border: 1px solid #D8D2C4"></span><span style="font-size: 13px">#F6F3EC</span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 56px; border-radius: 14px; background: #FFFDF8; border: 1px solid #D8D2C4"></span><span style="font-size: 13px">#FFFDF8</span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 56px; border-radius: 14px; background: #555B52"></span><span style="font-size: 13px">#555B52</span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 56px; border-radius: 14px; background: #1E2420"></span><span style="font-size: 13px">#1E2420</span></div>
+      </div>
+      <ul style="margin: 6px 0 0; padding-left: 20px; font-size: 15px; display: flex; flex-direction: column; gap: 4px">
+        <li>Una acción principal por pantalla, abajo.</li>
+        <li>Botones de 44 px o más.</li>
+        <li>Ícono + una palabra; nunca solo color.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":860,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
