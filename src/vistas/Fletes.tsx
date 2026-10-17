@@ -11,6 +11,10 @@ import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, numeroOCero, porFec
 import * as M from '../dominio/modelo';
 
 const COLOR_ESTADO: Record<M.EstadoFlete, string> = { preparacion: 'yellow', camino: 'blue', finalizado: 'green', cancelado: 'gray' };
+export function EstadoFlete({ estado }: { estado: M.EstadoFlete }) {
+  return <Badge variant="light" size="sm" color={COLOR_ESTADO[estado]}>{M.NOMBRE_ESTADO_FLETE[estado]}</Badge>;
+}
+
 const ACCION: Record<M.EstadoFlete, string> = {
   preparacion: 'Volvió sin entregar', camino: 'Despachar', finalizado: 'Recibido', cancelado: 'Cancelar',
 };
@@ -18,7 +22,7 @@ const ACCION: Record<M.EstadoFlete, string> = {
 export function Fletes() {
   const { datos, estadosFletes, costos, stock } = useBase();
   const estado = (id: string) => M.estadoFlete(estadosFletes, id);
-  const activos = datos.fletes.filter((f) => ['preparacion', 'camino'].includes(estado(f.id)));
+  const activos = datos.fletes.filter((f) => M.fleteEnCurso(estado(f.id)));
   let enCamino = 0;
   for (const [id, s] of stock.enTransito) enCamino += M.sumaDeps(s) * (costos.get(id) ?? 0);
 
@@ -39,6 +43,11 @@ export function Fletes() {
 }
 
 const nombreLugar = (nombreDeposito: (id: string) => string, id: string, afuera: string) => (id ? nombreDeposito(id) : afuera);
+
+export function Recorrido({ flete }: { flete: M.Flete }) {
+  const { nombreDeposito } = useBase();
+  return <>{nombreLugar(nombreDeposito, flete.origenId, 'Proveedor')} → {nombreLugar(nombreDeposito, flete.destinoId, 'Cliente')}</>;
+}
 
 function FormFlete() {
   const { datos, pedidos, buscarProducto, buscarContacto, db } = useBase();
@@ -170,7 +179,7 @@ function FormFlete() {
 }
 
 function ListaFletes() {
-  const { datos, estadosFletes, cargando, nombreDeposito, db } = useBase();
+  const { datos, estadosFletes, cargando, db } = useBase();
   const { guardando, msg, guardar } = useGuardar();
   const [filtro, setFiltro] = useState('activos');
   const items = new Map<string, M.FleteItem[]>();
@@ -180,7 +189,7 @@ function ListaFletes() {
 
   const filas = datos.fletes
     .map((f) => ({ f, estado: M.estadoFlete(estadosFletes, f.id) }))
-    .filter((x) => filtro === 'todos' || x.estado === 'preparacion' || x.estado === 'camino')
+    .filter((x) => filtro === 'todos' || M.fleteEnCurso(x.estado))
     .sort((a, b) => porFechaDesc(a.f, b.f));
 
   function cambiar(id: string, estado: M.EstadoFlete) {
@@ -213,15 +222,13 @@ function ListaFletes() {
                 </Table.Td>
                 <Table.Td>
                   <Text size="sm">{f.transporte}</Text>
-                  <Text size="xs" c="dimmed">
-                    {nombreLugar(nombreDeposito, f.origenId, 'Proveedor')} → {nombreLugar(nombreDeposito, f.destinoId, 'Cliente')}
-                  </Text>
+                  <Text size="xs" c="dimmed"><Recorrido flete={f} /></Text>
                   {(items.get(f.id) ?? []).map((it) => <Text key={it.productoId} size="xs">{fmtNum(it.cantidad)} {it.producto}</Text>)}
                   {pedidos.has(f.id) && <Text size="xs" c="dimmed">Pedidos: {(pedidos.get(f.id) ?? []).join(', ')}</Text>}
                 </Table.Td>
                 <Table.Td className="num">{fmtMoney(f.costo)}</Table.Td>
                 <Table.Td>
-                  <Badge variant="light" size="sm" color={COLOR_ESTADO[estado]}>{M.NOMBRE_ESTADO_FLETE[estado]}</Badge>
+                  <EstadoFlete estado={estado} />
                   <Stack gap={4} mt={6} align="flex-start">
                     {M.SIGUIENTES_FLETE[estado].map((e) => (
                       <Button key={e} size="compact-xs" variant={e === 'cancelado' || e === 'preparacion' ? 'subtle' : 'light'}

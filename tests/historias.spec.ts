@@ -387,3 +387,50 @@ test.describe('desde el celular', () => {
     })
   })
 })
+
+test('desde Inicio se toma un pedido sin stock y queda destacado entre los pendientes', async ({ page }) => {
+  // 1. Inicio muestra lo pendiente: el pedido de avena de Ana y el flete F0001 en camino a Rosario.
+  await ir(page, 'Inicio')
+  const pendientes = page.getByRole('region', { name: 'Pedidos pendientes' })
+  const fletes = page.getByRole('region', { name: 'Fletes en curso' })
+  await expect(pendientes.getByRole('article')).toHaveCount(1)
+  await expect(pendientes.getByRole('article', { name: 'Pedido PE0002' })).toContainText('10 Avena')
+  await expect(fletes.getByRole('article', { name: 'Flete F0001' })).toContainText('En camino')
+  await expect(kpi(page, 'Con faltante de stock')).toContainText('0')
+
+  // 2. Llama un cliente: el acceso directo lleva al formulario con el cursor en "Cliente".
+  await page.getByRole('button', { name: 'Tomar pedido nuevo' }).click()
+  await expect(page).toHaveURL(/#pedidos$/)
+  await expect(formPedido(page).getByLabel('Cliente', { exact: true })).toBeFocused()
+  await elegirCliente(page, 'Ana')
+  const pedido = formPedido(page)
+  await pedido.getByLabel('Producto', { exact: true }).fill('Almendras')
+  await pedido.getByLabel('Cantidad', { exact: true }).fill('12')
+  await pedido.getByLabel('Precio unitario', { exact: true }).fill('3000')
+  await pedido.getByRole('button', { name: 'Registrar pedido' }).click()
+  await expect(pedido.getByText(/✓ Pedido PE0003 de Ana registrado/)).toBeVisible()
+
+  // 3. De vuelta en Inicio el pedido nuevo aparece destacado: en Rosario hay 0 kg y vienen 6 en camino.
+  await ir(page, 'Inicio')
+  await expect(kpi(page, 'Pedidos pendientes')).toContainText('2')
+  await expect(kpi(page, 'Con faltante de stock')).toContainText('1')
+  const nuevo = pendientes.getByRole('article', { name: 'Pedido PE0003' })
+  await expect(nuevo).toContainText('Falta stock de Almendras')
+  await expect(pendientes.getByRole('article', { name: 'Pedido PE0002' })).not.toContainText('Falta stock')
+
+  // 4. Se despacha un flete con los 6 kg que faltan y el pedido deja de estar en falta.
+  await page.getByRole('button', { name: 'Ver fletes' }).click()
+  const flete = formFlete(page)
+  await flete.getByLabel('Transporte', { exact: true }).fill('Interprovincial')
+  await flete.getByLabel('Producto', { exact: true }).fill('Almendras')
+  await flete.getByLabel('Cantidad', { exact: true }).fill('6')
+  await flete.getByRole('radiogroup', { name: 'Estado inicial' }).getByText('En camino').click()
+  await flete.getByRole('button', { name: 'Registrar flete' }).click()
+  await expect(flete.getByText('✓ Flete F0002 registrado (en camino).')).toBeVisible()
+
+  await ir(page, 'Inicio')
+  await expect(fletes.getByRole('article')).toHaveCount(2)
+  await expect(kpi(page, 'Fletes en camino')).toContainText('2')
+  await expect(kpi(page, 'Con faltante de stock')).toContainText('0')
+  await expect(nuevo).not.toContainText('Falta stock')
+})

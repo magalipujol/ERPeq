@@ -41,7 +41,7 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 | `src/db/sheets/` | **Adaptador Google Sheets**. `hojas.ts`: hojas y columnas (`HOJAS`), lectura (`parsear`) y filas a escribir (`filas`). `operaciones.ts`: qué filas agrega cada operación. `celdas.ts`: valores de celda y fechas como número de serie. `google.ts`: login (Google Identity Services) y Sheets API (`escribir` agrega filas en varias hojas en un solo `batchUpdate`). `index.ts`: `crearBaseSheets`. `memoria.ts`: la misma planilla en memoria, para pruebas unitarias. |
 | `src/main.tsx` | Raíz de composición: crea el adaptador y se lo pasa a `App`. |
 | `src/base.ts`, `src/BaseProvider.tsx` | Contexto de React con los datos cargados, los cálculos derivados y las operaciones del puerto (`db`). |
-| `src/vistas/` | Pantallas: Stock, Pedidos (alta y entregas), Ventas, Compras, Fletes y Precios (precios y reglas de comisión). |
+| `src/vistas/` | Pantallas: Inicio (por defecto: pedido nuevo, pedidos pendientes y fletes en curso), Stock, Pedidos (alta y entregas), Ventas, Compras, Fletes y Precios (precios y reglas de comisión). |
 | `src/componentes/` | Componentes compartidos (carga de ítems, navegación: selector del header y barra inferior del celular, exportar pedidos a WhatsApp, etc.). |
 | `src/estilos.css`, `src/celular.css` | Estilos globales; `celular.css` tiene los ajustes para menos de 768 px (breakpoint `sm` de Mantine). |
 | `src/whatsapp.ts` | Arma el mensaje de pedidos para WhatsApp (qué pedidos entran y el texto). Sin dependencias del navegador: se prueba con Vitest. |

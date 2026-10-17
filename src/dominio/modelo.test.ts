@@ -172,6 +172,19 @@ describe('calcularStock', () => {
     // 300 comprometidos − 100 en Rosario − 120 en camino.
     expect(M.faltante(s, 'P001', 'ROS')).toBe(80);
   });
+
+  it('marca las líneas pendientes de un pedido cuyo producto falta en su depósito', () => {
+    const d = datos({
+      productos: [...productos, producto('P002')],
+      compras: [compra({ cantidad: 100, depositoId: 'ROS' }), compra({ productoId: 'P002', cantidad: 100, depositoId: 'ROS' })],
+      pedidos: [pedido('PE1', 'ROS')],
+      pedidosItems: [item('PE1', 1, 'P001', 300), item('PE1', 2, 'P002', 50)],
+    });
+    const [r] = M.resumirPedidos(d);
+    const s = M.calcularStock(d, [r]);
+
+    expect(M.lineasConFaltante(s, r).map((l) => l.productoId)).toStrictEqual(['P001']);
+  });
 });
 
 describe('armarEntrega', () => {
