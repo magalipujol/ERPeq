@@ -79,6 +79,35 @@ generar la base: hacé antes una copia (*Archivo* → *Crear una copia*).
 
 > El `.xlsx` tiene datos personales (agenda de clientes). No lo subas al repositorio ni lo mandes por canales públicos.
 
+### Agregar las hojas de caja a una planilla que ya existe
+
+La pantalla **Caja** (cobros de las ventas y cuentas entre socios) usa tres hojas: *Socios*, *Cobros* y
+*Rendiciones*. Una base generada con el script ya las tiene. En una planilla anterior, la app funciona igual
+pero la pantalla Caja avisa que faltan y no deja registrar cobros. Para agregarlas a mano:
+
+1. Abajo a la izquierda, **+** (*Agregar hoja*) y renombrala (doble clic en la pestaña). El nombre tiene que
+   ser exacto, con mayúscula inicial y sin espacios de más.
+2. Escribí los encabezados en la fila 1, uno por columna, empezando en A1:
+
+   | Hoja | Fila 1 (columnas A, B, C…) |
+   |---|---|
+   | `Socios` | `id`, `nombre`, `vendedor_id`, `rol` |
+   | `Cobros` | `fecha`, `venta_id`, `importe`, `medio`, `socio_id`, `socio`, `nota` |
+   | `Rendiciones` | `fecha`, `de_socio_id`, `a_socio_id`, `importe`, `medio`, `nota` |
+
+3. En *Socios*, cargá los socios desde la fila 2. Con los vendedores de la base (revisá los IDs en la hoja
+   *Vendedores*):
+
+   | id | nombre | vendedor_id | rol |
+   |---|---|---|---|
+   | SOC01 | Sampatti | VEN02 | dueño |
+   | SOC02 | Guada/Hernán | VEN01 | socio |
+
+   `vendedor_id` es el vendedor cuyas comisiones se le acreditan al socio. Exactamente un socio tiene que
+   tener `dueño` en `rol`: el dueño de la mercadería.
+4. *Cobros* y *Rendiciones* quedan vacías (solo el encabezado): las llena la app.
+5. En la app, **Salir** y volver a ingresar (o recargar la página) para que lea las hojas nuevas.
+
 ## 3. Completar `src/config.ts`
 
 ```ts
@@ -88,8 +117,8 @@ export const CONFIG = {
 };
 ```
 
-Los depósitos, vendedores, precios y reglas de comisión se cargan en la planilla (hojas *Depósitos*,
-*Vendedores*, *Precios* y *Reglas de comisión*), no acá.
+Los depósitos, vendedores, socios, precios y reglas de comisión se cargan en la planilla (hojas *Depósitos*,
+*Vendedores*, *Socios*, *Precios* y *Reglas de comisión*), no acá.
 
 ## 4. Primer ingreso
 

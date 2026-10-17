@@ -19,7 +19,8 @@ function armar(pedidos: PedidoPrueba[], extra: Partial<M.Datos> = {}): M.Datos {
     ],
     contactos: [], tipos: [], vendedores: [], precios: [], reglas: [], compras: [], pedidos: [],
     pedidosItems: [], pedidosEstados: [], pedidosVendedores: [], ventas: [], ventasItems: [], ventasComisiones: [],
-    fletes: [], fletesItems: [], fletesEstados: [], pedidosFletes: [], ajustes: [], ...extra,
+    fletes: [], fletesItems: [], fletesEstados: [], pedidosFletes: [], ajustes: [], socios: [], cobros: [], rendiciones: [],
+    ...extra,
   };
   for (const p of pedidos) {
     d.pedidos.push({

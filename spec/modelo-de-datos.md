@@ -16,6 +16,8 @@ Sus ideas centrales:
    puede comisionar a más de un vendedor. El porcentaje de la regla se puede cambiar en cada entrega.
 4. Los fletes se asocian a pedidos (uno o varios fletes por pedido, uno o varios pedidos por flete).
 5. Los fletes entre depósitos mueven stock y tienen estados: en preparación, en camino y finalizado.
+6. Cada venta registra sus **cobros**: cuánto, en efectivo o por transferencia y qué socio recibió la plata.
+   Con eso y las comisiones se calcula cuánto le debe cada socio al dueño de la mercadería (o al revés).
 
 ## Flujo típico
 
@@ -57,7 +59,7 @@ sequenceDiagram
   por defecto. Cada pedido o entrega guarda el valor por defecto que se propuso y el que se usó (ver
   [Valores por defecto y sobreescritura](#valores-por-defecto-y-sobreescritura)).
 - **Referencias por ID.** Cada tabla tiene un ID con prefijo: `P001` (producto), `C0001` (contacto), `VEN01`
-  (vendedor), `PE0001` (pedido), `V0001` (venta), `F0001` (flete); los depósitos usan códigos cortos (`BB`,
+  (vendedor), `SOC01` (socio), `PE0001` (pedido), `V0001` (venta), `F0001` (flete); los depósitos usan códigos cortos (`BB`,
   `ROS`). La app genera el siguiente al mayor existente. Las filas que apuntan a un producto, cliente o
   vendedor guardan también el nombre como copia, para que la hoja se pueda leer a mano.
 - **Una operación, un `batchUpdate`.** Un pedido o una venta escribe cabecera, ítems y filas relacionadas en
@@ -109,6 +111,12 @@ erDiagram
     FLETE ||--o{ PEDIDO_FLETE : ""
     FLETE ||--o{ FLETE_ITEM : transporta
     FLETE ||--|{ FLETE_ESTADO : historial
+
+    VENTA ||--o{ COBRO : "se cobra en"
+    SOCIO ||--o{ COBRO : recibe
+    SOCIO |o--o{ VENDEDOR : "se le acreditan las comisiones de"
+    SOCIO ||--o{ RENDICION : entrega
+    SOCIO ||--o{ RENDICION : recibe
 
     DEPOSITO {
         string id PK "BB, ROS"
@@ -239,6 +247,28 @@ erDiagram
         number cantidad "+/-"
         string motivo
     }
+    SOCIO {
+        string id PK "SOC01"
+        string nombre "Sampatti, Guada/Hernán"
+        string vendedor_id FK "una fila por vendedor"
+        string rol "dueño, socio"
+    }
+    COBRO {
+        date fecha
+        string venta_id FK
+        number importe
+        string medio "efectivo, transferencia"
+        string socio_id FK "quién recibió la plata"
+        string nota
+    }
+    RENDICION {
+        date fecha
+        string de_socio_id FK
+        string a_socio_id FK
+        number importe
+        string medio "efectivo, transferencia"
+        string nota
+    }
 ```
 
 ## Tablas (hojas)
@@ -279,6 +309,19 @@ Las columnas se listan en el orden de la hoja. **(c)** indica una copia guardada
 | **Fletes estados** | `flete_id`, `fecha`, `estado` | Cada cambio de estado es una fila nueva. El estado actual es el de la última fila. Un flete que se carga ya despachado o terminado escribe también los estados anteriores. |
 | **Pedidos fletes** | `pedido_id`, `flete_id`, `costo_asignado` | Une pedidos y fletes (N a N). `costo_asignado` es la parte del flete que se carga a ese pedido. |
 | **Ajustes** | `fecha`, `deposito_id`, `producto_id`, `producto` (c), `cantidad`, `motivo` | Correcciones de stock (roturas, conteos). |
+
+### Caja
+
+Estas tres hojas son **opcionales**: si la planilla no las tiene, la app las lee vacías, la pantalla Caja
+avisa cuáles crear y no deja registrar cobros ni rendiciones (ver `HOJAS_OPCIONALES` en `src/db/sheets/hojas.ts`;
+el puerto lo informa en `InfoBase.faltantes`). Las demás hojas
+son obligatorias: si falta una, la lectura falla.
+
+| Hoja | Columnas | Notas |
+|---|---|---|
+| **Socios** | `id`, `nombre`, `vendedor_id`, `rol` | Entre quiénes se reparte la plata. `vendedor_id` es un vendedor cuyas comisiones se le acreditan al socio; un socio con varios vendedores tiene una fila por vendedor (con el mismo `id`; el nombre sale de la primera). `rol`: `dueño` para el dueño de la mercadería (uno solo) y `socio` para los demás. |
+| **Cobros** | `fecha`, `venta_id`, `importe`, `medio`, `socio_id`, `socio` (c), `nota` | Lo que pagó el cliente por una venta. Una venta puede tener varios cobros (pagos parciales o mezcla de medios). `medio`: `efectivo` o `transferencia`. `socio_id` es quien recibió la plata (en mano o en su cuenta). |
+| **Rendiciones** | `fecha`, `de_socio_id`, `a_socio_id`, `importe`, `medio`, `nota` | Plata que un socio le entrega a otro para saldar la cuenta: un socio que le rinde al dueño lo cobrado, o el dueño que le paga a un socio sus comisiones. |
 
 ## Valores por defecto y sobreescritura
 
@@ -557,6 +600,66 @@ flowchart LR
 El **costo promedio** se sigue calculando con todas las compras con precio, sumando los dos depósitos. Una
 transferencia no cambia el costo de la mercadería: su costo es un gasto de logística (ver abajo).
 
+## Cobros y cuentas entre socios
+
+La mercadería es del **dueño** (Sampatti, la empresa de Leo). Los otros socios (Guada/Hernán) venden,
+cobran una comisión y a veces reciben la plata de la venta. La app registra quién tiene la plata de cada
+venta para saber cómo repartirla.
+
+### Saldo a cobrar de una venta
+
+```
+importe(venta) = Σ importe de sus Ventas ítems
+cobrado(venta) = Σ importe de sus Cobros
+a cobrar(venta) = importe(venta) − cobrado(venta)
+```
+
+Lo que falta cobrar es deuda del cliente. La app no deja cobrar más que lo que falta.
+
+Un cobro se carga desde la pantalla **Caja** (eligiendo la venta) o al registrar la entrega en **Pedidos**
+("Cobrado en la entrega"): en ese caso la venta y el cobro van en el mismo `batchUpdate`. La app propone
+como socio que recibió la plata al del vendedor del pedido y, si no tiene, al dueño.
+
+### Cuenta de un socio con el dueño
+
+Para cada socio que no es el dueño:
+
+```
+saldo(socio) =   Σ cobros que recibió el socio
+               − Σ comisiones de sus vendedores (de todas las ventas, las cobre quien las cobre)
+               − Σ rendiciones que el socio entregó
+               + Σ rendiciones que el socio recibió
+```
+
+- **Positivo**: el socio tiene plata del dueño; le debe ese saldo.
+- **Negativo**: el dueño le debe al socio (por ejemplo, comisiones de ventas que cobró el dueño).
+
+El dueño no tiene cuenta: es la contraparte de las demás. Las comisiones de un vendedor sin socio, o del
+propio dueño (Leo), no entran en ninguna cuenta.
+
+```mermaid
+flowchart LR
+    CL((Cliente)) -- "cobro en efectivo" --> GH["Guada/Hernán"]
+    CL -- "cobro por transferencia" --> SA["Sampatti (dueño)"]
+    GH -- "rendición" --> SA
+    SA -- "pago de comisiones" --> GH
+    VC["Ventas comisiones<br/>de VEN01"] -. "se acreditan a" .-> GH
+```
+
+### Ejemplo
+
+Guada/Hernán (vendedor `VEN01`, socio `SOC02`) tiene 3% de comisión en avena y 7% en almendras.
+
+| Paso | Filas | Saldo de Guada/Hernán |
+|---|---|---|
+| 1. Entrega `V0101`: 10 kg de avena × $800 = $8.000 a una dietética. Cobra todo en efectivo. | Ventas comisiones: `V0101`, `VEN01`, 3%, $240 · Cobros: 16/10, `V0101`, $8.000, `efectivo`, `SOC02` | 8.000 − 240 = **$7.760** (le debe a Sampatti) |
+| 2. Le rinde $7.000 en efectivo a Sampatti. | Rendiciones: 16/10, `SOC02`, `SOC01`, $7.000, `efectivo` | 7.760 − 7.000 = **$760** |
+| 3. Entrega `V0102`: 5 kg de almendras × $3.000 = $15.000. La cobra Sampatti por transferencia. | Ventas comisiones: `V0102`, `VEN01`, 7%, $1.050 · Cobros: 16/10, `V0102`, $15.000, `transferencia`, `SOC01` | 760 − 1.050 = **−$290** (Sampatti le debe) |
+| 4. Sampatti le transfiere $290. | Rendiciones: 16/10, `SOC01`, `SOC02`, $290, `transferencia` | −290 + 290 = **$0** (al día) |
+
+Es lo que dijo el dueño: "si Guada/Hernán vendieron y se llevan comisión, pero además cobran en efectivo,
+le deben a Sampatti efectivo − comisión".
+
 ## Análisis
 
 La unidad de análisis de la ganancia es el **pedido**, porque es donde se juntan las entregas, las
@@ -609,6 +712,9 @@ La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e 
 6. **Precios:** una fila por producto con el precio de su última venta.
 7. **Fletes:** sin origen, destino ni ítems y en estado `finalizado`: no cambian el stock. Las columnas
    *Abonado*, *Comisión* y *Total a recibir* del Excel no se pasan (estaban vacías).
+8. **Socios:** fijos en el script: `SOC01` Sampatti (dueño, con el vendedor de LEO) y `SOC02` Guada/Hernán
+   (con el de GUADA/HERNAN). *Cobros* y *Rendiciones* quedan vacías: el Excel no dice quién cobró cada venta,
+   así que las ventas históricas aparecen como "a cobrar" hasta que se carguen sus cobros.
 
 ## Preguntas abiertas
 
@@ -621,5 +727,16 @@ La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e 
 - **Costo de las transferencias.** Esta spec lo trata como gasto de logística (o lo asigna a pedidos). La
   alternativa es sumarlo al costo de la mercadería en el depósito de destino, pero eso exige un costo
   promedio por depósito.
+- **Comisiones de ventas sin cobrar.** La cuenta de un socio descuenta sus comisiones desde la entrega,
+  aunque el cliente todavía no haya pagado. La alternativa es acreditarlas recién cuando se cobra la venta
+  (o en proporción a lo cobrado).
+- **Ventas históricas sin cobros.** Las ventas que vienen del Excel no tienen cobros y figuran como "a
+  cobrar". Falta decidir si se cargan como cobradas (¿por quién?) o si se marca una fecha de corte.
+- **Pagos a proveedores.** El pedido original hablaba de qué se le paga a cada proveedor en efectivo o por
+  transferencia. Esta parte cubre las ventas; las compras no registran todavía cómo ni quién las pagó.
+- **Otros medios.** Solo hay `efectivo` y `transferencia`. Si aparecen otros (cheque, Mercado Pago), se
+  agregan a la lista.
+- **Rendiciones entre socios que no son el dueño.** La hoja las admite y el cálculo las cuenta, pero la
+  pantalla solo carga rendiciones entre un socio y el dueño.
 - **Volver de "en camino" a "preparación".** Está en el diagrama para el caso de un flete que vuelve sin
   entregar; si no pasa nunca, se saca.

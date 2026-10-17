@@ -18,7 +18,7 @@ export function crearPlanillaEnMemoria(inicial: Partial<Hojas> = {}): BaseDeDato
     iniciar: async () => Promise.resolve(),
     ingresar: async () => Promise.resolve(),
     salir: async () => Promise.resolve(),
-    abrir: async () => Promise.resolve({ titulo: 'ERPeq (en memoria)', url: '' }),
+    abrir: async () => Promise.resolve({ titulo: 'ERPeq (en memoria)', url: '', faltantes: [] }),
     leer: async () => Promise.resolve(parsear(CLAVES.map((k) => hojas[k]))),
     ...operaciones(async (escritura) => {
       escrituras.push(escritura);

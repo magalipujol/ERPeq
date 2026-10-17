@@ -7,7 +7,7 @@ const vacios = (): M.Datos => ({
   depositos: [{ id: 'BB', nombre: 'General', localidad: '' }, { id: 'ROS', nombre: 'Rosario', localidad: '' }],
   productos: [], contactos: [], tipos: [], vendedores: [], precios: [], reglas: [], compras: [], pedidos: [],
   pedidosItems: [], pedidosEstados: [], pedidosVendedores: [], ventas: [], ventasItems: [], ventasComisiones: [],
-  fletes: [], fletesItems: [], fletesEstados: [], pedidosFletes: [], ajustes: [],
+  fletes: [], fletesItems: [], fletesEstados: [], pedidosFletes: [], ajustes: [], socios: [], cobros: [], rendiciones: [],
 });
 const datos = (d: Partial<M.Datos>): M.Datos => ({ ...vacios(), ...d });
 const producto = (id: string): M.Producto => ({ id, producto: id, unidad: 'kg', minimo: 0 });
@@ -251,5 +251,110 @@ describe('iDs', () => {
     const sig = M.generadorIds(['P007'], 'P', 3);
 
     expect([sig(), sig()]).toStrictEqual(['P008', 'P009']);
+  });
+});
+
+// ---------- Caja ----------
+
+// Ejemplo de la spec: Guada/Hernán (VEN01) entrega V0001 por $8.000 con 3% de comisión y cobra en efectivo;
+// Sampatti cobra por transferencia V0002, de $15.000, con 7% de comisión para Guada/Hernán.
+const SAMPATTI: M.Socio = { id: 'SOC01', nombre: 'Sampatti', vendedores: ['VEN02'], duenio: true };
+const GH: M.Socio = { id: 'SOC02', nombre: 'Guada/Hernán', vendedores: ['VEN01'], duenio: false };
+
+const caja = (d: Partial<M.Datos> = {}): M.Datos => datos({
+  pedidos: [
+    { id: 'PE0001', fecha: fecha(2026, 10, 1), contactoId: '', cliente: 'Ana', tipo: '', localidad: '', provincia: '', depositoId: 'ROS', nota: '' },
+    { id: 'PE0002', fecha: fecha(2026, 10, 1), contactoId: '', cliente: 'Bruno', tipo: '', localidad: '', provincia: '', depositoId: 'BB', nota: '' },
+  ],
+  ventas: [
+    { id: 'V0001', fecha: fecha(2026, 10, 2), pedidoId: 'PE0001', depositoId: 'ROS', nota: '' },
+    { id: 'V0002', fecha: fecha(2026, 10, 4), pedidoId: 'PE0002', depositoId: 'BB', nota: '' },
+  ],
+  ventasItems: [
+    { ventaId: 'V0001', linea: 1, pedidoLinea: 1, productoId: 'P002', producto: 'Avena', cantidad: 10, precio: 800, importe: 8000, costo: 500 },
+    { ventaId: 'V0002', linea: 1, pedidoLinea: 1, productoId: 'P001', producto: 'Almendras', cantidad: 3, precio: 3000, importe: 9000, costo: 1500 },
+    { ventaId: 'V0002', linea: 2, pedidoLinea: 2, productoId: 'P003', producto: 'Miel', cantidad: 3, precio: 2000, importe: 6000, costo: null },
+  ],
+  ventasComisiones: [
+    { ventaId: 'V0001', linea: 1, vendedorId: 'VEN01', vendedor: 'Guada/Hernán', porcentajeRegla: 3, porcentaje: 3, monto: 240 },
+    { ventaId: 'V0002', linea: 1, vendedorId: 'VEN01', vendedor: 'Guada/Hernán', porcentajeRegla: 7, porcentaje: 7, monto: 630 },
+    { ventaId: 'V0002', linea: 2, vendedorId: 'VEN01', vendedor: 'Guada/Hernán', porcentajeRegla: 7, porcentaje: 7, monto: 420 },
+  ],
+  socios: [SAMPATTI, GH],
+  ...d,
+});
+
+const cobro = (ventaId: string, importe: number, medio: M.Medio, socio: M.Socio, f = fecha(2026, 10, 2)): M.Cobro => ({
+  fecha: f, ventaId, importe, medio, socioId: socio.id, socio: socio.nombre, nota: '',
+});
+const rendicion = (de: M.Socio, a: M.Socio, importe: number, f = fecha(2026, 10, 3)): M.Rendicion => ({
+  fecha: f, deId: de.id, aId: a.id, importe, medio: 'efectivo', nota: '',
+});
+
+describe('cuentasVentas', () => {
+  it('lo cobrado se descuenta del importe de la venta, en uno o varios cobros', () => {
+    const d = caja({ cobros: [cobro('V0002', 10000, 'transferencia', SAMPATTI), cobro('V0002', 2000, 'efectivo', GH)] });
+
+    expect(M.cuentasVentas(d).map((c) => [c.venta.id, c.pedido?.cliente, c.importe, c.cobrado, c.saldo])).toStrictEqual([
+      ['V0001', 'Ana', 8000, 0, 8000], ['V0002', 'Bruno', 15000, 12000, 3000],
+    ]);
+  });
+
+  it('ventasACobrar deja solo las que tienen saldo', () => {
+    const d = caja({ cobros: [cobro('V0001', 8000, 'efectivo', GH)] });
+
+    expect(M.ventasACobrar(d).map((c) => c.venta.id)).toStrictEqual(['V0002']);
+  });
+});
+
+describe('cuentasSocios', () => {
+  const de = (d: M.Datos) => {
+    const cuentas = M.cuentasSocios(d);
+
+    expect(cuentas.map((c) => c.socio.id)).toStrictEqual(['SOC02']); // el dueño no tiene cuenta
+
+    return cuentas[0];
+  };
+
+  it('quien cobra en efectivo le debe al dueño lo cobrado menos su comisión', () => {
+    // V0002 todavía no se cobró, pero su comisión ya cuenta.
+    const sinV2 = caja({ ventasComisiones: caja().ventasComisiones.slice(0, 1), cobros: [cobro('V0001', 8000, 'efectivo', GH)] });
+
+    expect(de(sinV2)).toMatchObject({ cobradoEfectivo: 8000, comisiones: 240, saldo: 7760 });
+  });
+
+  it('una rendición baja el saldo y una venta cobrada por el dueño lo deja debiéndole la comisión', () => {
+    const d = caja({
+      cobros: [cobro('V0001', 8000, 'efectivo', GH), cobro('V0002', 15000, 'transferencia', SAMPATTI, fecha(2026, 10, 4))],
+      rendiciones: [rendicion(GH, SAMPATTI, 7000)],
+    });
+    const cuenta = de(d);
+
+    // 8.000 − 240 − 7.000 − (630 + 420) = −290: Sampatti le debe $290.
+    expect(cuenta).toMatchObject({ cobradoEfectivo: 8000, cobradoTransferencia: 0, comisiones: 1290, entregado: 7000, recibido: 0, saldo: -290 });
+    expect(cuenta.movimientos.map((m) => [m.tipo, m.ref, m.importe, m.saldo])).toStrictEqual([
+      ['cobro', 'V0001', 8000, 8000], ['comision', 'V0001', -240, 7760], ['entrego', 'Sampatti', -7000, 760],
+      ['comision', 'V0002', -1050, -290],
+    ]);
+  });
+
+  it('lo que el dueño le paga al socio sube su saldo', () => {
+    const d = caja({ cobros: [cobro('V0002', 15000, 'transferencia', SAMPATTI)], rendiciones: [rendicion(SAMPATTI, GH, 1290)] });
+
+    expect(de(d).saldo).toBe(0);
+  });
+
+  it('las comisiones de vendedores sin socio o del dueño no entran en ninguna cuenta', () => {
+    const d = caja({ socios: [SAMPATTI, { ...GH, vendedores: [] }] });
+
+    expect(de(d)).toMatchObject({ comisiones: 0, saldo: 0, movimientos: [] });
+  });
+});
+
+describe('socioPropuesto', () => {
+  it('el socio del vendedor del pedido; si no tiene, el dueño', () => {
+    expect(M.socioPropuesto([SAMPATTI, GH], ['VEN09', 'VEN01'])).toBe(GH);
+    expect(M.socioPropuesto([GH, SAMPATTI], [])).toBe(SAMPATTI);
+    expect(M.socioPropuesto([], ['VEN01'])).toBeUndefined();
   });
 });

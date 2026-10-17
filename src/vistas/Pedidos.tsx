@@ -4,6 +4,7 @@ import {
 } from '@mantine/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { normalizar, useBase, useGuardar } from '../base';
+import { CamposCobro, type DatosCobro } from '../componentes/Cobro';
 import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
 import { ExportarWhatsApp } from '../componentes/ExportarWhatsApp';
 import { type Item, itemVacio } from '../componentes/item';
@@ -221,9 +222,15 @@ type Porcentajes = Record<string, number | string>;
 const claveCom = (linea: number, vendedor: string) => `${linea}|${vendedor}`;
 
 function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: () => void }) {
-  const { datos, stock, costos, nombreDeposito, db } = useBase();
+  const { datos, info, stock, costos, nombreDeposito, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const { pedido } = resumen;
+  // Cobro opcional en la misma operación; solo si la base ya tiene lo necesario para la caja.
+  const conCobro = datos.socios.length > 0 && info.faltantes.length === 0;
+  const [cobro, setCobro] = useState<DatosCobro>(() => ({
+    importe: '', medio: 'efectivo', socioId: M.socioPropuesto(datos.socios, resumen.vendedores)?.id ?? '',
+  }));
+  const cobrado = aNumero(cobro.importe);
   const [fecha, setFecha] = useState(hoyISO);
   const [nota, setNota] = useState('');
   // Solo las cantidades editadas; las demás proponen entregar todo lo pendiente.
@@ -257,11 +264,17 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
     const falta = !dia ? 'Elegí la fecha.'
       : aEntregar.length === 0 ? 'Indicá qué cantidad se entrega.'
       : lineas.some((l) => l.cantidad > l.linea.pendiente) ? 'No se puede entregar más de lo pendiente.'
+      : cobrado > M.redondear(importe) ? 'No se puede cobrar más que el importe de la entrega.'
       : null;
     if (falta || !dia) { error(falta ?? 'Elegí la fecha.'); return; }
+    const socio = datos.socios.find((s) => s.id === cobro.socioId);
     guardar(async () => {
       const venta: M.Venta = { id: M.siguienteId(datos.ventas.map((v) => v.id), 'V'), fecha: dia, pedidoId: pedido.id, depositoId: pedido.depositoId, nota: nota.trim() };
-      await db.registrarEntrega(M.armarEntrega(venta, aEntregar));
+      const cobros: M.Cobro[] = conCobro && cobrado > 0 && socio ? [{
+        fecha: dia, ventaId: venta.id, importe: cobrado, medio: cobro.medio, socioId: socio.id, socio: socio.nombre, nota: '',
+      }] : [];
+      await db.registrarEntrega(M.armarEntrega(venta, aEntregar), cobros);
+      setCobro((c) => ({ ...c, importe: '' }));
       // La próxima entrega vuelve a proponer lo pendiente y los porcentajes de las reglas.
       setCantidades({});
       setEditados({});
@@ -325,6 +338,7 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
           );
         })}
         <TextInput label="Nota" maxLength={200} placeholder="Opcional" value={nota} onChange={(e) => { setNota(e.currentTarget.value); }} />
+        {conCobro && <CamposCobro valor={cobro} onChange={setCobro} socios={datos.socios} etiqueta="Cobrado en la entrega" placeholder="Sin cobrar" />}
         {aEntregar.length > 0 && (
           <Group className="suave" px="md" py="xs" gap="xl">
             <Resumen label="Importe" valor={fmtMoney(importe)} />

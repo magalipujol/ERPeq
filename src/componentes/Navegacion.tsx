@@ -1,13 +1,13 @@
 import { SegmentedControl, ScrollArea, Text, UnstyledButton } from '@mantine/core';
 import {
-  IconChartBar, IconClipboardList, IconHome, IconPackage, IconPointFilled, IconReceipt2, IconShoppingCart, IconTag, IconTruck,
+  IconCash, IconChartBar, IconClipboardList, IconHome, IconPackage, IconPointFilled, IconReceipt2, IconShoppingCart, IconTag, IconTruck,
 } from '@tabler/icons-react';
 
 export interface OpcionNav<V extends string> { value: V; label: string }
 
 const ICONOS: Record<string, typeof IconPackage> = {
   inicio: IconHome, stock: IconPackage, pedidos: IconClipboardList, ventas: IconReceipt2, compras: IconShoppingCart,
-  fletes: IconTruck, precios: IconTag, analisis: IconChartBar,
+  fletes: IconTruck, precios: IconTag, caja: IconCash, analisis: IconChartBar,
 };
 
 // Selector de pantalla del header, para pantallas anchas. En celular se usa BarraInferior.

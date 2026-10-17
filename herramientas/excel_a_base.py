@@ -25,6 +25,9 @@ sys.stdout.reconfigure(encoding='utf-8')
 DEPOSITOS = [('BB', 'General', 'Bahía Blanca'), ('ROS', 'Rosario', 'Rosario')]
 # Nombre de cada vendedor según la columna CARGA del Excel.
 VENDEDORES = {'GUADA/HERNAN': 'Guada/Hernán', 'LEO': 'Leo'}
+# Socios entre los que se reparte la plata de las ventas: (id, nombre, vendedor de la columna CARGA, rol).
+# Sampatti es la empresa de Leo y la dueña de la mercadería.
+SOCIOS = [('SOC01', 'Sampatti', 'LEO', 'dueño'), ('SOC02', 'Guada/Hernán', 'GUADA/HERNAN', 'socio')]
 
 # Encabezados de cada hoja, en el orden de columnas de src/db/sheets/hojas.ts (HOJAS y filas).
 COLS = {
@@ -51,6 +54,9 @@ COLS = {
     'Fletes estados': ['flete_id', 'fecha', 'estado'],
     'Pedidos fletes': ['pedido_id', 'flete_id', 'costo_asignado'],
     'Ajustes': ['fecha', 'deposito_id', 'producto_id', 'producto', 'cantidad', 'motivo'],
+    'Socios': ['id', 'nombre', 'vendedor_id', 'rol'],
+    'Cobros': ['fecha', 'venta_id', 'importe', 'medio', 'socio_id', 'socio', 'nota'],
+    'Rendiciones': ['fecha', 'de_socio_id', 'a_socio_id', 'importe', 'medio', 'nota'],
 }
 COLS_FECHA = {'fecha', 'desde'}
 COLS_PLATA = {'precio', 'importe', 'costo', 'monto', 'precio_lista', 'costo_asignado'}
@@ -336,6 +342,10 @@ def main(origen, destino):
         'Fletes estados': fletes_estados,
         'Pedidos fletes': [],
         'Ajustes': [],
+        # El Excel no dice quién cobró cada venta: los cobros y las rendiciones empiezan vacíos.
+        'Socios': [[sid, nombre, vendedor_id[v], rol] for sid, nombre, v, rol in SOCIOS],
+        'Cobros': [],
+        'Rendiciones': [],
     }
     out = openpyxl.Workbook()
     out.remove(out.active)

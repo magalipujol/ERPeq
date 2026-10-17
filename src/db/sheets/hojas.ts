@@ -2,9 +2,9 @@
 // escribir. Tiene que coincidir con la planilla real, con tests/google-falso.ts y con
 // herramientas/excel_a_base.py. La referencia es spec/modelo-de-datos.md.
 import {
-  type Ajuste, type Compra, type ContactoNuevo, type Datos, type Flete, type FleteItem, type Pedido,
+  type Ajuste, type Cobro, type Compra, type ContactoNuevo, type Datos, type Flete, type FleteItem, type Pedido,
   type PedidoFlete, type PedidoItem, type PedidoVendedor, type Precio, type Producto, redondear, type ReglaComision,
-  type Venta, type VentaComision, type VentaItem,
+  type Rendicion, type Socio, type Venta, type VentaComision, type VentaItem,
 } from '../../dominio/modelo';
 import { type Celda, deSerie, type Fila, type ValorCelda } from './celdas';
 
@@ -30,14 +30,38 @@ export const HOJAS = {
   fletesEstados: ['Fletes estados', 3],
   pedidosFletes: ['Pedidos fletes', 3],
   ajustes: ['Ajustes', 6],
+  socios: ['Socios', 4],
+  cobros: ['Cobros', 7],
+  rendiciones: ['Rendiciones', 6],
 } as const satisfies Record<string, readonly [string, number]>;
 
 export type ClaveHoja = keyof typeof HOJAS;
 export const CLAVES = Object.keys(HOJAS) as ClaveHoja[];
 export const nombreHoja = (k: ClaveHoja) => HOJAS[k][0];
 
+// Hojas que la planilla puede no tener todavía, con sus encabezados: si faltan, se leen vacías. Con las
+// demás, que falte una es un error (si se leyera vacía, el stock o las ventas saldrían mal sin aviso).
+export const HOJAS_OPCIONALES = {
+  socios: ['id', 'nombre', 'vendedor_id', 'rol'],
+  cobros: ['fecha', 'venta_id', 'importe', 'medio', 'socio_id', 'socio', 'nota'],
+  rendiciones: ['fecha', 'de_socio_id', 'a_socio_id', 'importe', 'medio', 'nota'],
+} as const satisfies Partial<Record<ClaveHoja, readonly string[]>>;
+export type ClaveOpcional = keyof typeof HOJAS_OPCIONALES;
+const OPCIONALES = Object.keys(HOJAS_OPCIONALES) as ClaveOpcional[];
+
+// Hojas opcionales que no están entre los títulos de la planilla.
+export const hojasFaltantes = (titulos: readonly string[]) => OPCIONALES.filter((k) => !titulos.includes(nombreHoja(k)));
+
 const columna = (n: number) => String.fromCharCode(64 + n);
 export const rango = (k: ClaveHoja) => `'${HOJAS[k][0]}'!A2:${columna(HOJAS[k][1])}`;
+
+// Lee todas las hojas salvo las `faltantes`, que quedan vacías: pedir una hoja que no existe haría fallar
+// toda la lectura.
+export async function leerHojas(leer: (rangos: string[]) => Promise<Fila[][]>, faltantes: readonly ClaveHoja[] = []) {
+  const claves = CLAVES.filter((k) => !faltantes.includes(k));
+  const leidas = await leer(claves.map(rango));
+  return parsear(CLAVES.map((k) => (faltantes.includes(k) ? [] : leidas[claves.indexOf(k)] ?? [])));
+}
 
 
 const txt = (v: Celda) => (v === undefined || v === null ? '' : String(v).trim());
@@ -100,7 +124,31 @@ export function parsear(crudo: Fila[][]): Datos {
     ajustes: de('ajustes', 2, (f) => ({
       fecha: fecha(f[0]), depositoId: txt(f[1]), productoId: txt(f[2]), producto: txt(f[3]), cantidad: num(f[4]) ?? 0, motivo: txt(f[5]),
     })),
+    socios: parsearSocios(h.socios),
+    cobros: de('cobros', 1, (f) => ({
+      fecha: fecha(f[0]), ventaId: txt(f[1]), importe: num(f[2]) ?? 0, medio: txt(f[3]).toLowerCase(), socioId: txt(f[4]),
+      socio: txt(f[5]), nota: txt(f[6]),
+    })),
+    rendiciones: de('rendiciones', 1, (f) => ({
+      fecha: fecha(f[0]), deId: txt(f[1]), aId: txt(f[2]), importe: num(f[3]) ?? 0, medio: txt(f[4]).toLowerCase(), nota: txt(f[5]),
+    })),
   };
+}
+
+// Un socio puede tener varias filas, una por vendedor cuyas comisiones se le acreditan. Junta las filas
+// de cada socio: el nombre de la primera, todos sus vendedores y si alguna dice "dueño" en `rol`.
+function parsearSocios(filasSocios: Fila[]): Socio[] {
+  const res = new Map<string, Socio>();
+  for (const f of filasSocios) {
+    const id = txt(f[0]);
+    if (id === '') continue;
+    const s = res.get(id) ?? { id, nombre: '', vendedores: [], duenio: false };
+    s.nombre ||= txt(f[1]);
+    if (txt(f[2]) !== '' && !s.vendedores.includes(txt(f[2]))) s.vendedores.push(txt(f[2]));
+    s.duenio ||= ['dueño', 'dueno', 'duenio'].includes(txt(f[3]).toLowerCase());
+    res.set(id, s);
+  }
+  return [...res.values()].map((s) => ({ ...s, nombre: s.nombre || s.id }));
 }
 
 // ---------- Filas a escribir (mismo orden de columnas que cada hoja) ----------
@@ -129,6 +177,8 @@ export const filas = {
   fleteItem: (i: FleteItem): ValorCelda[] => [i.fleteId, i.productoId, i.producto, i.cantidad],
   pedidoFlete: (p: PedidoFlete): ValorCelda[] => [p.pedidoId, p.fleteId, vacio(p.costoAsignado)],
   ajuste: (a: Ajuste): ValorCelda[] => [a.fecha, a.depositoId, a.productoId, a.producto, a.cantidad, a.motivo],
+  cobro: (c: Cobro): ValorCelda[] => [c.fecha, c.ventaId, c.importe, c.medio, c.socioId, c.socio, c.nota],
+  rendicion: (r: Rendicion): ValorCelda[] => [r.fecha, r.deId, r.aId, r.importe, r.medio, r.nota],
 };
 
 // Filas por hoja que se escriben juntas en una operación.

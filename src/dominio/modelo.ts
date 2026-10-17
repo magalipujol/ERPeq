@@ -44,6 +44,13 @@ export interface Flete {
 }
 export interface FleteItem { fleteId: string; productoId: string; producto: string; cantidad: number }
 export interface PedidoFlete { pedidoId: string; fleteId: string; costoAsignado: number | null }
+export type Medio = 'efectivo' | 'transferencia';
+export const MEDIOS: readonly Medio[] = ['efectivo', 'transferencia'];
+export const NOMBRE_MEDIO: Record<Medio, string> = { efectivo: 'Efectivo', transferencia: 'Transferencia' };
+// `vendedores`: vendedores cuyas comisiones se le acreditan. `duenio`: el dueño de la mercadería.
+export interface Socio { id: string; nombre: string; vendedores: string[]; duenio: boolean }
+export interface Cobro { fecha: Date | null; ventaId: string; importe: number; medio: string; socioId: string; socio: string; nota: string }
+export interface Rendicion { fecha: Date | null; deId: string; aId: string; importe: number; medio: string; nota: string }
 export interface Ajuste { fecha: Date | null; depositoId: string; productoId: string; producto: string; cantidad: number; motivo: string }
 
 export interface Datos {
@@ -51,7 +58,7 @@ export interface Datos {
   precios: Precio[]; reglas: ReglaComision[]; compras: Compra[]; pedidos: Pedido[]; pedidosItems: PedidoItem[];
   pedidosEstados: RegistroEstado[]; pedidosVendedores: PedidoVendedor[]; ventas: Venta[]; ventasItems: VentaItem[];
   ventasComisiones: VentaComision[]; fletes: Flete[]; fletesItems: FleteItem[]; fletesEstados: RegistroEstado[];
-  pedidosFletes: PedidoFlete[]; ajustes: Ajuste[];
+  pedidosFletes: PedidoFlete[]; ajustes: Ajuste[]; socios: Socio[]; cobros: Cobro[]; rendiciones: Rendicion[];
 }
 
 export function redondear(n: number, d?: number): number;
@@ -368,3 +375,146 @@ export function armarEntrega(venta: Venta, lineas: LineaEntrega[]): Entrega {
 export const caminoFlete = (estadoInicial: EstadoFlete): EstadoFlete[] =>
   estadoInicial === 'preparacion' ? ['preparacion']
     : estadoInicial === 'camino' ? ['preparacion', 'camino'] : ['preparacion', 'camino', 'finalizado'];
+
+// ---------- Caja: cobros y cuentas entre socios ----------
+// Cobros de las ventas, saldo a cobrar de cada venta y cuenta de cada socio frente al dueño de la
+// mercadería. La referencia es la sección "Cobros y cuentas entre socios" de spec/modelo-de-datos.md.
+
+export const duenio = (socios: Socio[]) => socios.find((s) => s.duenio);
+
+// Socio al que se acreditan las comisiones de cada vendedor.
+export function socioDeVendedor(socios: Socio[]) {
+  const res = new Map<string, Socio>();
+  for (const s of socios) for (const v of s.vendedores) if (!res.has(v)) res.set(v, s);
+  return res;
+}
+
+// Importe de cada venta: Σ importe de sus ítems.
+export function importePorVenta(datos: Pick<Datos, 'ventasItems'>) {
+  const res = new Map<string, number>();
+  for (const it of datos.ventasItems) res.set(it.ventaId, redondear((res.get(it.ventaId) ?? 0) + it.importe));
+  return res;
+}
+
+export function cobradoPorVenta(cobros: Cobro[]) {
+  const res = new Map<string, number>();
+  for (const c of cobros) res.set(c.ventaId, redondear((res.get(c.ventaId) ?? 0) + c.importe));
+  return res;
+}
+
+export interface CuentaVenta { venta: Venta; pedido: Pedido | undefined; importe: number; cobrado: number; saldo: number }
+
+// Todas las ventas con lo cobrado y lo que falta cobrar.
+export function cuentasVentas(datos: Datos): CuentaVenta[] {
+  const importes = importePorVenta(datos);
+  const cobrado = cobradoPorVenta(datos.cobros);
+  const pedidos = new Map(datos.pedidos.map((p) => [p.id, p]));
+  return datos.ventas.map((venta) => {
+    const importe = importes.get(venta.id) ?? 0;
+    const c = cobrado.get(venta.id) ?? 0;
+    return { venta, pedido: pedidos.get(venta.pedidoId), importe, cobrado: c, saldo: redondear(importe - c) };
+  });
+}
+
+export const ventasACobrar = (datos: Datos) => cuentasVentas(datos).filter((c) => c.saldo > 0);
+
+export type TipoMovimiento = 'cobro' | 'comision' | 'entrego' | 'recibio';
+export interface MovimientoSocio {
+  fecha: Date | null; tipo: TipoMovimiento; ref: string; detalle: string; medio: string;
+  importe: number; // + suma a lo que el socio tiene del negocio; − resta
+  saldo: number; // saldo de la cuenta después de este movimiento
+}
+
+export interface CuentaSocio {
+  socio: Socio;
+  cobradoEfectivo: number; cobradoTransferencia: number; comisiones: number; entregado: number; recibido: number;
+  // Positivo: el socio tiene plata del negocio y se la debe al dueño. Negativo: el dueño le debe.
+  saldo: number;
+  movimientos: MovimientoSocio[];
+}
+
+// Cuenta de cada socio que no es el dueño:
+//   saldo = cobros que recibió − comisiones de sus vendedores − rendiciones que entregó + rendiciones que recibió
+// Las comisiones cuentan todas, también las de ventas que cobró otro socio o que todavía no se cobraron.
+export function cuentasSocios(datos: Datos): CuentaSocio[] {
+  const deVendedor = socioDeVendedor(datos.socios);
+  const ventas = new Map(datos.ventas.map((v) => [v.id, v]));
+  const clientes = new Map(datos.pedidos.map((p) => [p.id, p.cliente]));
+  const cliente = (ventaId: string) => clientes.get(ventas.get(ventaId)?.pedidoId ?? '') ?? '';
+  const nombres = new Map(datos.socios.map((s) => [s.id, s.nombre]));
+
+  const cuentas = new Map(datos.socios.filter((s) => !s.duenio).map((socio) => [socio.id, {
+    socio, cobradoEfectivo: 0, cobradoTransferencia: 0, comisiones: 0, entregado: 0, recibido: 0, saldo: 0,
+    movimientos: [] as MovimientoSocio[],
+  }]));
+
+  for (const c of datos.cobros) {
+    const cu = cuentas.get(c.socioId);
+    if (!cu) continue;
+    if (c.medio === 'efectivo') cu.cobradoEfectivo += c.importe;
+    else cu.cobradoTransferencia += c.importe;
+    cu.movimientos.push({ fecha: c.fecha, tipo: 'cobro', ref: c.ventaId, detalle: cliente(c.ventaId), medio: c.medio, importe: c.importe, saldo: 0 });
+  }
+
+  // Una fila por venta y socio, sumando sus ítems y vendedores.
+  const comisiones = new Map<string, { socioId: string; ventaId: string; monto: number }>();
+  for (const c of datos.ventasComisiones) {
+    const socio = deVendedor.get(c.vendedorId);
+    if (!socio || !cuentas.has(socio.id)) continue;
+    const k = `${socio.id}|${c.ventaId}`;
+    const x = comisiones.get(k) ?? { socioId: socio.id, ventaId: c.ventaId, monto: 0 };
+    x.monto += c.monto;
+    comisiones.set(k, x);
+  }
+  for (const x of comisiones.values()) {
+    const cu = cuentas.get(x.socioId);
+    if (!cu) continue;
+    cu.comisiones += x.monto;
+    cu.movimientos.push({
+      fecha: ventas.get(x.ventaId)?.fecha ?? null, tipo: 'comision', ref: x.ventaId, detalle: cliente(x.ventaId), medio: '',
+      importe: -redondear(x.monto), saldo: 0,
+    });
+  }
+
+  for (const r of datos.rendiciones) {
+    const de = cuentas.get(r.deId);
+    if (de) {
+      de.entregado += r.importe;
+      de.movimientos.push({ fecha: r.fecha, tipo: 'entrego', ref: nombres.get(r.aId) ?? r.aId, detalle: r.nota, medio: r.medio, importe: -r.importe, saldo: 0 });
+    }
+    const a = cuentas.get(r.aId);
+    if (a) {
+      a.recibido += r.importe;
+      a.movimientos.push({ fecha: r.fecha, tipo: 'recibio', ref: nombres.get(r.deId) ?? r.deId, detalle: r.nota, medio: r.medio, importe: r.importe, saldo: 0 });
+    }
+  }
+
+  return [...cuentas.values()].map((cu) => ({
+    ...cu,
+    cobradoEfectivo: redondear(cu.cobradoEfectivo), cobradoTransferencia: redondear(cu.cobradoTransferencia),
+    comisiones: redondear(cu.comisiones), entregado: redondear(cu.entregado), recibido: redondear(cu.recibido),
+    saldo: redondear(cu.cobradoEfectivo + cu.cobradoTransferencia - cu.comisiones - cu.entregado + cu.recibido),
+    movimientos: conSaldo(cu.movimientos),
+  }));
+}
+
+// Ordena por fecha y agrega el saldo acumulado. El orden es estable: ante la misma fecha quedan los cobros,
+// después las comisiones y después las rendiciones.
+function conSaldo(movimientos: MovimientoSocio[]) {
+  let saldo = 0;
+  return movimientos.toSorted((x, y) => (x.fecha?.getTime() ?? 0) - (y.fecha?.getTime() ?? 0))
+    .map((m) => {
+      saldo = redondear(saldo + m.importe);
+      return { ...m, saldo };
+    });
+}
+
+// Socio que propone la app para un cobro: el del primer vendedor del pedido que tenga socio; si no, el dueño.
+export function socioPropuesto(socios: Socio[], vendedoresPedido: string[]) {
+  const deVendedor = socioDeVendedor(socios);
+  for (const v of vendedoresPedido) {
+    const s = deVendedor.get(v);
+    if (s) return s;
+  }
+  return duenio(socios) ?? socios.at(0);
+}
