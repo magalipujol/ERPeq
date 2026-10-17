@@ -1,3 +1,13 @@
+# Dashboard inicial
+
+Focus en ver pantallazo general + acceso directo a lo que necesita urgencia
+
+Urgencia -> Tomar un pedido nuevo
+Pantallazo general:
+
+- Pedidos pendientes
+- Fletes en transcurso
+
 # Apto celular
 
 Principalmente registrar pedidos
@@ -5,6 +15,11 @@ Principalmente registrar pedidos
 # Agregar botón para exportar en whatsapp
 
 Imagino algo que exporte los últimos pedidos en un mensaje para mandar al grupo
+
+Urgencia -> Tomar un pedido nuevo
+Pantallazo general:
+
+- Pedidos pendientes
 
 # Apto dislexia
 
@@ -30,7 +45,7 @@ Agus no sabe cómo funciona todavía
 
 # Contabilidad de efectivo
 
-Poder registrar qué paga cada proveedor
+Poder registrar qué paga cada proveedor en efectivo o transferencia para saber después cómo repartir el dinero
 
 # Explorar texto natural con la nueva API de Google (experimental)
 
