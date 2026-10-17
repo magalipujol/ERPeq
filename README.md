@@ -14,6 +14,10 @@ Es una página estática (sin servidor) hecha con React, TypeScript y Mantine, q
 - Las pantallas no conocen la planilla: usan una interfaz con una operación por caso de uso (registrar un pedido,
   una entrega, un flete…), y el adaptador de Google Sheets la traduce en filas. Ver
   [spec/arquitectura.md](spec/arquitectura.md).
+- **Experimental:** en Chrome de escritorio con IA integrada (Gemini Nano), la pantalla Pedidos muestra un cuadro
+  *Pegar pedido* que completa el formulario a partir de un mensaje de un cliente. Corre en la computadora (no manda
+  nada a ningún servidor) y nunca guarda solo. En otros navegadores no aparece. Detalle, requisitos y cómo
+  activarlo en [spec/pedido-texto.md](spec/pedido-texto.md).
 
 ## Estructura de la planilla
 
@@ -42,7 +46,8 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
     planilla en memoria para las pruebas.
   - `main.tsx`: arranca la app con la base de Google Sheets; `App.tsx`: pantallas de acceso y navegación;
     `vistas/`: Stock, Pedidos, Ventas, Compras, Fletes y Precios.
-- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`).
+  - `pedido-texto.ts` y `componentes/PegarPedido.tsx`: pedido desde un mensaje pegado con la IA de Chrome (experimental).
+- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`, `pedido-texto.md`).
 - `.github/workflows/ci.yml`: lint, tipos y pruebas en cada pull request y push.
 - `.github/workflows/deploy.yml`: corre el CI y, si pasa, compila y publica en GitHub Pages en cada push a `main`
   (en *Settings → Pages*, la fuente tiene que ser **GitHub Actions**).
@@ -75,7 +80,7 @@ y abrir http://localhost:5500 (tiene que estar autorizado como origen en el proy
 
 ## Pruebas
 
-- **Unitarias** (Vitest, `src/**/*.test.ts`): los cálculos del dominio, `formato.ts`, `meses.ts` y el adaptador
+- **Unitarias** (Vitest, `src/**/*.test.ts`): los cálculos del dominio, `formato.ts`, `meses.ts`, `pedido-texto.ts` y el adaptador
   de Sheets (lectura de filas, celdas y las filas que agrega cada operación, sobre una planilla en memoria).
   Tardan menos de un segundo.
 - **De punta a punta** (Playwright, `tests/`): la app entera contra el build. Google está simulado

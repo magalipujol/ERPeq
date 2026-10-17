@@ -42,10 +42,11 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 | `src/main.tsx` | Raíz de composición: crea el adaptador y se lo pasa a `App`. |
 | `src/base.ts`, `src/BaseProvider.tsx` | Contexto de React con los datos cargados, los cálculos derivados y las operaciones del puerto (`db`). |
 | `src/vistas/` | Pantallas: Stock, Pedidos (alta y entregas), Ventas, Compras, Fletes y Precios (precios y reglas de comisión). |
-| `src/componentes/` | Componentes compartidos (carga de ítems, etc.). |
+| `src/componentes/` | Componentes compartidos (carga de ítems, *Pegar pedido* con la IA de Chrome, etc.). |
+| `src/pedido-texto.ts` | Pedido desde un mensaje pegado (experimental): prompt, esquema JSON y emparejamiento de nombres. Lógica pura, con Vitest. |
 | `src/config.ts` | Client ID de Google e ID de la planilla. No son secretos. |
 | `tests/` | Pruebas e2e. `tests/google-falso.ts` reemplaza a Google con una planilla en memoria (su estado inicial está resumido al principio de `historias.spec.ts`). `tests/historias.spec.ts` tiene las historias de usuario de punta a punta; el resto prueba una pantalla cada uno. |
-| `spec/` | Especificaciones. `spec/modelo-de-datos.md` es la referencia del modelo de datos; `spec/arquitectura.md`, la de las capas. |
+| `spec/` | Especificaciones. `spec/modelo-de-datos.md` es la referencia del modelo de datos; `spec/arquitectura.md`, la de las capas; `spec/pedido-texto.md`, la del pedido desde un mensaje pegado. |
 | `herramientas/excel_a_base.py` | Convierte el Excel histórico en la planilla inicial. |
 | `README.md` | Qué es, cómo funciona, estructura de la planilla, cómo correrlo. |
 | `GUIA-CONFIGURACION.md` | Paso a paso para configurar Google Cloud y la planilla (para el dueño, no técnico). |
