@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { deSerie } from './google';
 import * as M from './modelo';
 
 const fecha = (a: number, m: number, d: number) => new Date(a, m - 1, d, 12);
@@ -30,52 +29,6 @@ const flete = (id: string, origenId: string, destinoId: string, costo: number | 
   id, fecha: fecha(2026, 10, 1), transporte: 'T', contactoId: '', origenId, destinoId, costo, guia: '', nota: '',
 });
 const estado = (ref: string, e: string): M.RegistroEstado => ({ ref, fecha: null, estado: e });
-
-describe('parsear', () => {
-  const crudo = (h: Partial<Record<M.ClaveHoja, M.Fila[]>>) => M.CLAVES.map((k) => h[k] ?? []);
-
-  const d = M.parsear(crudo({
-    productos: [['P001', ' Almendras ', '', ''], ['', 'sin id'], ['P002', 'Miel', 'unid.', '5']],
-    compras: [[45658, 'BB', 'Prov', 'C0001', 'P001', 'Almendras', 10, 1000, 10000, 'R-1', 'PE0001', ''], ['', '', '', '', ''],
-      [45659, 'ROS', 'Prov', '', 'P002', 'Miel', '3', '', '', '', '', '']],
-    vendedores: [['VEN01', 'Guada/Hernán', ''], ['VEN02', 'Leo', 'no']],
-    pedidosItems: [['PE0001', 1, 'P001', 'Almendras', 2, '', 3000]],
-    ventasComisiones: [['V0001', 1, 'VEN01', 'Guada/Hernán', 3, 5, 300]],
-      pedidosEstados: [['PE0001', 46000.5, 'Cerrado']],
-  }), deSerie);
-
-  it('lee cada hoja en el orden de CLAVES y saltea filas sin clave', () => {
-    expect(d.productos).toStrictEqual([
-      { id: 'P001', producto: 'Almendras', unidad: 'kg', minimo: 0 },
-      { id: 'P002', producto: 'Miel', unidad: 'unid.', minimo: 5 },
-    ]);
-    // La fila 3 quedó vacía y no se cuenta.
-    expect(d.compras.map((c) => [c.fila, c.productoId, c.cantidad, c.precio, c.pedidoId])).toStrictEqual([
-      [2, 'P001', 10, 1000, 'PE0001'], [4, 'P002', 3, null, ''],
-    ]);
-    expect(d.compras[0].fecha).toStrictEqual(new Date(2025, 0, 1));
-  });
-
-  it('vendedores activos, precios sobreescritos y estados', () => {
-    expect(d.vendedores.map((v) => v.activo)).toStrictEqual([true, false]);
-    expect(d.pedidosItems[0]).toMatchObject({ precioLista: null, precio: 3000 });
-    expect(d.ventasComisiones[0]).toMatchObject({ porcentajeRegla: 3, porcentaje: 5, monto: 300 });
-    expect(d.pedidosEstados[0].estado).toBe('cerrado');
-  });
-
-  it('deja la fecha vacía si la celda no es una fecha', () => {
-    const r = M.parsear(crudo({ compras: [['texto', 'BB', '', '', 'P001', '', 1]] }), deSerie);
-
-    expect(r.compras[0].fecha).toBeNull();
-  });
-});
-
-describe('rango', () => {
-  it('cubre las columnas de la hoja desde la fila 2', () => {
-    expect(M.rango('ventasItems')).toBe("'Ventas ítems'!A2:I");
-    expect(M.rango('tipos')).toBe("'Tipos de cliente'!A2:A");
-  });
-});
 
 describe('precioVigente', () => {
   const precios: M.Precio[] = [
@@ -221,23 +174,23 @@ describe('calcularStock', () => {
   });
 });
 
-describe('escribirEntrega', () => {
+describe('armarEntrega', () => {
   it('numera los ítems entregados, calcula importes y una comisión por vendedor', () => {
     const vend: M.Vendedor = { id: 'VEN01', nombre: 'Guada/Hernán', activo: true };
     const linea = (n: number, precio: number): M.LineaPedido => ({ ...item('PE1', n, `P00${n}`, 25, precio), entregado: 0, pendiente: 25 });
-    const e = M.escribirEntrega(venta('V1', 'PE1'), [
+    const e = M.armarEntrega(venta('V1', 'PE1'), [
       { linea: linea(1, 4080), cantidad: 25, costo: 1450, comisiones: [{ vendedor: vend, porcentajeRegla: 7, porcentaje: 7 }] },
       { linea: linea(2, 2550), cantidad: 0, costo: null, comisiones: [] },
       { linea: linea(3, 2550), cantidad: 10, costo: null, comisiones: [{ vendedor: vend, porcentajeRegla: 3, porcentaje: 5 }] },
     ]);
 
-    expect(e.ventasItems).toStrictEqual([
-      ['V1', 1, 1, 'P001', 'P001', 25, 4080, 102000, 1450],
-      ['V1', 2, 3, 'P003', 'P003', 10, 2550, 25500, ''],
+    expect(e.items.map((i) => [i.linea, i.pedidoLinea, i.productoId, i.cantidad, i.importe, i.costo])).toStrictEqual([
+      [1, 1, 'P001', 25, 102000, 1450],
+      [2, 3, 'P003', 10, 25500, null],
     ]);
-    expect(e.ventasComisiones).toStrictEqual([
-      ['V1', 1, 'VEN01', 'Guada/Hernán', 7, 7, 7140],
-      ['V1', 2, 'VEN01', 'Guada/Hernán', 3, 5, 1275],
+    expect(e.comisiones.map((c) => [c.linea, c.vendedorId, c.vendedor, c.porcentajeRegla, c.porcentaje, c.monto])).toStrictEqual([
+      [1, 'VEN01', 'Guada/Hernán', 7, 7, 7140],
+      [2, 'VEN01', 'Guada/Hernán', 3, 5, 1275],
     ]);
   });
 });
@@ -268,6 +221,11 @@ describe('estados de flete', () => {
     expect(M.estadoFlete(new Map(), 'F1')).toBe('preparacion');
     expect(M.estadoFlete(M.estadosActuales([estado('F1', 'camino'), estado('F1', 'finalizado')]), 'F1')).toBe('finalizado');
   });
+
+  it('un flete dado de alta ya despachado registra también los estados anteriores', () => {
+    expect(M.caminoFlete('preparacion')).toStrictEqual(['preparacion']);
+    expect(M.caminoFlete('finalizado')).toStrictEqual(['preparacion', 'camino', 'finalizado']);
+  });
 });
 
 describe('iDs', () => {
@@ -280,18 +238,5 @@ describe('iDs', () => {
     const sig = M.generadorIds(['P007'], 'P', 3);
 
     expect([sig(), sig()]).toStrictEqual(['P008', 'P009']);
-  });
-});
-
-describe('filas', () => {
-  it('compra: calcula el importe y deja vacío el precio desconocido', () => {
-    const base = { fecha: fecha(2026, 10, 1), depositoId: 'BB', proveedor: 'Prov', contactoId: '', productoId: 'P001', producto: 'Almendras', remito: '', pedidoId: '', nota: '' };
-
-    expect(M.filas.compra({ ...base, cantidad: 3, precio: 1.1 })[8]).toBe(3.3);
-    expect(M.filas.compra({ ...base, cantidad: 3, precio: null }).slice(7, 9)).toStrictEqual(['', '']);
-  });
-
-  it('unir junta las filas por hoja', () => {
-    expect(M.unir({ ventas: [['a']] }, { ventas: [['b']], ajustes: [['c']] })).toStrictEqual({ ventas: [['a'], ['b']], ajustes: [['c']] });
   });
 });

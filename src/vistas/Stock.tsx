@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import { Encabezado, Kpis, Mensaje } from '../componentes/comunes';
 import { aNumero, fmtMoney, fmtNum, unicos } from '../formato';
-import * as M from '../modelo';
+import * as M from '../dominio/modelo';
 
 interface Estado { color: string; texto: string }
 
@@ -171,7 +171,7 @@ function Inventario({ filas }: { filas: FilaStock[] }) {
 }
 
 function AjusteStock() {
-  const { datos, stock, buscarProducto, nombreDeposito, escribir } = useBase();
+  const { datos, stock, buscarProducto, nombreDeposito, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [producto, setProducto] = useState('');
   const [depSel, setDepSel] = useState<string | null>(null);
@@ -192,7 +192,7 @@ function AjusteStock() {
     if (!hayCantidad) { error('Ingresá una cantidad distinta de 0.'); return; }
     if (!mot) { error('Indicá el motivo.'); return; }
     guardar(async () => {
-      await escribir({ ajustes: [M.filas.ajuste({ fecha: new Date(), depositoId: deposito, productoId: p.id, producto: p.producto, cantidad, motivo: mot })] });
+      await db.registrarAjuste({ fecha: new Date(), depositoId: deposito, productoId: p.id, producto: p.producto, cantidad, motivo: mot });
       setCantidadTxt('');
       setMotivo('');
       return `✓ Ajuste registrado: ${cantidad > 0 ? '+' : ''}${fmtNum(cantidad)} ${p.unidad} de ${p.producto}.`;

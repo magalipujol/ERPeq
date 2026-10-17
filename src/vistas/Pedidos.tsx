@@ -8,7 +8,7 @@ import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
 import { type Item, itemVacio } from '../componentes/item';
 import { Items } from '../componentes/Items';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, numeroOCero, porFechaDesc, sumable, unicos } from '../formato';
-import * as M from '../modelo';
+import * as M from '../dominio/modelo';
 
 const COLOR_ESTADO: Record<M.EstadoPedido, string> = {
   pendiente: 'yellow', parcial: 'blue', entregado: 'green', cancelado: 'gray', cerrado: 'gray',
@@ -65,7 +65,7 @@ export function Pedidos() {
 const primero = (...valores: (string | undefined)[]) => valores.find((v) => v !== undefined && v !== '');
 
 function FormPedido() {
-  const { datos, costos, buscarProducto, buscarContacto, escribir } = useBase();
+  const { datos, costos, buscarProducto, buscarContacto, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [fecha, setFecha] = useState(hoyISO);
   const [depSel, setDepSel] = useState<string | null>(null);
@@ -137,30 +137,25 @@ function FormPedido() {
       }));
       // Los productos sin precio de lista quedan con el precio de este pedido.
       const preciosNuevos = lineas.filter((l) => l.lista === null && l.p !== undefined)
-        .map((l) => M.filas.precio({ productoId: l.p?.id ?? '', producto: l.p?.producto ?? '', precio: l.precio, desde: dia }));
+        .map((l) => ({ productoId: l.p?.id ?? '', producto: l.p?.producto ?? '', precio: l.precio, desde: dia }));
 
-      let escritura: M.Escritura = {
-        ...(existente ? {} : {
-          contactos: [M.filas.contacto({ id: contactoId, rol: 'cliente', nombre, tipo, localidad: pedido.localidad, provincia: pedido.provincia })],
-        }),
-        pedidos: [M.filas.pedido(pedido)],
-        pedidosItems: pItems.map(M.filas.pedidoItem),
-        pedidosEstados: [M.filas.estado(id, 'abierto', new Date())],
-        pedidosVendedores: vendedores.map((v) => M.filas.pedidoVendedor({ pedidoId: id, vendedorId: v })),
-        precios: preciosNuevos,
-      };
+      let entrega: M.Entrega | null = null;
       if (entregarAhora) {
         const vend = datos.vendedores.filter((v) => vendedores.includes(v.id));
         const venta: M.Venta = { id: M.siguienteId(datos.ventas.map((v) => v.id), 'V'), fecha: dia, pedidoId: id, depositoId: deposito, nota: '' };
-        escritura = M.unir(escritura, M.escribirEntrega(venta, pItems.map((it) => {
+        entrega = M.armarEntrega(venta, pItems.map((it) => {
           const porcentaje = (v: M.Vendedor) => M.porcentajeRegla(datos.reglas, v.id, it.productoId, dia);
           return {
             linea: { ...it, entregado: 0, pendiente: it.cantidad }, cantidad: it.cantidad, costo: costos.get(it.productoId) ?? null,
             comisiones: vend.map((v) => ({ vendedor: v, porcentajeRegla: porcentaje(v), porcentaje: porcentaje(v) })),
           };
-        })));
+        }));
       }
-      await escribir(escritura);
+      await db.registrarPedido({
+        pedido, items: pItems, vendedores, momento: new Date(), preciosNuevos, entrega,
+        clienteNuevo: existente ? null
+          : { id: contactoId, rol: 'cliente', nombre, tipo, localidad: pedido.localidad, provincia: pedido.provincia },
+      });
       const total = pItems.reduce((s, it) => s + it.cantidad * it.precio, 0);
       setItems([itemVacio()]);
       setCliente('');
@@ -218,7 +213,7 @@ type Porcentajes = Record<string, number | string>;
 const claveCom = (linea: number, vendedor: string) => `${linea}|${vendedor}`;
 
 function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: () => void }) {
-  const { datos, stock, costos, nombreDeposito, escribir } = useBase();
+  const { datos, stock, costos, nombreDeposito, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const { pedido } = resumen;
   const [fecha, setFecha] = useState(hoyISO);
@@ -255,7 +250,7 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
     if (falta || !dia) { error(falta ?? 'Elegí la fecha.'); return; }
     guardar(async () => {
       const venta: M.Venta = { id: M.siguienteId(datos.ventas.map((v) => v.id), 'V'), fecha: dia, pedidoId: pedido.id, depositoId: pedido.depositoId, nota: nota.trim() };
-      await escribir(M.escribirEntrega(venta, aEntregar));
+      await db.registrarEntrega(M.armarEntrega(venta, aEntregar));
       // La próxima entrega vuelve a proponer lo pendiente y los porcentajes de las reglas.
       setCantidades({});
       setEditados({});
@@ -266,7 +261,7 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
 
   function cambiarEstado(estado: 'cancelado' | 'cerrado') {
     guardar(async () => {
-      await escribir({ pedidosEstados: [M.filas.estado(pedido.id, estado, new Date())] });
+      await db.cambiarEstadoPedido(pedido.id, estado, new Date());
       return `✓ Pedido ${pedido.id} ${estado}.`;
     });
   }

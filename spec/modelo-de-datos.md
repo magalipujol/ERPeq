@@ -3,8 +3,10 @@
 Especificación del modelo de datos de ERPeq sobre Google Sheets: una hoja por tabla, primera fila con
 encabezados, una fila por registro.
 
-Está implementado en [src/modelo.ts](../src/modelo.ts) (hojas, columnas, lectura, cálculos y filas a
-escribir) y [src/google.ts](../src/google.ts) (escritura). Sus ideas centrales:
+Los tipos y cálculos están en [src/dominio/modelo.ts](../src/dominio/modelo.ts); las hojas, columnas,
+lectura y filas a escribir, en [src/db/sheets/hojas.ts](../src/db/sheets/hojas.ts) y
+[src/db/sheets/operaciones.ts](../src/db/sheets/operaciones.ts) (ver [arquitectura.md](arquitectura.md)).
+Sus ideas centrales:
 
 1. **Pedidos y ventas son entidades distintas.** El pedido es lo que pide el cliente; la venta es la entrega
    en la ciudad de destino. Un pedido puede entregarse en varias ventas.

@@ -2,8 +2,10 @@
 // El token vive solo en memoria y dura ~1 hora. El permiso pedido es "spreadsheets" (ver y editar las
 // hojas de cálculo del usuario); la app solo usa la planilla configurada, y Google solo la deja abrir
 // si está compartida con esa cuenta.
-import type { Config } from './config';
-import { type ClaveHoja, type Escritura, type Fila, nombreHoja, type ValorCelda } from './modelo';
+import type { Config } from '../../config';
+import { SesionVencida, SinAcceso } from '../puerto';
+import { celda, type Fila, type ValorCelda } from './celdas';
+import { type ClaveHoja, type Escritura, nombreHoja } from './hojas';
 
 const SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -19,13 +21,6 @@ let vence = 0;
 let pendiente: Pendiente | null = null;
 let alVencer: () => void = () => undefined;
 let cfg: Config;
-
-export class SesionVencida extends Error {
-  constructor() { super('La sesión de Google venció. Tocá "Reconectar".'); }
-}
-export class SinAcceso extends Error {
-  constructor() { super('Esta cuenta no tiene acceso a la planilla de ERPeq.'); }
-}
 
 export interface InfoPlanilla {
   properties: { title: string };
@@ -120,12 +115,6 @@ async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {
 const enc = encodeURIComponent;
 const url = (path = '') => `${SHEETS}/${cfg.SPREADSHEET_ID}${path}`;
 
-// Sheets guarda las fechas como días desde 30/12/1899.
-export const deSerie = (s: number) => {
-  const ms = (s - 25569) * 86400000;
-  return new Date(ms + new Date(ms).getTimezoneOffset() * 60000);
-};
-
 export async function leer(rangos: string[]) {
   const qs = rangos.map((r) => `ranges=${enc(r)}`).join('&');
   const data = await req<{ valueRanges: { values?: Fila[] }[] }>(
@@ -135,34 +124,6 @@ export async function leer(rangos: string[]) {
 
 export async function info() {
   return req<InfoPlanilla>(url(`?fields=${enc('properties.title,spreadsheetUrl,sheets.properties(sheetId,title)')}`));
-}
-
-// Fecha local → número de serie de Sheets (días desde 30/12/1899, con la hora como fracción).
-export const aSerie = (d: Date) =>
-  (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()) - Date.UTC(1899, 11, 30)) / 86400000;
-
-interface DatoCelda {
-  userEnteredValue?: { stringValue?: string; numberValue?: number; boolValue?: boolean };
-  userEnteredFormat?: { numberFormat: { type: 'DATE' | 'DATE_TIME'; pattern: string } };
-}
-
-// Con appendCells los textos quedan siempre como texto (nunca fórmula ni fecha), así que no hace falta
-// el apóstrofe adelante.
-export function celda(v: ValorCelda): DatoCelda {
-  if (v === null || v === undefined || v === '') return {};
-  if (typeof v === 'number') return { userEnteredValue: { numberValue: v } };
-  if (typeof v === 'boolean') return { userEnteredValue: { boolValue: v } };
-  if (typeof v === 'string') return { userEnteredValue: { stringValue: v } };
-  if (v instanceof Date) {
-    return {
-      userEnteredValue: { numberValue: Math.floor(aSerie(v)) },
-      userEnteredFormat: { numberFormat: { type: 'DATE', pattern: 'dd/mm/yyyy' } },
-    };
-  }
-  return {
-    userEnteredValue: { numberValue: aSerie(v.momento) },
-    userEnteredFormat: { numberFormat: { type: 'DATE_TIME', pattern: 'dd/mm/yyyy hh:mm' } },
-  };
 }
 
 // Agrega filas al final de varias hojas en un solo batchUpdate: Google aplica todo o nada, así una

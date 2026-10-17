@@ -1,10 +1,10 @@
 import { createContext, use, useState } from 'react';
 import { mensajeDeError } from './formato';
-import type { InfoPlanilla } from './google';
-import type * as M from './modelo';
+import type { InfoBase, Operaciones } from './db/puerto';
+import type * as M from './dominio/modelo';
 
 export interface Base {
-  info: InfoPlanilla;
+  info: InfoBase;
   datos: M.Datos;
   stock: M.Stock;
   costos: Map<string, number>;
@@ -15,8 +15,8 @@ export interface Base {
   buscarContacto: (rol: M.Rol, nombre: string) => M.Contacto | undefined;
   nombreDeposito: (id: string) => string;
   nombreVendedor: (id: string) => string;
-  // Guarda filas en varias hojas a la vez.
-  escribir: (escritura: M.Escritura) => Promise<void>;
+  // Operaciones de escritura de la base (cada una atómica).
+  db: Operaciones;
   recargar: () => Promise<void>;
 }
 

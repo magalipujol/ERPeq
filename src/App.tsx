@@ -5,10 +5,9 @@ import {
 import { IconBrandGoogleFilled, IconExternalLink, IconRefresh } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { BaseProvider } from './BaseProvider';
-import { CONFIG } from './config';
+import { type BaseDeDatos, type InfoBase, SinAcceso } from './db/puerto';
+import type * as M from './dominio/modelo';
 import { hora, mensajeDeError } from './formato';
-import * as DB from './google';
-import * as M from './modelo';
 import { Compras } from './vistas/Compras';
 import { Fletes } from './vistas/Fletes';
 import { Pedidos } from './vistas/Pedidos';
@@ -30,8 +29,8 @@ const vistaDelHash = (): Vista => {
   return VISTAS.includes(h) ? (h as Vista) : 'stock';
 };
 
-export function App() {
-  const faltaConfig = !CONFIG.CLIENT_ID || !CONFIG.SPREADSHEET_ID;
+export function App({ db }: { db: BaseDeDatos }) {
+  const faltaConfig = !db.configurada;
   const [pantalla, setPantalla] = useState<Pantalla>(faltaConfig ? 'config' : 'login');
   const [vista, setVista] = useState<Vista>(vistaDelHash);
   const [listo, setListo] = useState(false);
@@ -39,23 +38,22 @@ export function App() {
   const [msg, setMsg] = useState('');
   const [estado, setEstado] = useState(ESTADO_INICIAL);
   const [vencida, setVencida] = useState(false);
-  const [info, setInfo] = useState<DB.InfoPlanilla | null>(null);
+  const [info, setInfo] = useState<InfoBase | null>(null);
   const [datos, setDatos] = useState<M.Datos | null>(null);
   const [cargando, setCargando] = useState(false);
 
   useEffect(() => {
     if (faltaConfig) return;
-    DB.init(CONFIG, { onSesionVencida: () => { setVencida(true); } })
+    db.iniciar(() => { setVencida(true); })
       .then(() => { setListo(true); })
       .catch((err: unknown) => { setMsg(mensajeDeError(err)); });
-  }, [faltaConfig]);
+  }, [db, faltaConfig]);
 
   const cargar = useCallback(async () => {
     setEstado({ texto: 'Leyendo la planilla…', error: false });
     setCargando(true);
     try {
-      const crudo = await DB.leer(M.CLAVES.map(M.rango));
-      setDatos(M.parsear(crudo, DB.deSerie));
+      setDatos(await db.leer());
       setEstado({ texto: `Sincronizado ${hora()}`, error: false });
     } catch (err) {
       setEstado({ texto: `No se pudo leer la planilla: ${mensajeDeError(err)}`, error: true });
@@ -63,14 +61,14 @@ export function App() {
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [db]);
 
   // Devuelve false si la planilla no está compartida con la cuenta que ingresó.
   async function abrirBase() {
     try {
-      setInfo(await DB.info());
+      setInfo(await db.abrir());
     } catch (err) {
-      if (err instanceof DB.SinAcceso) {
+      if (err instanceof SinAcceso) {
         setPantalla('sin-acceso');
         return false;
       }
@@ -94,7 +92,7 @@ export function App() {
   }
 
   const ingresar = async () => conBoton(async () => {
-    await DB.login();
+    await db.ingresar();
     await abrirBase();
   });
 
@@ -104,7 +102,7 @@ export function App() {
 
   async function reconectar() {
     try {
-      await DB.login();
+      await db.ingresar();
       setVencida(false);
       if (info) await cargar();
     } catch (err) {
@@ -113,7 +111,7 @@ export function App() {
   }
 
   async function salir() {
-    await DB.logout();
+    await db.salir();
     setInfo(null);
     setDatos(null);
     setVencida(false);
@@ -150,8 +148,8 @@ export function App() {
               <Group gap={6}>
                 {info && (
                   <>
-                    <Text size="xs" c="dimmed" maw={220} truncate>{info.properties.title}</Text>
-                    <Button component="a" href={info.spreadsheetUrl} target="_blank" rel="noopener" size="xs" variant="default"
+                    <Text size="xs" c="dimmed" maw={220} truncate>{info.titulo}</Text>
+                    <Button component="a" href={info.url} target="_blank" rel="noopener" size="xs" variant="default"
                       rightSection={<IconExternalLink size={14} />}>Planilla</Button>
                     <Tooltip label="Volver a leer la planilla">
                       <ActionIcon variant="default" size="md" onClick={() => { void cargar().catch(() => undefined); }} loading={cargando} aria-label="Refrescar">
@@ -212,7 +210,7 @@ export function App() {
           )}
 
           {enApp && (
-            <BaseProvider info={info} datos={datos} cargando={cargando} recargar={cargar}>
+            <BaseProvider db={db} info={info} datos={datos} cargando={cargando} recargar={cargar}>
               <Box display={vista === 'stock' ? undefined : 'none'}><Stock visible={vista === 'stock'} /></Box>
               <Box display={vista === 'pedidos' ? undefined : 'none'}><Pedidos /></Box>
               <Box display={vista === 'ventas' ? undefined : 'none'}><Ventas visible={vista === 'ventas'} /></Box>

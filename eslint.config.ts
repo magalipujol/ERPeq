@@ -95,6 +95,50 @@ export default defineConfig(
     languageOptions: { globals: globals.browser },
   },
 
+  // Capas (spec/arquitectura.md). Dominio ← puerto ← adaptadores; la UI usa el dominio y el puerto.
+  {
+    name: 'capas/ui',
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/dominio/**', 'src/db/**', 'src/main.tsx'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [{
+        group: ['**/db/*', '!**/db/puerto'],
+        message: 'La UI solo usa el puerto (src/db/puerto.ts); el adaptador se elige en src/main.tsx.',
+      }] }],
+    },
+  },
+  {
+    name: 'capas/dominio',
+    files: ['src/dominio/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [{
+        group: ['../*', 'react', 'react-*', '@mantine/*', '@tabler/*'],
+        message: 'El dominio no depende de la base, de la UI ni del navegador.',
+      }] }],
+    },
+  },
+  {
+    name: 'capas/db',
+    files: ['src/db/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [{
+        group: ['**/vistas/*', '**/componentes/*', '**/base', '**/BaseProvider', '**/App', '**/formato', '**/meses', '**/tema',
+          'react', 'react-*', '@mantine/*', '@tabler/*'],
+        message: 'La base no depende de la UI.',
+      }] }],
+    },
+  },
+  {
+    name: 'capas/puerto',
+    files: ['src/db/puerto.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [{
+        regex: '^(?!\\.\\./dominio/)',
+        message: 'El puerto solo depende del dominio.',
+      }] }],
+    },
+  },
+
   {
     files: ['src/**/*.test.ts'],
     extends: [vitest.configs.all],

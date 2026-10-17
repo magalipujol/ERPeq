@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import { Encabezado, Mensaje } from '../componentes/comunes';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, unicos } from '../formato';
-import * as M from '../modelo';
+import type * as M from '../dominio/modelo';
 
 // Valores por defecto: precio de lista de cada producto y porcentaje de comisión de cada vendedor.
 // Cada cambio es una fila nueva con su fecha `desde`; los pedidos y ventas ya cargados no cambian.
@@ -24,7 +24,7 @@ export function Precios() {
 }
 
 function ListaPrecios() {
-  const { datos, buscarProducto, escribir, cargando } = useBase();
+  const { datos, buscarProducto, db, cargando } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [producto, setProducto] = useState('');
   const [precioTxt, setPrecioTxt] = useState<number | string>('');
@@ -50,7 +50,7 @@ function ListaPrecios() {
     if (!(precio > 0)) { error('Ingresá un precio mayor a 0.'); return; }
     if (!desde) { error('Elegí desde qué fecha rige.'); return; }
     guardar(async () => {
-      await escribir({ precios: [M.filas.precio({ productoId: p.id, producto: p.producto, precio, desde: deISO(desde) })] });
+      await db.registrarPrecio({ productoId: p.id, producto: p.producto, precio, desde: deISO(desde) });
       setPrecioTxt('');
       return `✓ ${p.producto}: ${fmtMoney(precio)} desde ${fmtFecha(deISO(desde))}.`;
     });
@@ -95,7 +95,7 @@ function ListaPrecios() {
 }
 
 function ReglasComision() {
-  const { datos, buscarProducto, nombreVendedor, escribir, cargando } = useBase();
+  const { datos, buscarProducto, nombreVendedor, db, cargando } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [vendedor, setVendedor] = useState(datos.vendedores.at(0)?.id ?? '');
   const [producto, setProducto] = useState('');
@@ -127,7 +127,7 @@ function ReglasComision() {
     if (!(pct >= 0 && pct <= 100)) { error('El porcentaje tiene que estar entre 0 y 100.'); return; }
     if (!desde) { error('Elegí desde qué fecha rige.'); return; }
     guardar(async () => {
-      await escribir({ reglas: [M.filas.regla({ vendedorId: vendedor, productoId: p?.id ?? '', porcentaje: pct, desde: deISO(desde) })] });
+      await db.registrarReglaComision({ vendedorId: vendedor, productoId: p?.id ?? '', porcentaje: pct, desde: deISO(desde) });
       setPctTxt('');
       return `✓ ${nombreVendedor(vendedor)}: ${fmtNum(pct)}% ${p ? `en ${p.producto}` : 'general'}.`;
     });

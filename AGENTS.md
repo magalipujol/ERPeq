@@ -36,18 +36,33 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 
 | Ruta | Contenido |
 |---|---|
-| `src/modelo.ts` | Modelo de datos: hojas y columnas (`HOJAS`), tipos, parseo de filas, filas a escribir (`filas`) y cálculos (stock, estados, precios, comisiones, ganancia). **No depende del navegador**: se prueba con Vitest. |
-| `src/google.ts` | Login (Google Identity Services) y Sheets API. `escribir` agrega filas en varias hojas en un solo `batchUpdate`. |
-| `src/base.ts`, `src/BaseProvider.tsx` | Contexto de React con los datos cargados y los cálculos derivados. |
+| `src/dominio/modelo.ts` | **Dominio**: tipos y cálculos (stock, estados, precios, comisiones, ganancia, entregas, IDs). No sabe nada de hojas, columnas ni del navegador: se prueba con Vitest. |
+| `src/db/puerto.ts` | **Puerto**: la interfaz `BaseDeDatos` que usa la UI (sesión, `leer()` y una operación atómica por caso de uso: `registrarPedido`, `registrarEntrega`, `registrarFlete`, …) y los errores `SinAcceso` y `SesionVencida`. |
+| `src/db/sheets/` | **Adaptador Google Sheets**. `hojas.ts`: hojas y columnas (`HOJAS`), lectura (`parsear`) y filas a escribir (`filas`). `operaciones.ts`: qué filas agrega cada operación. `celdas.ts`: valores de celda y fechas como número de serie. `google.ts`: login (Google Identity Services) y Sheets API (`escribir` agrega filas en varias hojas en un solo `batchUpdate`). `index.ts`: `crearBaseSheets`. `memoria.ts`: la misma planilla en memoria, para pruebas unitarias. |
+| `src/main.tsx` | Raíz de composición: crea el adaptador y se lo pasa a `App`. |
+| `src/base.ts`, `src/BaseProvider.tsx` | Contexto de React con los datos cargados, los cálculos derivados y las operaciones del puerto (`db`). |
 | `src/vistas/` | Pantallas: Stock, Pedidos (alta y entregas), Ventas, Compras, Fletes y Precios (precios y reglas de comisión). |
 | `src/componentes/` | Componentes compartidos (carga de ítems, etc.). |
 | `src/config.ts` | Client ID de Google e ID de la planilla. No son secretos. |
 | `tests/` | Pruebas e2e. `tests/google-falso.ts` reemplaza a Google con una planilla en memoria (su estado inicial está resumido al principio de `historias.spec.ts`). `tests/historias.spec.ts` tiene las historias de usuario de punta a punta; el resto prueba una pantalla cada uno. |
-| `spec/` | Especificaciones. `spec/modelo-de-datos.md` es la referencia del modelo de datos. |
+| `spec/` | Especificaciones. `spec/modelo-de-datos.md` es la referencia del modelo de datos; `spec/arquitectura.md`, la de las capas. |
 | `herramientas/excel_a_base.py` | Convierte el Excel histórico en la planilla inicial. |
 | `README.md` | Qué es, cómo funciona, estructura de la planilla, cómo correrlo. |
 | `GUIA-CONFIGURACION.md` | Paso a paso para configurar Google Cloud y la planilla (para el dueño, no técnico). |
 | `TODO.md` | Pendientes. |
+
+## Capas
+
+Arquitectura hexagonal, con los límites controlados por ESLint (`no-restricted-imports`, bloques `capas/*` de
+`eslint.config.ts`). Detalle y diagrama en `spec/arquitectura.md`.
+
+- **Dominio** (`src/dominio/`) no importa nada de fuera de su carpeta: ni la base, ni la UI, ni React.
+- **Puerto** (`src/db/puerto.ts`) solo depende del dominio.
+- **Adaptadores** (`src/db/sheets/`) implementan el puerto; no importan la UI.
+- **UI** (`App.tsx`, `base.ts`, `vistas/`, `componentes/`) usa el dominio y el puerto, nunca un adaptador:
+  no conoce hojas, columnas ni filas. Solo `src/main.tsx` elige el adaptador.
+- Una escritura nueva es una operación nueva en el puerto (en términos del dominio) y su traducción a filas
+  en `src/db/sheets/operaciones.ts`, con su prueba en `operaciones.test.ts` sobre la planilla en memoria.
 
 ## Reglas del modelo de datos
 
@@ -58,9 +73,9 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 - Los valores por defecto (precio de lista, % de comisión) viven en *Precios* y *Reglas de comisión*. Cada
   operación guarda el valor por defecto que se propuso y el que se usó (`precio_lista`/`precio`,
   `porcentaje_regla`/`porcentaje`).
-- Una operación escribe todas sus filas con un solo `escribir` (un `batchUpdate`): nunca la partas en
-  varias llamadas.
-- El orden de columnas de cada hoja está definido en `HOJAS` y `filas` de `src/modelo.ts`, y tiene que
+- Cada operación del puerto es atómica: escribe todas sus filas con un solo `escribir` (un `batchUpdate`).
+  Nunca la partas en varias operaciones ni en varias llamadas.
+- El orden de columnas de cada hoja está definido en `HOJAS` y `filas` de `src/db/sheets/hojas.ts`, y tiene que
   coincidir con la planilla real, con `tests/google-falso.ts` y con `herramientas/excel_a_base.py`.
 - `spec/modelo-de-datos.md` describe el modelo implementado. Si cambiás el modelo, actualizalo junto con
   sus diagramas y las preguntas abiertas que resuelvas.
@@ -71,9 +86,10 @@ Cada cambio deja la documentación al día **en el mismo commit**. Antes de term
 
 | Si cambiaste… | Actualizá |
 |---|---|
-| Hojas, columnas, tipos o cálculos de `src/modelo.ts` | `spec/modelo-de-datos.md` (tablas y diagramas Mermaid), la sección "Estructura de la planilla" del `README.md`, `tests/google-falso.ts` y, si afecta la carga inicial, `herramientas/excel_a_base.py`. |
+| Tipos o cálculos de `src/dominio/modelo.ts`, u hojas y columnas de `src/db/sheets/hojas.ts` | `spec/modelo-de-datos.md` (tablas y diagramas Mermaid), la sección "Estructura de la planilla" del `README.md`, `tests/google-falso.ts` y, si afecta la carga inicial, `herramientas/excel_a_base.py`. |
 | Una decisión de diseño del modelo (sin código todavía) | `spec/modelo-de-datos.md`: el cambio y, si queda algo sin decidir, en "Preguntas abiertas". |
 | Archivos o carpetas (nuevos, movidos, borrados) | La tabla "Estructura" de este archivo y la sección "Archivos" del `README.md`. |
+| Capas, el puerto o un adaptador | La sección "Capas" de este archivo y `spec/arquitectura.md` (tabla de operaciones y diagramas). |
 | Scripts de `package.json`, CI o hooks | La tabla "Comandos" de este archivo y "Probar en la compu" del `README.md`. |
 | Login, permisos de Google, `config.ts` o pasos de configuración | `GUIA-CONFIGURACION.md` y "Cómo funciona" del `README.md`. |
 | Algo de `TODO.md` | Sacá el ítem si quedó hecho. |

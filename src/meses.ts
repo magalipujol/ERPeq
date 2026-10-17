@@ -1,5 +1,5 @@
 import { unicos } from './formato';
-import { claveMes } from './modelo';
+import { claveMes } from './dominio/modelo';
 
 // Meses para elegir. Por defecto: el mes actual si tiene movimientos; si no, el último mes con datos.
 export function mesesDisponibles(fechas: (Date | null)[]) {

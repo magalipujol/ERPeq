@@ -11,6 +11,9 @@ Es una página estática (sin servidor) hecha con React, TypeScript y Mantine, q
 - Lee y escribe directo con la Sheets API desde el navegador. Las escrituras son siempre filas nuevas, y cada
   operación (un pedido con sus ítems, una entrega con sus comisiones) va en un solo `batchUpdate`: se guarda
   entera o no se guarda. El stock, el costo y los estados se calculan a partir de los movimientos.
+- Las pantallas no conocen la planilla: usan una interfaz con una operación por caso de uso (registrar un pedido,
+  una entrega, un flete…), y el adaptador de Google Sheets la traduce en filas. Ver
+  [spec/arquitectura.md](spec/arquitectura.md).
 
 ## Estructura de la planilla
 
@@ -33,10 +36,13 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
 
 - `src/`: la app.
   - `config.ts`: Client ID de Google y ID de la planilla.
-  - `modelo.ts`: lectura/escritura de filas y cálculos (sin dependencias del navegador).
-  - `google.ts`: login y Sheets API.
-  - `App.tsx`: pantallas de acceso y navegación; `vistas/`: Stock, Pedidos, Ventas, Compras, Fletes y Precios.
-- `spec/`: especificaciones (`modelo-de-datos.md`).
+  - `dominio/modelo.ts`: tipos y cálculos del negocio (sin base de datos ni navegador).
+  - `db/puerto.ts`: lo que la app necesita de la base (leer y una operación por caso de uso).
+  - `db/sheets/`: la implementación sobre Google Sheets (hojas y columnas, login, Sheets API) y una
+    planilla en memoria para las pruebas.
+  - `main.tsx`: arranca la app con la base de Google Sheets; `App.tsx`: pantallas de acceso y navegación;
+    `vistas/`: Stock, Pedidos, Ventas, Compras, Fletes y Precios.
+- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`).
 - `.github/workflows/ci.yml`: lint, tipos y pruebas en cada pull request y push.
 - `.github/workflows/deploy.yml`: corre el CI y, si pasa, compila y publica en GitHub Pages en cada push a `main`
   (en *Settings → Pages*, la fuente tiene que ser **GitHub Actions**).
@@ -69,7 +75,9 @@ y abrir http://localhost:5500 (tiene que estar autorizado como origen en el proy
 
 ## Pruebas
 
-- **Unitarias** (Vitest, `src/**/*.test.ts`): la lógica pura de `modelo.ts`, `formato.ts` y `meses.ts`. Tardan menos de un segundo.
+- **Unitarias** (Vitest, `src/**/*.test.ts`): los cálculos del dominio, `formato.ts`, `meses.ts` y el adaptador
+  de Sheets (lectura de filas, celdas y las filas que agrega cada operación, sobre una planilla en memoria).
+  Tardan menos de un segundo.
 - **De punta a punta** (Playwright, `tests/`): la app entera contra el build. Google está simulado
   (`tests/google-falso.ts`): no hace falta cuenta ni se toca la planilla real.
 
