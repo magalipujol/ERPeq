@@ -65,6 +65,8 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
   título y la URL de la base y lo que le falta para la caja (`faltantes`: en Sheets, las hojas opcionales
   *Socios*, *Cobros* y *Rendiciones* que no existen, con sus encabezados), o lanza `SinAcceso` si la cuenta
   no puede abrirla. Una llamada con la sesión vencida lanza `SesionVencida` y avisa con `alVencer`.
+  `iniciar` devuelve `true` si sigue vigente una sesión anterior (al recargar la página): la UI abre la base
+  sin pasar por `ingresar()`. En Sheets, el token se guarda en `sessionStorage` hasta que vence.
 - **Lectura:** `leer()` devuelve todos los `Datos` del dominio; lo que está en `faltantes` se lee vacío.
   Los cálculos (stock, resúmenes de pedidos, cuentas entre socios) los hace la UI con las funciones del
   dominio.
