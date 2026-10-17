@@ -19,12 +19,13 @@ export function EstadoPedido({ estado }: { estado: M.EstadoPedido }) {
   return <Badge variant="light" size="sm" color={COLOR_ESTADO[estado]}>{M.NOMBRE_ESTADO_PEDIDO[estado]}</Badge>;
 }
 
-export function Pedidos() {
+// `nuevo` cambia cada vez que se pide tomar un pedido nuevo desde otra pantalla: lleva el foco al formulario.
+export function Pedidos({ nuevo = 0 }: { nuevo?: number }) {
   const { pedidos, stock, datos } = useBase();
   const [elegido, setElegido] = useState<string | null>(null);
   const abiertos = pedidos.filter((r) => M.pedidoAbierto(r.estado));
   const pendiente = abiertos.reduce((s, r) => s + r.lineas.reduce((a, l) => a + l.pendiente * l.precio, 0), 0);
-  const conFaltante = abiertos.filter((r) => r.lineas.some((l) => l.pendiente > 0 && M.faltante(stock, l.productoId, r.pedido.depositoId) > 0)).length;
+  const conFaltante = abiertos.filter((r) => M.lineasConFaltante(stock, r).length > 0).length;
   const elegidoRes = pedidos.find((r) => r.pedido.id === elegido);
   const sel = elegidoRes && M.pedidoAbierto(elegidoRes.estado) ? elegidoRes : undefined;
 
@@ -39,7 +40,7 @@ export function Pedidos() {
       ]} />
 
       <Grid gap="md" align="flex-start">
-        <Grid.Col span={{ base: 12, md: 6 }}><FormPedido /></Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}><FormPedido nuevo={nuevo} /></Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
           {sel
             ? <Entrega key={sel.pedido.id} resumen={sel} onCerrar={() => { setElegido(null); }} />
@@ -65,9 +66,15 @@ export function Pedidos() {
 // Primer texto no vacío.
 const primero = (...valores: (string | undefined)[]) => valores.find((v) => v !== undefined && v !== '');
 
-function FormPedido() {
+function FormPedido({ nuevo }: { nuevo: number }) {
   const { datos, costos, buscarProducto, buscarContacto, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
+  const clienteRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (nuevo === 0) return;
+    clienteRef.current?.scrollIntoView({ block: 'center' });
+    clienteRef.current?.focus();
+  }, [nuevo]);
   const [fecha, setFecha] = useState(hoyISO);
   const [depSel, setDepSel] = useState<string | null>(null);
   const deposito = depSel ?? datos.depositos.at(-1)?.id ?? '';
@@ -179,7 +186,7 @@ function FormPedido() {
             <NativeSelect label="Entrega desde" data={datos.depositos.map((d) => ({ value: d.id, label: d.nombre }))} value={deposito}
               onChange={(e) => { setDepSel(e.currentTarget.value); }} />
           </Group>
-          <Autocomplete label="Cliente" maxLength={120} placeholder="Nombre del cliente" data={listas.clientes}
+          <Autocomplete ref={clienteRef} label="Cliente" maxLength={120} placeholder="Nombre del cliente" data={listas.clientes}
             value={cliente} onChange={setCliente} onOptionSubmit={elegirCliente} onBlur={() => { elegirCliente(cliente); }} />
           <Group grow gap="xs" align="flex-start">
             <NativeSelect label="Tipo de cliente" data={listas.tipos} value={tipo} onChange={(e) => { setTipoSel(e.currentTarget.value); }} />

@@ -536,6 +536,10 @@ total(p)           = Σ_d stock(p, d) + Σ_d en_transito(p, d)
 ```
 
 `faltante` responde "qué hay que comprar o mandar a este depósito para cubrir los pedidos abiertos".
+Un pedido abierto está **con faltante de stock** si alguna de sus líneas pendientes es de un producto con
+`faltante(p, d) > 0` en su depósito de entrega. Por ejemplo, con 0 kg de almendras en Rosario y 6 kg en camino,
+un pedido nuevo de 12 kg en Rosario queda con faltante (12 − 0 − 6 = 6) hasta que se mande un flete con los 6 kg
+que faltan. La pantalla Inicio y los indicadores de Pedidos usan esta marca.
 
 ```mermaid
 flowchart LR

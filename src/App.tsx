@@ -10,6 +10,7 @@ import type * as M from './dominio/modelo';
 import { hora, mensajeDeError } from './formato';
 import { Compras } from './vistas/Compras';
 import { Fletes } from './vistas/Fletes';
+import { Inicio } from './vistas/Inicio';
 import { Pedidos } from './vistas/Pedidos';
 import { Precios } from './vistas/Precios';
 import { Stock } from './vistas/Stock';
@@ -17,7 +18,7 @@ import { Ventas } from './vistas/Ventas';
 
 type Pantalla = 'config' | 'login' | 'sin-acceso' | 'app';
 const NAV = [
-  { value: 'stock', label: 'Stock' }, { value: 'pedidos', label: 'Pedidos' }, { value: 'ventas', label: 'Ventas' },
+  { value: 'inicio', label: 'Inicio' }, { value: 'stock', label: 'Stock' }, { value: 'pedidos', label: 'Pedidos' }, { value: 'ventas', label: 'Ventas' },
   { value: 'compras', label: 'Compras' }, { value: 'fletes', label: 'Fletes' }, { value: 'precios', label: 'Precios' },
 ] as const;
 type Vista = (typeof NAV)[number]['value'];
@@ -26,7 +27,7 @@ const ESTADO_INICIAL = { texto: 'Stock, pedidos, ventas y fletes', error: false 
 
 const vistaDelHash = (): Vista => {
   const h = location.hash.slice(1);
-  return VISTAS.includes(h) ? (h as Vista) : 'stock';
+  return VISTAS.includes(h) ? (h as Vista) : 'inicio';
 };
 
 export function App({ db }: { db: BaseDeDatos }) {
@@ -41,6 +42,8 @@ export function App({ db }: { db: BaseDeDatos }) {
   const [info, setInfo] = useState<InfoBase | null>(null);
   const [datos, setDatos] = useState<M.Datos | null>(null);
   const [cargando, setCargando] = useState(false);
+  // Cada "Tomar pedido nuevo" de Inicio lo incrementa para que Pedidos enfoque el formulario.
+  const [nuevoPedido, setNuevoPedido] = useState(0);
 
   useEffect(() => {
     if (faltaConfig) return;
@@ -220,8 +223,11 @@ export function App({ db }: { db: BaseDeDatos }) {
 
           {enApp && (
             <BaseProvider db={db} info={info} datos={datos} cargando={cargando} recargar={cargar}>
+              <Box display={vista === 'inicio' ? undefined : 'none'}>
+                <Inicio onIr={irA} onNuevoPedido={() => { irA('pedidos'); setNuevoPedido((n) => n + 1); }} />
+              </Box>
               <Box display={vista === 'stock' ? undefined : 'none'}><Stock visible={vista === 'stock'} /></Box>
-              <Box display={vista === 'pedidos' ? undefined : 'none'}><Pedidos /></Box>
+              <Box display={vista === 'pedidos' ? undefined : 'none'}><Pedidos nuevo={nuevoPedido} /></Box>
               <Box display={vista === 'ventas' ? undefined : 'none'}><Ventas visible={vista === 'ventas'} /></Box>
               <Box display={vista === 'compras' ? undefined : 'none'}><Compras /></Box>
               <Box display={vista === 'fletes' ? undefined : 'none'}><Fletes /></Box>

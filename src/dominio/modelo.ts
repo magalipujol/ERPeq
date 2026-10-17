@@ -81,6 +81,7 @@ export const SIGUIENTES_FLETE: Record<EstadoFlete, EstadoFlete[]> = {
   finalizado: [],
   cancelado: [],
 };
+export const fleteEnCurso = (e: EstadoFlete) => e === 'preparacion' || e === 'camino';
 export const estadoFlete = (estados: Map<string, string>, id: string): EstadoFlete => {
   const e = estados.get(id);
   return (ESTADOS_FLETE as readonly string[]).includes(e ?? '') ? (e as EstadoFlete) : 'preparacion';
@@ -259,6 +260,10 @@ export const faltante = (s: Stock, productoId: string, depositoId: string) => {
   const v = (m: Map<string, PorDeposito>) => m.get(productoId)?.[depositoId] ?? 0;
   return Math.max(0, redondear(v(s.comprometido) - v(s.enDeposito) - v(s.enTransito), 3));
 };
+
+// Líneas pendientes de un pedido cuyo producto falta en el depósito de entrega.
+export const lineasConFaltante = (s: Stock, r: ResumenPedido) =>
+  r.lineas.filter((l) => l.pendiente > 0 && faltante(s, l.productoId, r.pedido.depositoId) > 0);
 
 // ---------- Ventas por mes ----------
 
