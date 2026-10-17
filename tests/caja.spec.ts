@@ -28,7 +28,7 @@ test('si la planilla todavía no tiene las hojas de caja, la app funciona y avis
   await ingresar()
 
   await expect(page.getByText('Faltan hojas en la planilla')).toBeVisible()
-  await expect(page.getByText('fecha, venta_id, importe, medio, socio_id, socio, nota')).toBeVisible()
+  await expect(page.getByText('fecha, venta_id, importe, medio, socio_id, nota')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Registrar cobro' })).toBeDisabled()
 
   // La entrega se registra igual, sin la parte del cobro.

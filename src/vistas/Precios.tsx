@@ -29,7 +29,7 @@ function ListaPrecios() {
   const [precioTxt, setPrecioTxt] = useState<number | string>('');
   const [desde, setDesde] = useState(hoyISO);
   const [buscar, setBuscar] = useState('');
-  const nombres = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
+  const productos = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
   const [hoy] = useState(() => new Date());
 
   const filas = datos.productos
@@ -49,7 +49,7 @@ function ListaPrecios() {
     if (!(precio > 0)) { error('Ingresá un precio mayor a 0.'); return; }
     if (!desde) { error('Elegí desde qué fecha rige.'); return; }
     guardar(async () => {
-      await db.registrarPrecio({ productoId: p.id, producto: p.producto, precio, desde: deISO(desde) });
+      await db.registrarPrecio({ productoId: p.id, precio, desde: deISO(desde) });
       setPrecioTxt('');
       return `✓ ${p.producto}: ${fmtMoney(precio)} desde ${fmtFecha(deISO(desde))}.`;
     });
@@ -63,7 +63,7 @@ function ListaPrecios() {
       </Encabezado>
       <form onSubmit={enviar} noValidate aria-label="Cambiar precio">
         <Stack gap="xs" mb="sm">
-          <Autocomplete label="Producto" data={nombres} value={producto} onChange={setProducto} />
+          <Autocomplete label="Producto" data={productos} value={producto} onChange={setProducto} />
           <Group grow gap="xs" align="flex-start">
             <NumberInput label="Precio" allowNegative={false} value={precioTxt} onChange={setPrecioTxt}
               leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none" />
@@ -94,13 +94,13 @@ function ListaPrecios() {
 }
 
 function ReglasComision() {
-  const { datos, buscarProducto, nombreVendedor, db, cargando } = useBase();
+  const { datos, buscarProducto, nombres, db, cargando } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [vendedor, setVendedor] = useState(datos.vendedores.at(0)?.id ?? '');
   const [producto, setProducto] = useState('');
   const [pctTxt, setPctTxt] = useState<number | string>('');
   const [desde, setDesde] = useState(hoyISO);
-  const nombres = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
+  const productos = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
   const nombreProducto = new Map(datos.productos.map((p) => [p.id, p.producto]));
 
   // Regla vigente de cada vendedor y producto (la última agregada con `desde` hasta hoy).
@@ -113,7 +113,7 @@ function ReglasComision() {
     if (!actual || (r.desde?.getTime() ?? 0) >= (actual.desde?.getTime() ?? 0)) vigentes.set(k, r);
   }
   const filas = [...vigentes.values()].sort((a, b) => {
-    const porVendedor = nombreVendedor(a.vendedorId).localeCompare(nombreVendedor(b.vendedorId), 'es');
+    const porVendedor = nombres.vendedor(a.vendedorId).localeCompare(nombres.vendedor(b.vendedorId), 'es');
     return porVendedor !== 0 ? porVendedor : a.productoId.localeCompare(b.productoId);
   });
 
@@ -128,7 +128,7 @@ function ReglasComision() {
     guardar(async () => {
       await db.registrarReglaComision({ vendedorId: vendedor, productoId: p?.id ?? '', porcentaje: pct, desde: deISO(desde) });
       setPctTxt('');
-      return `✓ ${nombreVendedor(vendedor)}: ${fmtNum(pct)}% ${p ? `en ${p.producto}` : 'general'}.`;
+      return `✓ ${nombres.vendedor(vendedor)}: ${fmtNum(pct)}% ${p ? `en ${p.producto}` : 'general'}.`;
     });
   }
 
@@ -140,7 +140,7 @@ function ReglasComision() {
           <Group grow gap="xs" align="flex-start">
             <NativeSelect label="Vendedor" data={datos.vendedores.map((v) => ({ value: v.id, label: v.nombre }))} value={vendedor}
               onChange={(e) => { setVendedor(e.currentTarget.value); }} />
-            <Autocomplete label="Producto" placeholder="Todos" data={nombres} value={producto} onChange={setProducto} />
+            <Autocomplete label="Producto" placeholder="Todos" data={productos} value={producto} onChange={setProducto} />
           </Group>
           <Group grow gap="xs" align="flex-start">
             <NumberInput label="Comisión" min={0} max={100} allowNegative={false} value={pctTxt} onChange={setPctTxt}
@@ -159,7 +159,7 @@ function ReglasComision() {
           <Table.Tbody>
             {filas.map((r) => (
               <Table.Tr key={`${r.vendedorId}|${r.productoId}`}>
-                <Table.Td>{nombreVendedor(r.vendedorId)}</Table.Td>
+                <Table.Td>{nombres.vendedor(r.vendedorId)}</Table.Td>
                 <Table.Td c={r.productoId ? undefined : 'dimmed'}>{r.productoId ? nombreProducto.get(r.productoId) ?? r.productoId : 'Todos (general)'}</Table.Td>
                 <Table.Td className="num">{fmtNum(r.porcentaje)}</Table.Td>
                 <Table.Td c="dimmed">{fmtFecha(r.desde)}</Table.Td>

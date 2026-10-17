@@ -69,6 +69,8 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
   la UI abre la base sin pasar por `ingresar()`. En Sheets, el token se guarda en `localStorage` hasta que
   vence; las pestañas lo comparten y, si una reconecta, las demás toman el token nuevo en su próxima llamada.
 - **Lectura:** `leer()` devuelve todos los `Datos` del dominio; lo que está en `faltantes` se lee vacío.
+  Las filas traen IDs y no nombres: la UI los resuelve con `nombres(datos)` del dominio. En Sheets, si los
+  encabezados de una hoja no son los que espera el adaptador, `leer()` lanza `FormatoDistinto` y no lee nada.
   Los cálculos (stock, resúmenes de pedidos, cuentas entre socios) los hace la UI con las funciones del
   dominio.
 - **Operaciones:** una por caso de uso. **Cada una es atómica**: se guarda entera o no se guarda. En Sheets

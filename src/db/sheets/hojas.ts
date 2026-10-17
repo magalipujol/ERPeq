@@ -1,6 +1,8 @@
 // Cómo se guarda el dominio en la planilla: hojas, orden de columnas, lectura de filas y filas a
 // escribir. Tiene que coincidir con la planilla real, con tests/google-falso.ts y con
 // herramientas/excel_a_base.py. La referencia es spec/modelo-de-datos.md.
+// Las filas guardan IDs y no copias de nombres: el nombre de un producto, contacto, vendedor o socio sale
+// siempre de su hoja.
 import {
   type Ajuste, type Cobro, type Compra, type ContactoNuevo, type Datos, type Flete, type FleteItem, type Pedido,
   type PedidoFlete, type PedidoItem, type PedidoVendedor, type Precio, type Producto, redondear, type ReglaComision,
@@ -8,61 +10,70 @@ import {
 } from '../../dominio/modelo';
 import { type Celda, deSerie, type Fila, type ValorCelda } from './celdas';
 
-// Nombre de cada hoja y cantidad de columnas que lee la app (la fila 1 es el encabezado).
+// Nombre de cada hoja y encabezados de las columnas que lee la app, en orden (la fila 1 es el encabezado).
 export const HOJAS = {
-  depositos: ['Depósitos', 3],
-  productos: ['Productos', 4],
-  contactos: ['Contactos', 10],
-  tipos: ['Tipos de cliente', 1],
-  vendedores: ['Vendedores', 3],
-  precios: ['Precios', 4],
-  reglas: ['Reglas de comisión', 4],
-  compras: ['Compras', 12],
-  pedidos: ['Pedidos', 9],
-  pedidosItems: ['Pedidos ítems', 7],
-  pedidosEstados: ['Pedidos estados', 3],
-  pedidosVendedores: ['Pedidos vendedores', 2],
-  ventas: ['Ventas', 5],
-  ventasItems: ['Ventas ítems', 9],
-  ventasComisiones: ['Ventas comisiones', 7],
-  fletes: ['Fletes', 9],
-  fletesItems: ['Fletes ítems', 4],
-  fletesEstados: ['Fletes estados', 3],
-  pedidosFletes: ['Pedidos fletes', 3],
-  ajustes: ['Ajustes', 6],
-  socios: ['Socios', 4],
-  cobros: ['Cobros', 7],
-  rendiciones: ['Rendiciones', 6],
-} as const satisfies Record<string, readonly [string, number]>;
+  depositos: ['Depósitos', ['id', 'nombre', 'localidad']],
+  productos: ['Productos', ['id', 'producto', 'unidad', 'minimo']],
+  contactos: ['Contactos', ['id', 'rol', 'nombre', 'tipo_cliente', 'telefono', 'direccion', 'email', 'localidad', 'provincia', 'observaciones']],
+  tipos: ['Tipos de cliente', ['tipo']],
+  vendedores: ['Vendedores', ['id', 'nombre', 'activo']],
+  precios: ['Precios', ['producto_id', 'precio', 'desde']],
+  reglas: ['Reglas de comisión', ['vendedor_id', 'producto_id', 'porcentaje', 'desde']],
+  compras: ['Compras', ['fecha', 'deposito_id', 'contacto_id', 'producto_id', 'cantidad', 'precio', 'importe', 'remito', 'pedido_id', 'nota']],
+  pedidos: ['Pedidos', ['id', 'fecha', 'contacto_id', 'deposito_id', 'nota']],
+  pedidosItems: ['Pedidos ítems', ['pedido_id', 'linea', 'producto_id', 'cantidad', 'precio_lista', 'precio']],
+  pedidosEstados: ['Pedidos estados', ['pedido_id', 'fecha', 'estado']],
+  pedidosVendedores: ['Pedidos vendedores', ['pedido_id', 'vendedor_id']],
+  ventas: ['Ventas', ['id', 'fecha', 'pedido_id', 'deposito_id', 'nota']],
+  ventasItems: ['Ventas ítems', ['venta_id', 'linea', 'pedido_linea', 'producto_id', 'cantidad', 'precio', 'importe', 'costo']],
+  ventasComisiones: ['Ventas comisiones', ['venta_id', 'linea', 'vendedor_id', 'porcentaje_regla', 'porcentaje', 'monto']],
+  fletes: ['Fletes', ['id', 'fecha', 'contacto_id', 'origen_id', 'destino_id', 'costo', 'guia', 'nota']],
+  fletesItems: ['Fletes ítems', ['flete_id', 'producto_id', 'cantidad']],
+  fletesEstados: ['Fletes estados', ['flete_id', 'fecha', 'estado']],
+  pedidosFletes: ['Pedidos fletes', ['pedido_id', 'flete_id', 'costo_asignado']],
+  ajustes: ['Ajustes', ['fecha', 'deposito_id', 'producto_id', 'cantidad', 'motivo']],
+  socios: ['Socios', ['id', 'nombre', 'vendedor_id', 'rol']],
+  cobros: ['Cobros', ['fecha', 'venta_id', 'importe', 'medio', 'socio_id', 'nota']],
+  rendiciones: ['Rendiciones', ['fecha', 'de_socio_id', 'a_socio_id', 'importe', 'medio', 'nota']],
+} as const satisfies Record<string, readonly [string, readonly string[]]>;
 
 export type ClaveHoja = keyof typeof HOJAS;
 export const CLAVES = Object.keys(HOJAS) as ClaveHoja[];
 export const nombreHoja = (k: ClaveHoja) => HOJAS[k][0];
+export const encabezados = (k: ClaveHoja): readonly string[] => HOJAS[k][1];
 
-// Hojas que la planilla puede no tener todavía, con sus encabezados: si faltan, se leen vacías. Con las
-// demás, que falte una es un error (si se leyera vacía, el stock o las ventas saldrían mal sin aviso).
-export const HOJAS_OPCIONALES = {
-  socios: ['id', 'nombre', 'vendedor_id', 'rol'],
-  cobros: ['fecha', 'venta_id', 'importe', 'medio', 'socio_id', 'socio', 'nota'],
-  rendiciones: ['fecha', 'de_socio_id', 'a_socio_id', 'importe', 'medio', 'nota'],
-} as const satisfies Partial<Record<ClaveHoja, readonly string[]>>;
-export type ClaveOpcional = keyof typeof HOJAS_OPCIONALES;
-const OPCIONALES = Object.keys(HOJAS_OPCIONALES) as ClaveOpcional[];
+// Hojas que la planilla puede no tener todavía: si faltan, se leen vacías. Con las demás, que falte una
+// es un error (si se leyera vacía, el stock o las ventas saldrían mal sin aviso).
+export const OPCIONALES = ['socios', 'cobros', 'rendiciones'] as const satisfies readonly ClaveHoja[];
 
 // Hojas opcionales que no están entre los títulos de la planilla.
 export const hojasFaltantes = (titulos: readonly string[]) => OPCIONALES.filter((k) => !titulos.includes(nombreHoja(k)));
 
 const columna = (n: number) => String.fromCharCode(64 + n);
-export const rango = (k: ClaveHoja) => `'${HOJAS[k][0]}'!A2:${columna(HOJAS[k][1])}`;
+export const rango = (k: ClaveHoja) => `'${nombreHoja(k)}'!A1:${columna(encabezados(k).length)}`;
+
+export class FormatoDistinto extends Error {
+  constructor(hoja: string, esperados: readonly string[], leidos: string[]) {
+    super(`Las columnas de la hoja "${hoja}" no son las que espera la app. Tienen que ser: ${esperados.join(', ')}. `
+      + `En la planilla están: ${leidos.join(', ') || '(ninguna)'}. Si la planilla tiene todavía las columnas con `
+      + 'nombres copiados (cliente, producto, vendedor…), hay que correr la migración de herramientas/normalizar_planilla.gs.');
+  }
+}
 
 // Lee todas las hojas salvo las `faltantes`, que quedan vacías: pedir una hoja que no existe haría fallar
-// toda la lectura.
+// toda la lectura. Antes de leer los datos revisa los encabezados: con las columnas corridas, la app
+// leería y escribiría cada dato en otra columna.
 export async function leerHojas(leer: (rangos: string[]) => Promise<Fila[][]>, faltantes: readonly ClaveHoja[] = []) {
   const claves = CLAVES.filter((k) => !faltantes.includes(k));
   const leidas = await leer(claves.map(rango));
-  return parsear(CLAVES.map((k) => (faltantes.includes(k) ? [] : leidas[claves.indexOf(k)] ?? [])));
+  const datos = claves.map((k, i) => {
+    const [encabezado = [], ...filasHoja] = leidas[i] ?? [];
+    const leidos = encabezado.map((v) => txt(v).toLowerCase());
+    if (encabezados(k).some((e, j) => leidos[j] !== e)) throw new FormatoDistinto(nombreHoja(k), encabezados(k), leidos);
+    return filasHoja;
+  });
+  return parsear(CLAVES.map((k) => (faltantes.includes(k) ? [] : datos[claves.indexOf(k)])));
 }
-
 
 const txt = (v: Celda) => (v === undefined || v === null ? '' : String(v).trim());
 const num = (v: Celda) => (v === '' || v === undefined || v === null || isNaN(Number(v)) ? null : Number(v));
@@ -87,47 +98,45 @@ export function parsear(crudo: Fila[][]): Datos {
     })),
     tipos: de('tipos', 0, (f) => txt(f[0])),
     vendedores: de('vendedores', 0, (f) => ({ id: txt(f[0]), nombre: txt(f[1]) || txt(f[0]), activo: txt(f[2]) === '' || bool(f[2]) })),
-    precios: de('precios', 0, (f) => ({ productoId: txt(f[0]), producto: txt(f[1]), precio: num(f[2]) ?? 0, desde: fecha(f[3]) }))
+    precios: de('precios', 0, (f) => ({ productoId: txt(f[0]), precio: num(f[1]) ?? 0, desde: fecha(f[2]) }))
       .filter((p) => p.precio > 0),
     reglas: de('reglas', 0, (f) => ({ vendedorId: txt(f[0]), productoId: txt(f[1]), porcentaje: num(f[2]) ?? 0, desde: fecha(f[3]) })),
-    compras: de('compras', 4, (f, fila) => ({
-      fila, fecha: fecha(f[0]), depositoId: txt(f[1]), proveedor: txt(f[2]), contactoId: txt(f[3]), productoId: txt(f[4]),
-      producto: txt(f[5]), cantidad: num(f[6]) ?? 0, precio: num(f[7]), importe: num(f[8]), remito: txt(f[9]),
-      pedidoId: txt(f[10]), nota: txt(f[11]),
+    compras: de('compras', 3, (f, fila) => ({
+      fila, fecha: fecha(f[0]), depositoId: txt(f[1]), contactoId: txt(f[2]), productoId: txt(f[3]), cantidad: num(f[4]) ?? 0,
+      precio: num(f[5]), importe: num(f[6]), remito: txt(f[7]), pedidoId: txt(f[8]), nota: txt(f[9]),
     })),
     pedidos: de('pedidos', 0, (f) => ({
-      id: txt(f[0]), fecha: fecha(f[1]), contactoId: txt(f[2]), cliente: txt(f[3]), tipo: txt(f[4]), localidad: txt(f[5]),
-      provincia: txt(f[6]), depositoId: txt(f[7]), nota: txt(f[8]),
+      id: txt(f[0]), fecha: fecha(f[1]), contactoId: txt(f[2]), depositoId: txt(f[3]), nota: txt(f[4]),
     })),
     pedidosItems: de('pedidosItems', 0, (f) => ({
-      pedidoId: txt(f[0]), linea: num(f[1]) ?? 0, productoId: txt(f[2]), producto: txt(f[3]), cantidad: num(f[4]) ?? 0,
-      precioLista: num(f[5]), precio: num(f[6]) ?? 0,
+      pedidoId: txt(f[0]), linea: num(f[1]) ?? 0, productoId: txt(f[2]), cantidad: num(f[3]) ?? 0, precioLista: num(f[4]),
+      precio: num(f[5]) ?? 0,
     })),
     pedidosEstados: estados('pedidosEstados'),
     pedidosVendedores: de('pedidosVendedores', 0, (f) => ({ pedidoId: txt(f[0]), vendedorId: txt(f[1]) })),
     ventas: de('ventas', 0, (f) => ({ id: txt(f[0]), fecha: fecha(f[1]), pedidoId: txt(f[2]), depositoId: txt(f[3]), nota: txt(f[4]) })),
     ventasItems: de('ventasItems', 0, (f) => ({
-      ventaId: txt(f[0]), linea: num(f[1]) ?? 0, pedidoLinea: num(f[2]) ?? 0, productoId: txt(f[3]), producto: txt(f[4]),
-      cantidad: num(f[5]) ?? 0, precio: num(f[6]) ?? 0, importe: num(f[7]) ?? 0, costo: num(f[8]),
+      ventaId: txt(f[0]), linea: num(f[1]) ?? 0, pedidoLinea: num(f[2]) ?? 0, productoId: txt(f[3]), cantidad: num(f[4]) ?? 0,
+      precio: num(f[5]) ?? 0, importe: num(f[6]) ?? 0, costo: num(f[7]),
     })),
     ventasComisiones: de('ventasComisiones', 0, (f) => ({
-      ventaId: txt(f[0]), linea: num(f[1]) ?? 0, vendedorId: txt(f[2]), vendedor: txt(f[3]), porcentajeRegla: num(f[4]),
-      porcentaje: num(f[5]) ?? 0, monto: num(f[6]) ?? 0,
+      ventaId: txt(f[0]), linea: num(f[1]) ?? 0, vendedorId: txt(f[2]), porcentajeRegla: num(f[3]), porcentaje: num(f[4]) ?? 0,
+      monto: num(f[5]) ?? 0,
     })),
     fletes: de('fletes', 0, (f) => ({
-      id: txt(f[0]), fecha: fecha(f[1]), transporte: txt(f[2]), contactoId: txt(f[3]), origenId: txt(f[4]),
-      destinoId: txt(f[5]), costo: num(f[6]), guia: txt(f[7]), nota: txt(f[8]),
+      id: txt(f[0]), fecha: fecha(f[1]), contactoId: txt(f[2]), origenId: txt(f[3]), destinoId: txt(f[4]), costo: num(f[5]),
+      guia: txt(f[6]), nota: txt(f[7]),
     })),
-    fletesItems: de('fletesItems', 0, (f) => ({ fleteId: txt(f[0]), productoId: txt(f[1]), producto: txt(f[2]), cantidad: num(f[3]) ?? 0 })),
+    fletesItems: de('fletesItems', 0, (f) => ({ fleteId: txt(f[0]), productoId: txt(f[1]), cantidad: num(f[2]) ?? 0 })),
     fletesEstados: estados('fletesEstados'),
     pedidosFletes: de('pedidosFletes', 0, (f) => ({ pedidoId: txt(f[0]), fleteId: txt(f[1]), costoAsignado: num(f[2]) })),
     ajustes: de('ajustes', 2, (f) => ({
-      fecha: fecha(f[0]), depositoId: txt(f[1]), productoId: txt(f[2]), producto: txt(f[3]), cantidad: num(f[4]) ?? 0, motivo: txt(f[5]),
+      fecha: fecha(f[0]), depositoId: txt(f[1]), productoId: txt(f[2]), cantidad: num(f[3]) ?? 0, motivo: txt(f[4]),
     })),
     socios: parsearSocios(h.socios),
     cobros: de('cobros', 1, (f) => ({
       fecha: fecha(f[0]), ventaId: txt(f[1]), importe: num(f[2]) ?? 0, medio: txt(f[3]).toLowerCase(), socioId: txt(f[4]),
-      socio: txt(f[5]), nota: txt(f[6]),
+      nota: txt(f[5]),
     })),
     rendiciones: de('rendiciones', 1, (f) => ({
       fecha: fecha(f[0]), deId: txt(f[1]), aId: txt(f[2]), importe: num(f[3]) ?? 0, medio: txt(f[4]).toLowerCase(), nota: txt(f[5]),
@@ -160,24 +169,24 @@ export const filas = {
   contacto: (c: ContactoNuevo): ValorCelda[] => [
     c.id, c.rol, c.nombre, c.tipo, c.telefono, c.direccion, c.email, c.localidad, c.provincia, c.observaciones,
   ],
-  precio: (p: Precio): ValorCelda[] => [p.productoId, p.producto, p.precio, p.desde],
+  precio: (p: Precio): ValorCelda[] => [p.productoId, p.precio, p.desde],
   regla: (r: ReglaComision): ValorCelda[] => [r.vendedorId, r.productoId, r.porcentaje, r.desde],
   compra: (c: Omit<Compra, 'fila' | 'importe'>): ValorCelda[] => [
-    c.fecha, c.depositoId, c.proveedor, c.contactoId, c.productoId, c.producto, c.cantidad, vacio(c.precio),
+    c.fecha, c.depositoId, c.contactoId, c.productoId, c.cantidad, vacio(c.precio),
     c.precio === null ? '' : redondear(c.cantidad * c.precio), c.remito, c.pedidoId, c.nota,
   ],
-  pedido: (p: Pedido): ValorCelda[] => [p.id, p.fecha, p.contactoId, p.cliente, p.tipo, p.localidad, p.provincia, p.depositoId, p.nota],
-  pedidoItem: (i: PedidoItem): ValorCelda[] => [i.pedidoId, i.linea, i.productoId, i.producto, i.cantidad, vacio(i.precioLista), i.precio],
+  pedido: (p: Pedido): ValorCelda[] => [p.id, p.fecha, p.contactoId, p.depositoId, p.nota],
+  pedidoItem: (i: PedidoItem): ValorCelda[] => [i.pedidoId, i.linea, i.productoId, i.cantidad, vacio(i.precioLista), i.precio],
   estado: (ref: string, estado: string, momento: Date): ValorCelda[] => [ref, { momento }, estado],
   pedidoVendedor: (p: PedidoVendedor): ValorCelda[] => [p.pedidoId, p.vendedorId],
   venta: (v: Venta): ValorCelda[] => [v.id, v.fecha, v.pedidoId, v.depositoId, v.nota],
-  ventaItem: (i: VentaItem): ValorCelda[] => [i.ventaId, i.linea, i.pedidoLinea, i.productoId, i.producto, i.cantidad, i.precio, i.importe, vacio(i.costo)],
-  ventaComision: (c: VentaComision): ValorCelda[] => [c.ventaId, c.linea, c.vendedorId, c.vendedor, vacio(c.porcentajeRegla), c.porcentaje, c.monto],
-  flete: (f: Flete): ValorCelda[] => [f.id, f.fecha, f.transporte, f.contactoId, f.origenId, f.destinoId, vacio(f.costo), f.guia, f.nota],
-  fleteItem: (i: FleteItem): ValorCelda[] => [i.fleteId, i.productoId, i.producto, i.cantidad],
+  ventaItem: (i: VentaItem): ValorCelda[] => [i.ventaId, i.linea, i.pedidoLinea, i.productoId, i.cantidad, i.precio, i.importe, vacio(i.costo)],
+  ventaComision: (c: VentaComision): ValorCelda[] => [c.ventaId, c.linea, c.vendedorId, vacio(c.porcentajeRegla), c.porcentaje, c.monto],
+  flete: (f: Flete): ValorCelda[] => [f.id, f.fecha, f.contactoId, f.origenId, f.destinoId, vacio(f.costo), f.guia, f.nota],
+  fleteItem: (i: FleteItem): ValorCelda[] => [i.fleteId, i.productoId, i.cantidad],
   pedidoFlete: (p: PedidoFlete): ValorCelda[] => [p.pedidoId, p.fleteId, vacio(p.costoAsignado)],
-  ajuste: (a: Ajuste): ValorCelda[] => [a.fecha, a.depositoId, a.productoId, a.producto, a.cantidad, a.motivo],
-  cobro: (c: Cobro): ValorCelda[] => [c.fecha, c.ventaId, c.importe, c.medio, c.socioId, c.socio, c.nota],
+  ajuste: (a: Ajuste): ValorCelda[] => [a.fecha, a.depositoId, a.productoId, a.cantidad, a.motivo],
+  cobro: (c: Cobro): ValorCelda[] => [c.fecha, c.ventaId, c.importe, c.medio, c.socioId, c.nota],
   rendicion: (r: Rendicion): ValorCelda[] => [r.fecha, r.deId, r.aId, r.importe, r.medio, r.nota],
 };
 

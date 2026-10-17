@@ -17,6 +17,34 @@ export const HOY_SERIE = serie('2026-10-16')
 
 type Fila = (string | number | boolean)[]
 
+// Fila 1 de cada hoja, como en la planilla real.
+export const ENCABEZADOS: Record<string, string[]> = {
+  'Depósitos': ['id', 'nombre', 'localidad'],
+  'Productos': ['id', 'producto', 'unidad', 'minimo'],
+  'Contactos': ['id', 'rol', 'nombre', 'tipo_cliente', 'telefono', 'direccion', 'email', 'localidad', 'provincia', 'observaciones'],
+  'Tipos de cliente': ['tipo'],
+  'Vendedores': ['id', 'nombre', 'activo'],
+  'Precios': ['producto_id', 'precio', 'desde'],
+  'Reglas de comisión': ['vendedor_id', 'producto_id', 'porcentaje', 'desde'],
+  'Compras': ['fecha', 'deposito_id', 'contacto_id', 'producto_id', 'cantidad', 'precio', 'importe', 'remito', 'pedido_id', 'nota'],
+  'Pedidos': ['id', 'fecha', 'contacto_id', 'deposito_id', 'nota'],
+  'Pedidos ítems': ['pedido_id', 'linea', 'producto_id', 'cantidad', 'precio_lista', 'precio'],
+  'Pedidos estados': ['pedido_id', 'fecha', 'estado'],
+  'Pedidos vendedores': ['pedido_id', 'vendedor_id'],
+  'Ventas': ['id', 'fecha', 'pedido_id', 'deposito_id', 'nota'],
+  'Ventas ítems': ['venta_id', 'linea', 'pedido_linea', 'producto_id', 'cantidad', 'precio', 'importe', 'costo'],
+  'Ventas comisiones': ['venta_id', 'linea', 'vendedor_id', 'porcentaje_regla', 'porcentaje', 'monto'],
+  'Fletes': ['id', 'fecha', 'contacto_id', 'origen_id', 'destino_id', 'costo', 'guia', 'nota'],
+  'Fletes ítems': ['flete_id', 'producto_id', 'cantidad'],
+  'Fletes estados': ['flete_id', 'fecha', 'estado'],
+  'Pedidos fletes': ['pedido_id', 'flete_id', 'costo_asignado'],
+  'Ajustes': ['fecha', 'deposito_id', 'producto_id', 'cantidad', 'motivo'],
+  'Socios': ['id', 'nombre', 'vendedor_id', 'rol'],
+  'Cobros': ['fecha', 'venta_id', 'importe', 'medio', 'socio_id', 'nota'],
+  'Rendiciones': ['fecha', 'de_socio_id', 'a_socio_id', 'importe', 'medio', 'nota'],
+}
+
+// Filas de datos de cada hoja (sin el encabezado).
 export function planillaInicial(): Record<string, Fila[]> {
   return {
     'Depósitos': [['BB', 'General', 'Bahía Blanca'], ['ROS', 'Rosario', 'Rosario']],
@@ -34,8 +62,8 @@ export function planillaInicial(): Record<string, Fila[]> {
     'Tipos de cliente': [['Minorista'], ['Revendedor']],
     'Vendedores': [['VEN01', 'Leo', 'sí'], ['VEN02', 'Guada/Hernán', 'sí']],
     'Precios': [
-      ['P001', 'Almendras', 3000, serie('2026-01-01')],
-      ['P002', 'Avena', 800, serie('2026-01-01')],
+      ['P001', 3000, serie('2026-01-01')],
+      ['P002', 800, serie('2026-01-01')],
     ],
     'Reglas de comisión': [
       ['VEN01', '', 10, serie('2026-01-01')],
@@ -43,29 +71,29 @@ export function planillaInicial(): Record<string, Fila[]> {
       ['VEN02', 'P001', 7, serie('2026-01-01')],
     ],
     'Compras': [
-      [serie('2026-09-10'), 'BB', 'Prov A', 'C0002', 'P001', 'Almendras', 10, 2000, 20000, '', '', ''],
-      [serie('2026-10-02'), 'BB', 'Prov A', 'C0002', 'P001', 'Almendras', 10, 1000, 10000, 'R-1', '', ''],
-      [serie('2026-10-03'), 'ROS', 'Prov B', 'C0003', 'P002', 'Avena', 30, 500, 15000, '', '', ''],
+      [serie('2026-09-10'), 'BB', 'C0002', 'P001', 10, 2000, 20000, '', '', ''],
+      [serie('2026-10-02'), 'BB', 'C0002', 'P001', 10, 1000, 10000, 'R-1', '', ''],
+      [serie('2026-10-03'), 'ROS', 'C0003', 'P002', 30, 500, 15000, '', '', ''],
     ],
     'Pedidos': [
-      ['PE0001', serie('2026-10-05'), 'C0001', 'Ana', 'Minorista', 'Funes', 'Santa Fe', 'BB', ''],
-      ['PE0002', serie('2026-10-10'), 'C0001', 'Ana', 'Minorista', 'Funes', 'Santa Fe', 'ROS', ''],
+      ['PE0001', serie('2026-10-05'), 'C0001', 'BB', ''],
+      ['PE0002', serie('2026-10-10'), 'C0001', 'ROS', ''],
     ],
     'Pedidos ítems': [
-      ['PE0001', 1, 'P001', 'Almendras', 4, 3000, 3000],
-      ['PE0002', 1, 'P002', 'Avena', 10, 800, 800],
+      ['PE0001', 1, 'P001', 4, 3000, 3000],
+      ['PE0002', 1, 'P002', 10, 800, 800],
     ],
     'Pedidos estados': [['PE0001', serie('2026-10-05'), 'abierto'], ['PE0002', serie('2026-10-10'), 'abierto']],
     'Pedidos vendedores': [['PE0001', 'VEN01'], ['PE0002', 'VEN02']],
     'Ventas': [['V0001', serie('2026-10-05'), 'PE0001', 'BB', '']],
-    'Ventas ítems': [['V0001', 1, 1, 'P001', 'Almendras', 4, 3000, 12000, 1500]],
-    'Ventas comisiones': [['V0001', 1, 'VEN01', 'Leo', 10, 10, 1200]],
-    'Fletes': [['F0001', serie('2026-10-08'), 'Interprovincial', 'C0004', 'BB', 'ROS', 5000, '', '']],
-    'Fletes ítems': [['F0001', 'P001', 'Almendras', 6]],
+    'Ventas ítems': [['V0001', 1, 1, 'P001', 4, 3000, 12000, 1500]],
+    'Ventas comisiones': [['V0001', 1, 'VEN01', 10, 10, 1200]],
+    'Fletes': [['F0001', serie('2026-10-08'), 'C0004', 'BB', 'ROS', 5000, '', '']],
+    'Fletes ítems': [['F0001', 'P001', 6]],
     'Fletes estados': [['F0001', serie('2026-10-08'), 'preparacion'], ['F0001', serie('2026-10-08'), 'camino']],
     'Pedidos fletes': [],
     'Ajustes': [
-      [serie('2026-10-06'), 'ROS', 'P002', 'Avena', -5, 'rotura'],
+      [serie('2026-10-06'), 'ROS', 'P002', -5, 'rotura'],
     ],
     // Sampatti es la empresa de Leo y la dueña de la mercadería.
     'Socios': [['SOC01', 'Sampatti', 'VEN01', 'dueño'], ['SOC02', 'Guada/Hernán', 'VEN02', 'socio']],
@@ -136,7 +164,10 @@ export async function instalarGoogleFalso(page: Page): Promise<GoogleFalso> {
     }
     if (ruta === '/values:batchGet') {
       return json({
-        valueRanges: url.searchParams.getAll('ranges').map((r) => ({ range: r, values: hojas[hojaDeRango(r)] })),
+        valueRanges: url.searchParams.getAll('ranges').map((r) => {
+          const hoja = hojaDeRango(r)
+          return { range: r, values: [ENCABEZADOS[hoja], ...hojas[hoja]] }
+        }),
       })
     }
     if (ruta === ':batchUpdate' && req.method() === 'POST') {

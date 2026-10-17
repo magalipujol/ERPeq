@@ -171,14 +171,14 @@ function Inventario({ filas }: { filas: FilaStock[] }) {
 }
 
 function AjusteStock() {
-  const { datos, stock, buscarProducto, nombreDeposito, db } = useBase();
+  const { datos, stock, buscarProducto, nombres, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [producto, setProducto] = useState('');
   const [depSel, setDepSel] = useState<string | null>(null);
   const deposito = depSel ?? datos.depositos.at(0)?.id ?? '';
   const [cantidadTxt, setCantidadTxt] = useState<number | string>('');
   const [motivo, setMotivo] = useState('');
-  const nombres = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
+  const productos = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
 
   const p = buscarProducto(producto);
   const cantidad = aNumero(cantidadTxt);
@@ -192,7 +192,7 @@ function AjusteStock() {
     if (!hayCantidad) { error('Ingresá una cantidad distinta de 0.'); return; }
     if (!mot) { error('Indicá el motivo.'); return; }
     guardar(async () => {
-      await db.registrarAjuste({ fecha: new Date(), depositoId: deposito, productoId: p.id, producto: p.producto, cantidad, motivo: mot });
+      await db.registrarAjuste({ fecha: new Date(), depositoId: deposito, productoId: p.id, cantidad, motivo: mot });
       setCantidadTxt('');
       setMotivo('');
       return `✓ Ajuste registrado: ${cantidad > 0 ? '+' : ''}${fmtNum(cantidad)} ${p.unidad} de ${p.producto}.`;
@@ -205,7 +205,7 @@ function AjusteStock() {
       <Text size="sm" c="dimmed" mt={-8} mb="sm">Para corregir diferencias. Para restar, usá un número negativo.</Text>
       <form onSubmit={enviar} noValidate aria-label="Ajuste de stock">
         <Stack gap="sm">
-          <Autocomplete label="Producto" placeholder="Buscar producto…" data={nombres} value={producto} onChange={setProducto} />
+          <Autocomplete label="Producto" placeholder="Buscar producto…" data={productos} value={producto} onChange={setProducto} />
           <Group grow gap="xs" align="flex-start">
             <NativeSelect label="Depósito" data={datos.depositos.map((d) => ({ value: d.id, label: d.nombre }))} value={deposito}
               onChange={(e) => { setDepSel(e.currentTarget.value); }} />
@@ -216,7 +216,7 @@ function AjusteStock() {
             onChange={(e) => { setMotivo(e.currentTarget.value); }} />
           {p && hayCantidad ? (
             <Text size="sm" className="suave" px="sm" py={8}>
-              Stock en {nombreDeposito(deposito)}: {fmtNum(antes)} → <strong>{fmtNum(M.redondear(antes + cantidad, 3))} {p.unidad}</strong>
+              Stock en {nombres.deposito(deposito)}: {fmtNum(antes)} → <strong>{fmtNum(M.redondear(antes + cantidad, 3))} {p.unidad}</strong>
             </Text>
           ) : producto && !p ? (
             <Text size="sm" className="suave" px="sm" py={8}>No existe ese producto.</Text>

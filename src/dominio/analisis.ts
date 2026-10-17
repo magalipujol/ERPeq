@@ -1,6 +1,6 @@
 // Análisis de ventas por producto y por cliente sobre un período. No depende del navegador, así se puede
 // probar con Node. Las definiciones y fórmulas están en spec/analisis.md.
-import { type Datos, estadosActuales, lineasVendidas, redondear } from './modelo';
+import { type Datos, estadosActuales, lineasVendidas, nombres, redondear } from './modelo';
 
 export const PERIODOS = [
   { value: '3', label: '3 meses' },
@@ -39,7 +39,7 @@ export function analizarProductos(datos: Datos, desde: Date | null): AnalisisPro
     if (!enPeriodo(l.venta.fecha, desde)) continue;
     const p = productos.get(l.productoId);
     const a = res.get(l.productoId) ?? {
-      productoId: l.productoId, producto: p?.producto ?? l.producto, unidad: p?.unidad ?? 'kg',
+      productoId: l.productoId, producto: p?.producto ?? l.productoId, unidad: p?.unidad ?? 'kg',
       cantidad: 0, importe: 0, comisiones: 0, costo: 0, ganancia: 0, importeConCosto: 0, margen: null, lineasSinCosto: 0,
     };
     a.cantidad += l.cantidad;
@@ -93,15 +93,16 @@ export interface AnalisisCliente {
   ultimoPedido: Date | null; // de toda la historia
 }
 
-// Pedidos no cancelados, agrupados por cliente (por ID de contacto o, si falta, por nombre).
+// Pedidos no cancelados, agrupados por cliente (ID de contacto).
 function pedidosPorCliente(datos: Datos) {
   const estados = estadosActuales(datos.pedidosEstados);
+  const nombre = nombres(datos).contacto;
   const res = new Map<string, { cliente: string; pedidos: Datos['pedidos'] }>();
   for (const p of datos.pedidos) {
     if (estados.get(p.id) === 'cancelado') continue;
-    const clave = p.contactoId || p.cliente.trim().toLowerCase();
+    const clave = p.contactoId;
     if (clave === '') continue;
-    const c = res.get(clave) ?? { cliente: p.cliente, pedidos: [] };
+    const c = res.get(clave) ?? { cliente: nombre(clave), pedidos: [] };
     c.pedidos.push(p);
     res.set(clave, c);
   }

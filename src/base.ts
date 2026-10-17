@@ -13,8 +13,9 @@ export interface Base {
   cargando: boolean;
   buscarProducto: (nombre: string) => M.Producto | undefined;
   buscarContacto: (rol: M.Rol, nombre: string) => M.Contacto | undefined;
-  nombreDeposito: (id: string) => string;
-  nombreVendedor: (id: string) => string;
+  // Las filas guardan IDs: los nombres salen de la hoja de cada cosa.
+  nombres: M.Nombres;
+  contacto: (id: string) => M.Contacto | undefined;
   // Operaciones de escritura de la base (cada una atómica).
   db: Operaciones;
   recargar: () => Promise<void>;

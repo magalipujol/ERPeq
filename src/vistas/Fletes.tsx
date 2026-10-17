@@ -42,15 +42,15 @@ export function Fletes() {
   );
 }
 
-const nombreLugar = (nombreDeposito: (id: string) => string, id: string, afuera: string) => (id ? nombreDeposito(id) : afuera);
+const nombreLugar = (deposito: (id: string) => string, id: string, afuera: string) => (id ? deposito(id) : afuera);
 
 export function Recorrido({ flete }: { flete: M.Flete }) {
-  const { nombreDeposito } = useBase();
-  return <>{nombreLugar(nombreDeposito, flete.origenId, 'Proveedor')} → {nombreLugar(nombreDeposito, flete.destinoId, 'Cliente')}</>;
+  const { nombres } = useBase();
+  return <>{nombreLugar(nombres.deposito, flete.origenId, 'Proveedor')} → {nombreLugar(nombres.deposito, flete.destinoId, 'Cliente')}</>;
 }
 
 function FormFlete() {
-  const { datos, pedidos, buscarProducto, buscarContacto, db } = useBase();
+  const { datos, pedidos, buscarProducto, buscarContacto, nombres, db } = useBase();
   // En celular los tres estados no entran en una fila.
   const enCelular = useMatches({ base: true, sm: false });
   const { guardando, msg, guardar, error } = useGuardar();
@@ -67,11 +67,11 @@ function FormFlete() {
   const [asignado, setAsignado] = useState<Record<string, number | string>>({});
 
   const transportes = useMemo(() => unicos([
-    ...datos.contactos.filter((c) => c.rol === 'transporte').map((c) => c.nombre), ...datos.fletes.map((f) => f.transporte),
+    ...datos.contactos.filter((c) => c.rol === 'transporte').map((c) => c.nombre),
   ]), [datos]);
   const opcionesPedidos = pedidos.filter((r) => r.estado !== 'cancelado')
     .sort((a, b) => porFechaDesc(a.pedido, b.pedido))
-    .map((r) => ({ value: r.pedido.id, label: `${r.pedido.id} · ${r.pedido.cliente}` }));
+    .map((r) => ({ value: r.pedido.id, label: `${r.pedido.id} · ${nombres.contacto(r.pedido.contactoId)}` }));
   const lugares = (afuera: string) => [{ value: '', label: afuera }, ...datos.depositos.map((d) => ({ value: d.id, label: d.nombre }))];
   const transferencia = origen !== '' && destino !== '' && origen !== destino;
   const costo = aNumero(costoTxt);
@@ -108,10 +108,10 @@ function FormFlete() {
       await db.registrarFlete({
         transporteNuevo: existente ? null : { id: contactoId, rol: 'transporte', nombre },
         flete: {
-          id, fecha: dia, transporte: nombre, contactoId, origenId: origen, destinoId: destino,
+          id, fecha: dia, contactoId, origenId: origen, destinoId: destino,
           costo: Number.isNaN(costo) ? null : costo, guia: guia.trim(), nota: nota.trim(),
         },
-        items: lineas.map((l) => ({ fleteId: id, productoId: l.p?.id ?? '', producto: l.p?.producto ?? '', cantidad: l.cantidad })),
+        items: lineas.map((l) => ({ fleteId: id, productoId: l.p?.id ?? '', cantidad: l.cantidad })),
         estados: M.caminoFlete(estadoInicial),
         momento: new Date(),
         pedidos: asignacion.map((a) => ({ pedidoId: a.id, fleteId: id, costoAsignado: a.costo })),
@@ -182,7 +182,7 @@ function FormFlete() {
 }
 
 function ListaFletes() {
-  const { datos, estadosFletes, cargando, db } = useBase();
+  const { datos, estadosFletes, cargando, nombres, db } = useBase();
   const { guardando, msg, guardar } = useGuardar();
   const [filtro, setFiltro] = useState('activos');
   const items = new Map<string, M.FleteItem[]>();
@@ -224,9 +224,9 @@ function ListaFletes() {
                   <Text size="xs" c="dimmed">{fmtFecha(f.fecha)}</Text>
                 </Table.Td>
                 <Table.Td>
-                  <Text size="sm">{f.transporte}</Text>
+                  <Text size="sm">{nombres.contacto(f.contactoId)}</Text>
                   <Text size="xs" c="dimmed"><Recorrido flete={f} /></Text>
-                  {(items.get(f.id) ?? []).map((it) => <Text key={it.productoId} size="xs">{fmtNum(it.cantidad)} {it.producto}</Text>)}
+                  {(items.get(f.id) ?? []).map((it) => <Text key={it.productoId} size="xs">{fmtNum(it.cantidad)} {nombres.producto(it.productoId)}</Text>)}
                   {pedidos.has(f.id) && <Text size="xs" c="dimmed">Pedidos: {(pedidos.get(f.id) ?? []).join(', ')}</Text>}
                 </Table.Td>
                 <Table.Td className="num">{fmtMoney(f.costo)}</Table.Td>

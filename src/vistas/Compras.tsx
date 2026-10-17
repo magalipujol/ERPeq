@@ -26,7 +26,7 @@ export function Compras() {
       <Kpis label="Resumen de compras" items={[
         { label: 'Comprado', valor: fmtMoney(delMes.reduce((s, c) => s + (c.importe ?? 0), 0)) },
         { label: 'Compras (líneas)', valor: delMes.length },
-        { label: 'Proveedores', valor: new Set(delMes.map((c) => c.proveedor)).size },
+        { label: 'Proveedores', valor: new Set(delMes.map((c) => c.contactoId)).size },
       ]} />
 
       <Grid gap="md" align="flex-start">
@@ -38,7 +38,7 @@ export function Compras() {
 }
 
 function FormCompra() {
-  const { datos, pedidos, buscarProducto, buscarContacto, db } = useBase();
+  const { datos, pedidos, buscarProducto, buscarContacto, nombres, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [fecha, setFecha] = useState(hoyISO);
   const [depSel, setDepSel] = useState<string | null>(null);
@@ -50,7 +50,6 @@ function FormCompra() {
   const [items, setItems] = useState<Item[]>(() => [itemVacio()]);
   const proveedores = useMemo(() => unicos([
     ...datos.contactos.filter((c) => c.rol === 'proveedor').map((c) => c.nombre),
-    ...datos.compras.map((c) => c.proveedor),
   ]), [datos]);
   const abiertos = pedidos.filter((r) => M.pedidoAbierto(r.estado));
 
@@ -85,8 +84,7 @@ function FormCompra() {
         productosNuevos: nuevos,
         proveedorNuevo: existente ? null : contacto,
         lineas: lineas.map((l) => ({
-          fecha: deISO(fecha), depositoId: deposito, proveedor: prov, contactoId: contacto.id, productoId: l.p.id,
-          producto: l.p.producto, cantidad: l.cantidad, precio: l.precio, remito: remito.trim(), pedidoId: pedido, nota: nota.trim(),
+          fecha: deISO(fecha), depositoId: deposito, contactoId: contacto.id, productoId: l.p.id, cantidad: l.cantidad, precio: l.precio, remito: remito.trim(), pedidoId: pedido, nota: nota.trim(),
         })),
       });
       setItems([itemVacio()]);
@@ -119,7 +117,7 @@ function FormCompra() {
           <Items modo="compra" deposito={deposito} fecha={fecha ? deISO(fecha) : null} items={items} onChange={setItems} />
           <NativeSelect label="Para el pedido" value={pedido} onChange={(e) => { setPedido(e.currentTarget.value); }} data={[
             { value: '', label: 'Ninguno (stock general)' },
-            ...abiertos.map((r) => ({ value: r.pedido.id, label: `${r.pedido.id} · ${r.pedido.cliente}` })),
+            ...abiertos.map((r) => ({ value: r.pedido.id, label: `${r.pedido.id} · ${nombres.contacto(r.pedido.contactoId)}` })),
           ]} />
 
           <TextInput label="Nota" maxLength={200} placeholder="Opcional" value={nota} onChange={(e) => { setNota(e.currentTarget.value); }} />
@@ -138,11 +136,11 @@ function FormCompra() {
 }
 
 function DetalleCompras({ compras }: { compras: M.Compra[] }) {
-  const { cargando, nombreDeposito } = useBase();
+  const { cargando, nombres } = useBase();
   const [buscar, setBuscar] = useState('');
   const q = buscar.trim().toLowerCase();
   const filas = compras
-    .filter((c) => !q || c.proveedor.toLowerCase().includes(q) || c.producto.toLowerCase().includes(q))
+    .filter((c) => !q || nombres.contacto(c.contactoId).toLowerCase().includes(q) || nombres.producto(c.productoId).toLowerCase().includes(q))
     .sort(porFechaDesc);
 
   return (
@@ -165,15 +163,15 @@ function DetalleCompras({ compras }: { compras: M.Compra[] }) {
               <Table.Tr key={c.fila}>
                 <Table.Td c="dimmed">{fmtFecha(c.fecha)}</Table.Td>
                 <Table.Td>
-                  {c.proveedor}
+                  {nombres.contacto(c.contactoId)}
                   {c.remito && <Text size="xs" c="dimmed">Remito {c.remito}</Text>}
                   {c.pedidoId && <Text size="xs" c="dimmed">Para {c.pedidoId}</Text>}
                 </Table.Td>
-                <Table.Td>{c.producto}</Table.Td>
+                <Table.Td>{nombres.producto(c.productoId)}</Table.Td>
                 <Table.Td className="num">{fmtNum(c.cantidad)}</Table.Td>
                 <Table.Td className="num">{fmtMoney(c.precio)}</Table.Td>
                 <Table.Td className="num" fw={600}>{fmtMoney(c.importe)}</Table.Td>
-                <Table.Td c="dimmed">{nombreDeposito(c.depositoId)}</Table.Td>
+                <Table.Td c="dimmed">{nombres.deposito(c.depositoId)}</Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>

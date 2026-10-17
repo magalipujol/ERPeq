@@ -99,8 +99,8 @@ por importe: Avena. Por cantidad: Avena (30 kg); no hay ventas en unidades en el
 
 ## Clientes
 
-Un cliente se identifica por el `contacto_id` del pedido o, si está vacío, por el nombre. Los pedidos
-**cancelados** (estado actual `cancelado`) no cuentan en ningún cálculo de clientes.
+Un cliente se identifica por el `contacto_id` del pedido y su nombre sale de *Contactos*; los pedidos sin
+`contacto_id` no cuentan. Los pedidos **cancelados** (estado actual `cancelado`) no cuentan en ningún cálculo de clientes.
 
 ### Clientes más activos
 

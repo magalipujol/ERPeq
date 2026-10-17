@@ -49,14 +49,14 @@ test('registra un pedido con un precio especial y un producto sin precio de list
   await expect(form.getByText(/✓ Pedido PE0003 de Ana registrado \(2 productos, \$\s6\.100\)\./)).toBeVisible()
 
   expect(google.escrituras).toEqual([{
-    'Pedidos': [['PE0003', HOY_SERIE, 'C0001', 'Ana', 'Minorista', 'Funes', 'Santa Fe', 'ROS', '']],
+    'Pedidos': [['PE0003', HOY_SERIE, 'C0001', 'ROS', '']],
     'Pedidos ítems': [
-      ['PE0003', 1, 'P001', 'Almendras', 2, 3000, 2800],
-      ['PE0003', 2, 'P003', 'Miel', 1, '', 500],
+      ['PE0003', 1, 'P001', 2, 3000, 2800],
+      ['PE0003', 2, 'P003', 1, '', 500],
     ],
     'Pedidos estados': [['PE0003', AHORA, 'abierto']],
     'Pedidos vendedores': [['PE0003', 'VEN02']],
-    'Precios': [['P003', 'Miel', 500, HOY_SERIE]],
+    'Precios': [['P003', 500, HOY_SERIE]],
   }])
   await expect(filaPedido(page, 'PE0003')).toContainText('Pendiente')
 })
@@ -73,7 +73,7 @@ test('venta directa: crea el pedido, el cliente y la entrega juntos', async ({ p
   expect(google.escrituras[0]).toMatchObject({
     'Contactos': [['C0005', 'cliente', 'Bruno', 'Minorista', '', '', '', '', '', '']],
     'Ventas': [['V0002', HOY_SERIE, 'PE0003', 'ROS', '']],
-    'Ventas ítems': [['V0002', 1, 1, 'P001', 'Almendras', 1, 3000, 3000, 1500]],
+    'Ventas ítems': [['V0002', 1, 1, 'P001', 1, 3000, 3000, 1500]],
   })
   await page.getByRole('radiogroup', { name: 'Mostrar' }).getByText('Todos').click()
   await expect(filaPedido(page, 'PE0003')).toContainText('Entregado')
@@ -99,8 +99,8 @@ test('entrega parcial con la comisión sobreescrita', async ({ page, google }) =
   await expect(form.getByText(/✓ Entrega V0002 registrada/)).toBeVisible()
   expect(google.escrituras).toEqual([{
     'Ventas': [['V0002', HOY_SERIE, 'PE0002', 'ROS', '']],
-    'Ventas ítems': [['V0002', 1, 1, 'P002', 'Avena', 4, 800, 3200, 500]],
-    'Ventas comisiones': [['V0002', 1, 'VEN02', 'Guada/Hernán', 3, 5, 160]],
+    'Ventas ítems': [['V0002', 1, 1, 'P002', 4, 800, 3200, 500]],
+    'Ventas comisiones': [['V0002', 1, 'VEN02', 3, 5, 160]],
   }])
   await expect(filaPedido(page, 'PE0002')).toContainText('Parcial')
   // Después de la entrega propone lo que queda pendiente.

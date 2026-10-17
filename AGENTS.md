@@ -39,7 +39,7 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 | `src/dominio/modelo.ts` | **Dominio**: tipos y cálculos (stock, estados, precios, comisiones, ganancia, entregas, IDs, saldo a cobrar de cada venta y cuentas entre socios). No sabe nada de hojas, columnas ni del navegador: se prueba con Vitest. |
 | `src/dominio/analisis.ts` | **Dominio**: cálculos de la pantalla Análisis (ganancia y ventas por producto, clientes activos e inactivos). Puro, se prueba con Vitest. Ver `spec/analisis.md`. |
 | `src/db/puerto.ts` | **Puerto**: la interfaz `BaseDeDatos` que usa la UI (sesión, `leer()` y una operación atómica por caso de uso: `registrarPedido`, `registrarEntrega`, `registrarFlete`, `registrarCobro`, …) y los errores `SinAcceso` y `SesionVencida`. |
-| `src/db/sheets/` | **Adaptador Google Sheets**. `hojas.ts`: hojas y columnas (`HOJAS`), hojas opcionales (`HOJAS_OPCIONALES`, que se leen vacías si faltan), lectura (`parsear`, `leerHojas`) y filas a escribir (`filas`). `operaciones.ts`: qué filas agrega cada operación. `celdas.ts`: valores de celda y fechas como número de serie. `google.ts`: login (Google Identity Services) y Sheets API (`escribir` agrega filas en varias hojas en un solo `batchUpdate`). `index.ts`: `crearBaseSheets`. `memoria.ts`: la misma planilla en memoria, para pruebas unitarias. |
+| `src/db/sheets/` | **Adaptador Google Sheets**. `hojas.ts`: hojas y encabezados de sus columnas (`HOJAS`), hojas opcionales (`OPCIONALES`, que se leen vacías si faltan), lectura (`leerHojas`, que verifica los encabezados, y `parsear`) y filas a escribir (`filas`). `operaciones.ts`: qué filas agrega cada operación. `celdas.ts`: valores de celda y fechas como número de serie. `google.ts`: login (Google Identity Services) y Sheets API (`escribir` agrega filas en varias hojas en un solo `batchUpdate`). `index.ts`: `crearBaseSheets`. `memoria.ts`: la misma planilla en memoria, para pruebas unitarias. |
 | `src/main.tsx` | Raíz de composición: crea el adaptador y se lo pasa a `App`. |
 | `src/base.ts`, `src/BaseProvider.tsx` | Contexto de React con los datos cargados, los cálculos derivados y las operaciones del puerto (`db`). |
 | `src/vistas/` | Pantallas: Inicio (por defecto: pedido nuevo, pedidos pendientes y fletes en curso), Stock, Pedidos (alta y entregas), Ventas, Compras, Fletes, Precios (precios y reglas de comisión), Caja (cobros y cuentas entre socios) y Análisis. |
@@ -51,6 +51,7 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 | `tests/` | Pruebas e2e. `tests/google-falso.ts` reemplaza a Google con una planilla en memoria (su estado inicial está resumido al principio de `historias.spec.ts`) y tiene `ir()` para cambiar de pantalla en escritorio o celular. `tests/historias.spec.ts` tiene las historias de usuario de punta a punta; el resto prueba una pantalla cada uno. |
 | `spec/` | Especificaciones. `spec/modelo-de-datos.md` es la referencia del modelo de datos; `spec/arquitectura.md`, la de las capas; `spec/legibilidad.md`, las pautas de tipografía y contraste (apto dislexia); `spec/analisis.md`, la de los análisis. |
 | `herramientas/excel_a_base.py` | Convierte el Excel histórico en la planilla inicial. |
+| `herramientas/normalizar_planilla.gs` | Apps Script que migra una planilla vieja: saca las columnas con nombres copiados. |
 | `README.md` | Qué es, cómo funciona, estructura de la planilla, cómo correrlo. |
 | `GUIA-CONFIGURACION.md` | Paso a paso para configurar Google Cloud y la planilla (para el dueño, no técnico). |
 | `TODO.md` | Pendientes. |
@@ -74,13 +75,17 @@ Arquitectura hexagonal, con los límites controlados por ESLint (`no-restricted-
   promedio se calculan a partir de los movimientos.
 - Lo que tiene que quedar fijo al momento de una operación (costo, comisión, ganancia de una venta) se
   guarda en la fila. Lo demás se calcula.
+- Las filas guardan IDs, nunca copias de nombres: el nombre de un producto, contacto, vendedor o socio está
+  solo en su hoja, y la UI lo resuelve con `nombres(datos)` del dominio.
 - Los valores por defecto (precio de lista, % de comisión) viven en *Precios* y *Reglas de comisión*. Cada
   operación guarda el valor por defecto que se propuso y el que se usó (`precio_lista`/`precio`,
   `porcentaje_regla`/`porcentaje`).
 - Cada operación del puerto es atómica: escribe todas sus filas con un solo `escribir` (un `batchUpdate`).
   Nunca la partas en varias operaciones ni en varias llamadas.
 - El orden de columnas de cada hoja está definido en `HOJAS` y `filas` de `src/db/sheets/hojas.ts`, y tiene que
-  coincidir con la planilla real, con `tests/google-falso.ts` y con `herramientas/excel_a_base.py`.
+  coincidir con la planilla real, con `ENCABEZADOS` y las filas de `tests/google-falso.ts` y con
+  `herramientas/excel_a_base.py`. La app verifica los encabezados al leer: cambiar columnas de una planilla
+  existente necesita una migración (como `herramientas/normalizar_planilla.gs`).
 - `spec/modelo-de-datos.md` describe el modelo implementado. Si cambiás el modelo, actualizalo junto con
   sus diagramas y las preguntas abiertas que resuelvas.
 

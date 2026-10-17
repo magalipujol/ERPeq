@@ -15,7 +15,7 @@ test('muestra los precios vigentes y agrega uno nuevo', async ({ page, google })
   await form.getByLabel('Precio', { exact: true }).fill('600')
   await form.getByRole('button', { name: 'Guardar precio' }).click()
   await expect(form.getByText(/✓ Miel: \$\s600 desde 16\/10\/26\./)).toBeVisible()
-  expect(google.escrituras).toEqual([{ 'Precios': [['P003', 'Miel', 600, HOY_SERIE]] }])
+  expect(google.escrituras).toEqual([{ 'Precios': [['P003', 600, HOY_SERIE]] }])
   await expect(fila('Miel')).toContainText('600')
 })
 

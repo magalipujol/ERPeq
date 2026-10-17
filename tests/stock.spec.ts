@@ -56,7 +56,7 @@ test('registra un ajuste de stock', async ({ page, google }) => {
   await form.getByRole('button', { name: 'Registrar ajuste' }).click()
 
   await expect(form.getByText('✓ Ajuste registrado: -2 kg de Almendras.')).toBeVisible()
-  expect(google.escrituras).toEqual([{ 'Ajustes': [[HOY_SERIE, 'BB', 'P001', 'Almendras', -2, 'conteo']] }])
+  expect(google.escrituras).toEqual([{ 'Ajustes': [[HOY_SERIE, 'BB', 'P001', -2, 'conteo']] }])
   await expect(fila(page, 'Almendras').getByRole('cell').nth(2)).toHaveText('8')
 })
 

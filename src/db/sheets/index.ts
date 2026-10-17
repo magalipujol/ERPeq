@@ -2,7 +2,7 @@
 import type { Config } from '../../config';
 import type { BaseDeDatos } from '../puerto';
 import * as G from './google';
-import { HOJAS_OPCIONALES, hojasFaltantes, leerHojas, nombreHoja } from './hojas';
+import { encabezados, hojasFaltantes, leerHojas, nombreHoja } from './hojas';
 import { operaciones } from './operaciones';
 
 export function crearBaseSheets(config: Config): BaseDeDatos {
@@ -22,7 +22,7 @@ export function crearBaseSheets(config: Config): BaseDeDatos {
       planilla = await G.info();
       return {
         titulo: planilla.properties.title, url: planilla.spreadsheetUrl,
-        faltantes: faltantes().map((k) => ({ nombre: nombreHoja(k), encabezados: [...HOJAS_OPCIONALES[k]] })),
+        faltantes: faltantes().map((k) => ({ nombre: nombreHoja(k), encabezados: [...encabezados(k)] })),
       };
     },
     leer: async () => leerHojas(G.leer, faltantes()),

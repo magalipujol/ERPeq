@@ -22,30 +22,29 @@ export function pedidosParaMensaje(pedidos: M.ResumenPedido[], criterio: Criteri
     .sort((a, b) => (b.pedido.fecha?.getTime() ?? 0) - (a.pedido.fecha?.getTime() ?? 0));
 }
 
-export interface Nombres {
-  deposito: (id: string) => string;
-  vendedor: (id: string) => string;
+export interface Nombres extends M.Nombres {
   unidad: (productoId: string) => string;
+  lugar: (contactoId: string) => string; // localidad y provincia del cliente
 }
 
-function linea(l: M.LineaPedido, unidad: string) {
-  const cantidad = [fmtNum(l.cantidad), unidad].filter(Boolean).join(' ');
+function linea(l: M.LineaPedido, n: Nombres) {
+  const cantidad = [fmtNum(l.cantidad), n.unidad(l.productoId)].filter(Boolean).join(' ');
   const detalle = l.entregado <= 0 ? ''
     : l.pendiente > 0 ? ` (entregado ${fmtNum(l.entregado)}, faltan ${fmtNum(l.pendiente)})`
       : ' (entregado)';
-  return `• ${cantidad} ${l.producto}${detalle}`;
+  return `• ${cantidad} ${n.producto(l.productoId)}${detalle}`;
 }
 
 function bloque(r: M.ResumenPedido, n: Nombres) {
   const { pedido } = r;
-  const lugar = [pedido.localidad, pedido.provincia].filter(Boolean).join(', ');
+  const lugar = n.lugar(pedido.contactoId);
   const res = [
-    `*${pedido.cliente}* · ${pedido.id} · ${fmtFecha(pedido.fecha)}`,
+    `*${n.contacto(pedido.contactoId)}* · ${pedido.id} · ${fmtFecha(pedido.fecha)}`,
     [lugar, `desde ${n.deposito(pedido.depositoId)}`].filter(Boolean).join(' · '),
     `Estado: ${M.NOMBRE_ESTADO_PEDIDO[r.estado]}`,
   ];
   if (r.vendedores.length > 0) res.push(`Vendedores: ${r.vendedores.map(n.vendedor).join(', ')}`);
-  res.push(...r.lineas.map((l) => linea(l, n.unidad(l.productoId))));
+  res.push(...r.lineas.map((l) => linea(l, n)));
   if (pedido.nota) res.push(`_${pedido.nota}_`);
   return res.join('\n');
 }

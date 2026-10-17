@@ -23,19 +23,23 @@ function armar(pedidos: PedidoPrueba[], extra: Partial<M.Datos> = {}): M.Datos {
     ...extra,
   };
   for (const p of pedidos) {
-    d.pedidos.push({
-      id: p.id, fecha: p.fecha, contactoId: `C-${p.cliente}`, cliente: p.cliente, tipo: '', localidad: '', provincia: '',
-      depositoId: 'BB', nota: '',
-    });
+    const contactoId = `C-${p.cliente}`;
+    if (!d.contactos.some((c) => c.id === contactoId)) {
+      d.contactos.push({
+        id: contactoId, rol: 'cliente', nombre: p.cliente, tipo: '', telefono: '', direccion: '', email: '', localidad: '',
+        provincia: '', observaciones: '',
+      });
+    }
+    d.pedidos.push({ id: p.id, fecha: p.fecha, contactoId, depositoId: 'BB', nota: '' });
     if (p.cancelado === true) d.pedidosEstados.push({ ref: p.id, fecha: null, estado: 'cancelado' });
     const ventaId = `V-${p.id}`;
     d.ventas.push({ id: ventaId, fecha: p.fecha, pedidoId: p.id, depositoId: 'BB', nota: '' });
     p.lineas.forEach(([productoId, cantidad, precio, costo, comision], i) => {
       d.ventasItems.push({
-        ventaId, linea: i + 1, pedidoLinea: i + 1, productoId, producto: productoId, cantidad, precio, importe: cantidad * precio, costo,
+        ventaId, linea: i + 1, pedidoLinea: i + 1, productoId, cantidad, precio, importe: cantidad * precio, costo,
       });
       if (comision !== undefined) {
-        d.ventasComisiones.push({ ventaId, linea: i + 1, vendedorId: 'VEN01', vendedor: 'Leo', porcentajeRegla: null, porcentaje: 0, monto: comision });
+        d.ventasComisiones.push({ ventaId, linea: i + 1, vendedorId: 'VEN01', porcentajeRegla: null, porcentaje: 0, monto: comision });
       }
     });
   }
@@ -89,7 +93,7 @@ describe('analizarProductos', () => {
 describe('fletesDelPeriodo', () => {
   it('separa lo asignado a pedidos del gasto de logística', () => {
     const flete = (id: string, f: Date, costo: number): M.Flete => ({
-      id, fecha: f, transporte: 'T', contactoId: '', origenId: 'BB', destinoId: 'ROS', costo, guia: '', nota: '',
+      id, fecha: f, contactoId: '', origenId: 'BB', destinoId: 'ROS', costo, guia: '', nota: '',
     });
     const d = armar([], {
       fletes: [flete('F1', fecha(2026, 10, 1), 5000), flete('F2', fecha(2025, 1, 1), 9999)],

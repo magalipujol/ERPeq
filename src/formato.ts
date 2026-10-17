@@ -34,3 +34,6 @@ export const sumable = (n: number | null) => (n === null || Number.isNaN(n) ? 0 
 // Más reciente primero; las fechas vacías al final.
 export const porFechaDesc = (a: { fecha: Date | null }, b: { fecha: Date | null }) =>
   (b.fecha?.getTime() ?? 0) - (a.fecha?.getTime() ?? 0);
+// "Funes, Santa Fe": localidad y provincia de un contacto, sin las que falten.
+export const lugar = (c: { localidad: string; provincia: string } | undefined) =>
+  [c?.localidad, c?.provincia].filter(Boolean).join(', ');
