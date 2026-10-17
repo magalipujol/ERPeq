@@ -11,9 +11,9 @@ import { hora, mensajeDeError } from './formato';
 import { Analisis } from './vistas/Analisis';
 import { Caja } from './vistas/Caja';
 import { Compras } from './vistas/Compras';
-import { Fletes } from './vistas/Fletes';
+import { type FleteResaltado, Fletes } from './vistas/Fletes';
 import { Inicio } from './vistas/Inicio';
-import { Pedidos } from './vistas/Pedidos';
+import { type PedidoElegido, Pedidos } from './vistas/Pedidos';
 import { Precios } from './vistas/Precios';
 import { Stock } from './vistas/Stock';
 import { Ventas } from './vistas/Ventas';
@@ -48,6 +48,10 @@ export function App({ db }: { db: BaseDeDatos }) {
   const [cargando, setCargando] = useState(false);
   // Cada "Tomar pedido nuevo" de Inicio lo incrementa para que Pedidos enfoque el formulario.
   const [nuevoPedido, setNuevoPedido] = useState(0);
+  // Lo que el mapa de Inicio pide ver en otra pantalla.
+  const [pedidoElegido, setPedidoElegido] = useState<PedidoElegido | null>(null);
+  const [fleteResaltado, setFleteResaltado] = useState<FleteResaltado | null>(null);
+  const [depositoStock, setDepositoStock] = useState('');
 
   const cargar = useCallback(async () => {
     setEstado({ texto: 'Leyendo la planilla…', error: false });
@@ -245,13 +249,16 @@ export function App({ db }: { db: BaseDeDatos }) {
           {enApp && (
             <BaseProvider db={db} info={info} datos={datos} cargando={cargando} recargar={cargar}>
               <Box display={vista === 'inicio' ? undefined : 'none'}>
-                <Inicio onIr={irA} onNuevoPedido={() => { irA('pedidos'); setNuevoPedido((n) => n + 1); }} />
+                <Inicio onIr={irA} onNuevoPedido={() => { irA('pedidos'); setNuevoPedido((n) => n + 1); }}
+                  onPedido={(id) => { irA('pedidos'); setPedidoElegido((p) => ({ id, vez: (p?.vez ?? 0) + 1 })); }}
+                  onFlete={(id) => { irA('fletes'); setFleteResaltado((f) => ({ id, vez: (f?.vez ?? 0) + 1 })); }}
+                  onDeposito={(id) => { irA('stock'); setDepositoStock(id); }} />
               </Box>
-              <Box display={vista === 'stock' ? undefined : 'none'}><Stock visible={vista === 'stock'} /></Box>
-              <Box display={vista === 'pedidos' ? undefined : 'none'}><Pedidos nuevo={nuevoPedido} /></Box>
+              <Box display={vista === 'stock' ? undefined : 'none'}><Stock visible={vista === 'stock'} deposito={depositoStock} onDeposito={setDepositoStock} /></Box>
+              <Box display={vista === 'pedidos' ? undefined : 'none'}><Pedidos nuevo={nuevoPedido} abrir={pedidoElegido} /></Box>
               <Box display={vista === 'ventas' ? undefined : 'none'}><Ventas visible={vista === 'ventas'} /></Box>
               <Box display={vista === 'compras' ? undefined : 'none'}><Compras /></Box>
-              <Box display={vista === 'fletes' ? undefined : 'none'}><Fletes /></Box>
+              <Box display={vista === 'fletes' ? undefined : 'none'}><Fletes resaltar={fleteResaltado} /></Box>
               <Box display={vista === 'precios' ? undefined : 'none'}><Precios /></Box>
               <Box display={vista === 'caja' ? undefined : 'none'}><Caja /></Box>
               <Box display={vista === 'analisis' ? undefined : 'none'}><Analisis visible={vista === 'analisis'} /></Box>

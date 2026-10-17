@@ -71,3 +71,94 @@ em, i, cite { font-style: normal; font-weight: 600; }
 
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .suave { background: var(--erp-soft); border-radius: var(--mantine-radius-md); }
+
+/* Mapa de Inicio (src/componentes/Mapa.tsx): un SVG con las provincias y, encima, las marcas como botones HTML
+   ubicados en porcentaje, para que su tamaño no dependa de la escala del mapa. */
+.mapa {
+  position: relative;
+  margin-inline: auto;
+}
+.mapa-provincia {
+  fill: var(--erp-soft);
+  stroke: var(--mantine-color-dimmed);
+  stroke-width: 0.6px;
+  stroke-opacity: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+.mapa-tramo path {
+  fill: none;
+  stroke-width: 3px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.mapa-tramo-preparacion path:first-child { stroke-dasharray: 6 4; }
+.mapa-tramo .mapa-tramo-toque {
+  stroke: transparent;
+  stroke-width: 18px;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.mapa-marca {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+.mapa-sitio {
+  display: flex;
+  gap: 2px;
+}
+.mapa-punto {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--mantine-primary-color-filled);
+  border: 2px solid var(--mantine-color-body);
+}
+/* Globito de notificación arriba a la derecha de la marca. */
+.mapa-burbuja {
+  position: absolute;
+  left: calc(100% - 10px);
+  bottom: calc(100% - 10px);
+  min-width: 26px;
+  height: 26px;
+  padding-inline: 6px;
+  border-radius: 13px;
+  background: var(--mantine-color-orange-7);
+  color: #fff;
+  border: 2px solid var(--mantine-color-body);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+}
+.mapa-burbuja-falta { background: var(--mantine-color-red-8); }
+.mapa-burbuja-chica {
+  position: static;
+  display: inline-block;
+  min-width: 18px;
+  height: 18px;
+  line-height: 14px;
+  padding-inline: 3px;
+  font-size: 0.75rem;
+  vertical-align: middle;
+}
+.mapa-enlace {
+  display: block;
+  width: 100%;
+  padding: 4px 6px;
+  border-radius: var(--mantine-radius-sm);
+}
+.mapa-enlace:hover { background: var(--erp-soft); }
+.mapa-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  justify-content: center;
+}
+.mapa-leyenda > span { display: inline-flex; align-items: center; gap: 4px; }
+.mapa-raya {
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+}

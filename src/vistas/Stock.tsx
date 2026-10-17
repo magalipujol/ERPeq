@@ -29,7 +29,9 @@ interface FilaStock extends M.Producto {
   costo: number | null; valor: number | null; estado: Estado;
 }
 
-export function Stock({ visible }: { visible: boolean }) {
+// `deposito` vacío muestra todos; si no, solo la columna de ese depósito y los productos que tienen algo ahí.
+// Lo elige el selector de la tabla o el ícono del depósito en el mapa de Inicio.
+export function Stock({ visible, deposito, onDeposito }: { visible: boolean; deposito: string; onDeposito: (id: string) => void }) {
   const { datos, stock, costos } = useBase();
 
   const filas = useMemo<FilaStock[]>(() => datos.productos.map((p) => {
@@ -61,23 +63,23 @@ export function Stock({ visible }: { visible: boolean }) {
 
       <Grid gap="md" align="flex-start">
         <Grid.Col span={{ base: 12, md: 'auto' }} miw={0}>
-          <Inventario filas={filas} />
+          <Inventario filas={filas} deposito={deposito} onDeposito={onDeposito} />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 'content' }} w={{ md: 340 }}>
           <AjusteStock />
         </Grid.Col>
       </Grid>
 
-      {visible && <GraficoStock filas={filas} />}
+      {visible && <GraficoStock filas={filas} deposito={deposito} />}
     </Stack>
   );
 }
 
 interface Columna { key: string; titulo: string; num?: boolean }
 
-function Inventario({ filas }: { filas: FilaStock[] }) {
+function Inventario({ filas, deposito, onDeposito }: { filas: FilaStock[]; deposito: string; onDeposito: (id: string) => void }) {
   const { datos, cargando } = useBase();
-  const deps = datos.depositos;
+  const deps = datos.depositos.filter((d) => !deposito || d.id === deposito);
   const [buscar, setBuscar] = useState('');
   const [filtro, setFiltro] = useState('');
   const [orden, setOrden] = useState({ key: 'producto', dir: 1 });
@@ -96,6 +98,7 @@ function Inventario({ filas }: { filas: FilaStock[] }) {
       : orden.key === 'estado' ? f.estado.texto
         : f[orden.key as keyof FilaStock] as string | number | null);
   const visibles = filas
+    .filter((f) => !deposito || (f.s[deposito] ?? 0) !== 0)
     .filter((f) => !q || f.producto.toLowerCase().includes(q))
     .filter((f) => !filtro
       || (filtro === 'con' && f.total > 0)
@@ -118,6 +121,9 @@ function Inventario({ filas }: { filas: FilaStock[] }) {
         <Group gap="xs">
           <TextInput type="search" w={200} placeholder="Buscar producto…" aria-label="Buscar producto"
             value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
+          <NativeSelect aria-label="Mostrar depósito" value={deposito} onChange={(e) => { onDeposito(e.currentTarget.value); }} data={[
+            { value: '', label: 'Todos los depósitos' }, ...datos.depositos.map((d) => ({ value: d.id, label: d.nombre })),
+          ]} />
           <NativeSelect aria-label="Filtrar" value={filtro} onChange={(e) => { setFiltro(e.currentTarget.value); }} data={[
             { value: '', label: 'Todos' }, { value: 'con', label: 'Con stock' },
             { value: 'neg', label: 'Stock negativo' }, { value: 'bajo', label: 'Bajo el mínimo' },
@@ -231,16 +237,17 @@ function AjusteStock() {
 
 const COLORES = ['var(--c1)', 'var(--c2)', 'var(--c3)'];
 
-function GraficoStock({ filas }: { filas: FilaStock[] }) {
+function GraficoStock({ filas, deposito }: { filas: FilaStock[]; deposito: string }) {
   const { datos } = useBase();
-  const deps = datos.depositos;
+  const deps = datos.depositos.filter((d) => !deposito || d.id === deposito);
+  const enDeps = (f: FilaStock) => deps.reduce((a, d) => a + Math.max(0, f.s[d.id] ?? 0), 0);
   const unidades = unicos(filas.map((f) => f.unidad));
   const [elegida, setElegida] = useState<string | null>(null);
   const unidad = elegida && unidades.includes(elegida) ? elegida : unidades.includes('kg') ? 'kg' : unidades[0];
 
   const items = filas
-    .filter((f) => f.unidad === unidad && f.total > 0)
-    .sort((a, b) => b.total - a.total)
+    .filter((f) => f.unidad === unidad && enDeps(f) > 0)
+    .sort((a, b) => enDeps(b) - enDeps(a))
     .slice(0, 12)
     .map((f) => ({ producto: f.producto, ...Object.fromEntries(deps.map((d) => [d.nombre, Math.max(0, f.s[d.id] ?? 0)])) }));
 
@@ -257,7 +264,7 @@ function GraficoStock({ filas }: { filas: FilaStock[] }) {
         orientation="vertical"
         withLegend
         legendProps={{ verticalAlign: 'top', align: 'right' }}
-        series={deps.map((d, i) => ({ name: d.nombre, color: COLORES[i % COLORES.length] }))}
+        series={deps.map((d) => ({ name: d.nombre, color: COLORES[datos.depositos.indexOf(d) % COLORES.length] }))}
         valueFormatter={(v) => `${fmtNum(v)} ${unidad}`}
         yAxisProps={{ width: 180 }}
         gridAxis="x"

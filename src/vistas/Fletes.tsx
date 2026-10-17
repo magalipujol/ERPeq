@@ -2,7 +2,7 @@ import {
   Autocomplete, Badge, Button, Grid, Group, MultiSelect, NativeSelect, NumberInput, Paper, ScrollArea, SegmentedControl, Stack,
   Table, Text, TextInput, Title, useMatches,
 } from '@mantine/core';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
 import { type Item, itemVacio } from '../componentes/item';
@@ -19,7 +19,10 @@ const ACCION: Record<M.EstadoFlete, string> = {
   preparacion: 'Volvió sin entregar', camino: 'Despachar', finalizado: 'Recibido', cancelado: 'Cancelar',
 };
 
-export function Fletes() {
+// Flete que otra pantalla (el mapa de Inicio) pide ver; `vez` cambia aunque se pida dos veces seguidas el mismo.
+export interface FleteResaltado { id: string; vez: number }
+
+export function Fletes({ resaltar = null }: { resaltar?: FleteResaltado | null }) {
   const { datos, estadosFletes, costos, stock } = useBase();
   const estado = (id: string) => M.estadoFlete(estadosFletes, id);
   const activos = datos.fletes.filter((f) => M.fleteEnCurso(estado(f.id)));
@@ -36,7 +39,7 @@ export function Fletes() {
       ]} />
       <Grid gap="md" align="flex-start">
         <Grid.Col span={{ base: 12, md: 6 }}><FormFlete /></Grid.Col>
-        <Grid.Col span={{ base: 12, md: 6 }}><ListaFletes /></Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}><ListaFletes resaltar={resaltar} /></Grid.Col>
       </Grid>
     </Stack>
   );
@@ -181,10 +184,15 @@ function FormFlete() {
   );
 }
 
-function ListaFletes() {
+function ListaFletes({ resaltar }: { resaltar: FleteResaltado | null }) {
   const { datos, estadosFletes, cargando, nombres, db } = useBase();
   const { guardando, msg, guardar } = useGuardar();
   const [filtro, setFiltro] = useState('activos');
+  const tablaRef = useRef<HTMLTableElement>(null);
+  useEffect(() => {
+    if (!resaltar) return;
+    tablaRef.current?.querySelector(`[data-flete="${resaltar.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [resaltar]);
   const items = new Map<string, M.FleteItem[]>();
   for (const it of datos.fletesItems) items.set(it.fleteId, [...(items.get(it.fleteId) ?? []), it]);
   const pedidos = new Map<string, string[]>();
@@ -210,7 +218,7 @@ function ListaFletes() {
       </Encabezado>
       <Mensaje msg={msg} />
       <ScrollArea.Autosize mah={640} type="auto">
-        <Table stickyHeader highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }}>
+        <Table ref={tablaRef} stickyHeader highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }}>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Flete</Table.Th><Table.Th>Recorrido</Table.Th><Table.Th className="num">Costo</Table.Th><Table.Th>Estado</Table.Th>
@@ -218,7 +226,8 @@ function ListaFletes() {
           </Table.Thead>
           <Table.Tbody>
             {filas.map(({ f, estado }) => (
-              <Table.Tr key={f.id}>
+              <Table.Tr key={f.id} data-flete={f.id} bg={f.id === resaltar?.id ? 'var(--erp-soft)' : undefined}
+                aria-current={f.id === resaltar?.id ? 'true' : undefined}>
                 <Table.Td>
                   <Text size="sm" fw={500}>{f.id}</Text>
                   <Text size="xs" c="dimmed">{fmtFecha(f.fecha)}</Text>

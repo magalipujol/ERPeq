@@ -13,6 +13,7 @@ flowchart LR
     main["main.tsx<br/>raíz de composición"]
     app["App.tsx · base.ts · BaseProvider.tsx"]
     vistas["vistas/ · componentes/"]
+    mapa["mapa/<br/>ubicar.ts + argentina.json"]
   end
   subgraph db["src/db"]
     puerto["puerto.ts<br/>BaseDeDatos"]
@@ -25,7 +26,7 @@ flowchart LR
       memoria["memoria.ts<br/>planilla en memoria"]
     end
   end
-  dominio["src/dominio/<br/>modelo.ts: tipos y cálculos<br/>analisis.ts: análisis"]
+  dominio["src/dominio/<br/>modelo.ts: tipos y cálculos<br/>analisis.ts: análisis<br/>mapa.ts: qué va en el mapa"]
 
   main --> index
   main --> app
@@ -33,6 +34,8 @@ flowchart LR
   vistas --> puerto
   app --> dominio
   vistas --> dominio
+  vistas --> mapa
+  mapa --> dominio
   puerto --> dominio
   index -. implementa .-> puerto
   memoria -. implementa .-> puerto
@@ -48,10 +51,10 @@ flowchart LR
 
 | Capa | Dónde | Qué tiene | Puede importar |
 |---|---|---|---|
-| Dominio | `src/dominio/` | Tipos (`Pedido`, `Venta`, `Flete`, `Cobro`…) y cálculos puros: stock por depósito, estados, precio vigente, comisiones, ganancia, armado de una entrega, IDs, saldo a cobrar de cada venta y cuentas entre socios (`modelo.ts`) y los análisis de ventas y clientes (`analisis.ts`). | Nada de fuera de su carpeta. |
+| Dominio | `src/dominio/` | Tipos (`Pedido`, `Venta`, `Flete`, `Cobro`…) y cálculos puros: stock por depósito, estados, precio vigente, comisiones, ganancia, armado de una entrega, IDs, saldo a cobrar de cada venta y cuentas entre socios (`modelo.ts`), los análisis de ventas y clientes (`analisis.ts`) y qué va en el mapa de Inicio (`mapa.ts`). | Nada de fuera de su carpeta. |
 | Puerto | `src/db/puerto.ts` | La interfaz `BaseDeDatos` (sesión, `leer()` y operaciones), los datos de cada operación y los errores `SinAcceso` y `SesionVencida`. | Solo el dominio. |
 | Adaptador Google Sheets | `src/db/sheets/` | Hojas y columnas, lectura de filas, filas que agrega cada operación, celdas y fechas, login y Sheets API. | Dominio, puerto y `src/config.ts`. Nunca la UI. |
-| UI | `src/App.tsx`, `src/base.ts`, `src/BaseProvider.tsx`, `src/vistas/`, `src/componentes/` | Pantallas y estado de la pantalla. Arma los objetos del dominio (con sus IDs) y llama al puerto. | Dominio y puerto. Nunca un adaptador. |
+| UI | `src/App.tsx`, `src/base.ts`, `src/BaseProvider.tsx`, `src/vistas/`, `src/componentes/`, `src/mapa/` | Pantallas y estado de la pantalla; `mapa/` ubica localidades en el dibujo del mapa. Arma los objetos del dominio (con sus IDs) y llama al puerto. | Dominio y puerto. Nunca un adaptador. |
 | Raíz de composición | `src/main.tsx` | Crea el adaptador (`crearBaseSheets(CONFIG)`) y se lo pasa a `App`. | Todo. |
 
 ESLint hace cumplir las flechas con `no-restricted-imports` (bloques `capas/*` de `eslint.config.ts`): un
@@ -120,7 +123,8 @@ flowchart LR
 
 | Capa | Prueba |
 |---|---|
-| Dominio | `src/dominio/modelo.test.ts` y `src/dominio/analisis.test.ts` (Vitest), con objetos del dominio. |
+| Dominio | `src/dominio/modelo.test.ts`, `src/dominio/analisis.test.ts` y `src/dominio/mapa.test.ts` (Vitest), con objetos del dominio. |
+| Mapa | `src/mapa/ubicar.test.ts` (Vitest): ubicar localidades y armar sitios y tramos. |
 | Adaptador Sheets | `src/db/sheets/*.test.ts` (Vitest): lectura de filas (`hojas.test.ts`), celdas y fechas (`celdas.test.ts`) y las filas exactas que agrega cada operación (`operaciones.test.ts`), sobre la planilla en memoria de `memoria.ts`, que usa las mismas hojas, columnas y lectura que el adaptador real. |
 | Todo junto | `tests/` (Playwright): la app compilada contra Google simulado (`tests/google-falso.ts`), verificando las filas que llegan a cada `batchUpdate`. |
 

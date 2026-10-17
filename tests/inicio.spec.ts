@@ -31,6 +31,46 @@ test('muestra el pantallazo: pedidos pendientes y fletes en curso', async ({ pag
   await expect(f1).toContainText('En camino')
 })
 
+test('el mapa muestra depósitos, pedidos pendientes y fletes en curso', async ({ page }) => {
+  const mapa = page.getByRole('region', { name: 'Mapa' })
+  await expect(mapa.getByRole('img', { name: /Mapa de Argentina/ })).toBeVisible()
+  await expect(mapa.getByRole('button', { name: 'Depósito General' })).toBeVisible()
+  await expect(mapa.getByRole('button', { name: 'Depósito Rosario' })).toBeVisible()
+  // Ana es de Funes, a pocos kilómetros de Rosario: su pedido se marca junto al depósito de Rosario.
+  await expect(mapa.getByRole('button', { name: 'Pedidos pendientes en Rosario · Funes: 1' })).toHaveText('1')
+  // F0001 va de General (Bahía Blanca) a Rosario.
+  await expect(mapa.getByRole('button', { name: 'Fletes de Bahía Blanca a Rosario · Funes: 1' })).toBeVisible()
+  await expect(mapa.getByText(/Fuera del mapa/)).toBeHidden()
+})
+
+test('tocar un pedido del mapa lo abre en Pedidos para entregarlo', async ({ page }) => {
+  await page.getByRole('button', { name: /^Pedidos pendientes en Rosario/ }).click()
+  const pedido = page.getByRole('button', { name: 'Ver pedido PE0002' })
+  await expect(pedido).toContainText('PE0002 · Ana')
+  await pedido.click()
+  await expect(page).toHaveURL(/#pedidos$/)
+  await expect(page.getByRole('heading', { name: 'Entregar PE0002' })).toBeVisible()
+})
+
+test('tocar un flete del mapa lo muestra resaltado en Fletes', async ({ page }) => {
+  await page.getByRole('button', { name: 'Fletes de Bahía Blanca a Rosario · Funes: 1' }).click()
+  const flete = page.getByRole('button', { name: 'Ver flete F0001' })
+  await expect(flete).toContainText('General → Rosario')
+  await expect(flete).toContainText('En camino')
+  await flete.click()
+  await expect(page).toHaveURL(/#fletes$/)
+  await expect(page.getByRole('row', { name: /F0001/ })).toHaveAttribute('aria-current', 'true')
+})
+
+test('tocar un depósito del mapa abre Stock filtrado por ese depósito', async ({ page }) => {
+  await page.getByRole('button', { name: 'Depósito Rosario' }).click()
+  await expect(page).toHaveURL(/#stock$/)
+  await expect(page.getByRole('combobox', { name: 'Mostrar depósito' })).toHaveValue('ROS')
+  const encabezados = page.getByRole('table').first().getByRole('columnheader')
+  await expect(encabezados.filter({ hasText: 'Rosario' })).toHaveCount(1)
+  await expect(encabezados.filter({ hasText: 'General' })).toHaveCount(0)
+})
+
 test('"Tomar pedido nuevo" abre Pedidos con el cursor en el cliente', async ({ page }) => {
   await page.getByRole('button', { name: 'Tomar pedido nuevo' }).click()
   await expect(page).toHaveURL(/#pedidos$/)

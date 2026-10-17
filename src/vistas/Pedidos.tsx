@@ -21,9 +21,15 @@ export function EstadoPedido({ estado }: { estado: M.EstadoPedido }) {
 }
 
 // `nuevo` cambia cada vez que se pide tomar un pedido nuevo desde otra pantalla: lleva el foco al formulario.
-export function Pedidos({ nuevo = 0 }: { nuevo?: number }) {
+// `abrir` cambia cada vez que otra pantalla (el mapa de Inicio) pide ver un pedido: lo elige para entregarlo.
+export function Pedidos({ nuevo = 0, abrir = null }: { nuevo?: number; abrir?: PedidoElegido | null }) {
   const { pedidos, stock, datos } = useBase();
-  const [elegido, setElegido] = useState<string | null>(null);
+  const [elegido, setElegido] = useState<string | null>(abrir?.id ?? null);
+  const [abrirAnterior, setAbrirAnterior] = useState(abrir);
+  if (abrir !== abrirAnterior) {
+    setAbrirAnterior(abrir);
+    if (abrir) setElegido(abrir.id);
+  }
   const abiertos = pedidos.filter((r) => M.pedidoAbierto(r.estado));
   const pendiente = abiertos.reduce((s, r) => s + r.lineas.reduce((a, l) => a + l.pendiente * l.precio, 0), 0);
   const conFaltante = abiertos.filter((r) => M.lineasConFaltante(stock, r).length > 0).length;
@@ -352,6 +358,9 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
     </Paper>
   );
 }
+
+// Pedido que otra pantalla pide abrir; `vez` cambia aunque se pida dos veces seguidas el mismo.
+export interface PedidoElegido { id: string; vez: number }
 
 function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir: (id: string) => void }) {
   const { pedidos, cargando, nombres } = useBase();

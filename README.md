@@ -44,21 +44,25 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
   - `config.ts`: Client ID de Google y ID de la planilla.
   - `dominio/modelo.ts`: tipos y cálculos del negocio (sin base de datos ni navegador).
   - `dominio/analisis.ts`: cálculos de la pantalla Análisis (sin base de datos ni navegador).
+  - `dominio/mapa.ts`: qué va en el mapa de Inicio y en qué localidad (sin base de datos ni navegador).
+  - `mapa/`: el mapa de Argentina (`argentina.json`: provincias y localidades ya proyectadas) y `ubicar.ts`,
+    que ubica localidades y arma las marcas.
   - `db/puerto.ts`: lo que la app necesita de la base (leer y una operación por caso de uso).
   - `db/sheets/`: la implementación sobre Google Sheets (hojas y columnas, login, Sheets API) y una
     planilla en memoria para las pruebas.
   - `main.tsx`: arranca la app con la base de Google Sheets; `App.tsx`: pantallas de acceso y navegación;
-    `vistas/`: Inicio (pantalla por defecto: acceso directo a un pedido nuevo, pedidos pendientes y fletes en
-    curso), Stock, Pedidos, Ventas, Compras, Fletes, Precios, Caja y Análisis.
-  - `componentes/`: piezas compartidas (carga de ítems, navegación entre pantallas, KPIs).
+    `vistas/`: Inicio (pantalla por defecto: acceso directo a un pedido nuevo, mapa con depósitos, pedidos
+    pendientes y fletes en curso, y sus listas), Stock, Pedidos, Ventas, Compras, Fletes, Precios, Caja y Análisis.
+  - `componentes/`: piezas compartidas (carga de ítems, navegación entre pantallas, KPIs, el mapa de Inicio).
   - `celular.css`: ajustes para pantallas de menos de 768 px (barra inferior con menú *Más*, campos de 44 px).
   - `fuentes/`: la tipografía OpenDyslexic (regular y negrita) y su licencia (SIL Open Font License).
   - `whatsapp.ts`: arma el mensaje con los pedidos para mandar a un grupo de WhatsApp (botón *Exportar a WhatsApp* en Pedidos).
-- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`, `legibilidad.md` y `analisis.md`).
+- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`, `legibilidad.md`, `analisis.md` y `mapa.md`).
 - `.github/workflows/ci.yml`: lint, tipos y pruebas en cada pull request y push.
 - `.github/workflows/deploy.yml`: corre el CI y, si pasa, compila y publica en GitHub Pages en cada push a `main`
   (en *Settings → Pages*, la fuente tiene que ser **GitHub Actions**).
 - `herramientas/excel_a_base.py`: convierte el Excel histórico en la planilla inicial.
+- `herramientas/mapa_argentina.py`: genera `src/mapa/argentina.json` con los datos abiertos de Georef (IGN e INDEC).
 - `herramientas/normalizar_planilla.gs`: Apps Script que saca de una planilla vieja las columnas con nombres
   copiados (ver "Migrar una planilla con nombres copiados").
 - `GUIA-CONFIGURACION.md`: paso a paso para configurar Google y la planilla.
