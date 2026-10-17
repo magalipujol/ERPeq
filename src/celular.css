@@ -18,10 +18,13 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.barra-inferior-boton[aria-current='page'] {
+.barra-inferior-boton[data-activa] {
   color: var(--mantine-primary-color-filled);
   background: var(--erp-soft);
 }
+
+/* Ítems del menú «Más» de 44px, como los botones. */
+.barra-inferior-menu-item { min-height: 2.75rem; }
 
 /* Los formularios que se abren desde una lista quedan visibles debajo del header fijo. */
 .ancla { scroll-margin-top: calc(var(--app-shell-header-height, 0px) + 8px); }
@@ -34,6 +37,10 @@
     --button-height-sm: 2.75rem;
     --button-height-xs: 2.25rem;
   }
+
+  /* Lo que se pase de ancho (por ejemplo, el tooltip de un gráfico) se recorta: si ensanchara la página, el
+     navegador achicaría todo y los toques caerían en el elemento de al lado. `clip` no rompe los encabezados fijos. */
+  .mantine-AppShell-main { overflow-x: clip; }
 
   /* El header es una sola fila: el estado se recorta antes que bajar los botones. */
   .fila-header { flex-wrap: nowrap; }

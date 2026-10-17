@@ -8,10 +8,10 @@ Association (BDA) y las pautas de contraste de WCAG. Los valores están en `src/
 
 | Pauta | Cómo se aplica |
 |---|---|
-| Sans serif clara, con letras que no se confunden (I/l/1, O/0, b/d) | Atkinson Hyperlegible Next en todo, títulos incluidos. Se carga desde Google Fonts (`index.html`); si no carga, Verdana. |
+| Sans serif clara, con letras que no se confunden (I/l/1, O/0, b/d) | OpenDyslexic en todo, títulos incluidos: letras con la base más pesada, para que no se den vuelta (b/d, p/q). Se sirve desde el propio sitio (`src/fuentes/`, declarada en `src/estilos.css`) en pesos 400 y 700; si no carga, Verdana. Es la versión 0.990 del repositorio del proyecto: la 0.910 que publica npm dibuja mal la tilde de la «ó» en regular. El texto monoespaciado usa la fuente del sistema. |
 | Texto base de 16 a 19 px | Texto normal 17 px, `sm` 15 px, `xs` 14 px y etiquetas de estado 13 px. |
 | Interlineado de 1,5 | 1,5 en textos chicos y 1,55 en el resto; títulos 1,3 a 1,4. |
-| Espaciado entre letras y palabras | 0,02 em entre letras y 0,1 em extra entre palabras, también en campos y botones. |
+| Espaciado entre letras y palabras | El de OpenDyslexic, que ya es amplio; no se agrega espaciado extra. |
 | Sin mayúsculas sostenidas | Encabezados de tabla y etiquetas de estado (Badge) en mayúscula inicial. |
 | Sin itálicas ni subrayados para énfasis | El énfasis va en negrita; `em`/`i` se muestran en negrita. |
 | Sin texto justificado | Todo alineado a la izquierda; los números, a la derecha. |
@@ -23,5 +23,8 @@ Association (BDA) y las pautas de contraste de WCAG. Los valores están en `src/
 - Textos de ayuda de una sola idea y una línea cuando se pueda. Ejemplo: en *Ajuste de stock*, "Para corregir
   diferencias. Para restar, usá un número negativo."
 - No usar `tt="uppercase"`, `fs="italic"` ni `ta="justify"`.
+- OpenDyslexic es ancha: revisar cada pantalla en un celular de 360 a 412 px. Las tablas van dentro de un
+  `ScrollArea`, y un `SegmentedControl` con varias opciones pasa a vertical (*Estado* en *Nuevo flete*) o a tamaño
+  `xs` (*Período* en Análisis) en celular. La barra inferior tiene cuatro pantallas y un menú *Más* con el resto.
 - Texto secundario (`c="dimmed"`) solo para datos de apoyo (fecha, depósito, unidad); el dato principal de cada fila va
   con el color normal.

@@ -5,8 +5,8 @@ import { defineConfig, type Plugin } from 'vite'
 const CSP = [
   "default-src 'self'",
   "script-src 'self' https://accounts.google.com/gsi/client",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style",
-  'font-src https://fonts.gstatic.com',
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
+  "font-src 'self'",
   "img-src 'self' data:",
   "connect-src 'self' https://sheets.googleapis.com https://oauth2.googleapis.com https://accounts.google.com/gsi/",
   'frame-src https://accounts.google.com/gsi/',

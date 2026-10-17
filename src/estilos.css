@@ -1,3 +1,26 @@
+/* OpenDyslexic declara un alto de 1,82 em (ascent 1,3 y descent 0,52): el área de cada texto se extiende sobre
+   los elementos vecinos y les roba los toques. Los glifos llegan a 0,85 em arriba y 0,29 em abajo, así que se
+   declara 1,05 y 0,35. */
+@font-face {
+  font-family: 'OpenDyslexic';
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fuentes/OpenDyslexic-Regular.woff2') format('woff2');
+  ascent-override: 105%;
+  descent-override: 35%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'OpenDyslexic';
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fuentes/OpenDyslexic-Bold.woff2') format('woff2');
+  ascent-override: 105%;
+  descent-override: 35%;
+  line-gap-override: 0%;
+}
+
 /* Colores: fondo crema y texto gris muy oscuro (sin blanco puro sobre negro puro); el texto secundario
    (dimmed) y los placeholders con contraste de al menos 4,5:1 sobre el fondo de las tarjetas.
    Con el selector de esquema para ganarle a los valores que Mantine define para modo claro. */
@@ -26,21 +49,12 @@
   --mantine-color-placeholder: #8f9589;
 }
 
-/* Espaciado generoso entre letras y palabras. */
 body {
   background: var(--erp-bg);
-  letter-spacing: 0.02em;
-  word-spacing: 0.1em;
 }
 
 /* Números tabulares en tablas para que las cifras queden alineadas en columna. */
 table { font-variant-numeric: tabular-nums; }
-
-/* Los controles de formulario no heredan el espaciado por defecto del navegador. */
-input, textarea, select, button {
-  letter-spacing: inherit;
-  word-spacing: inherit;
-}
 
 /* Sin itálicas: el énfasis va en negrita. */
 em, i, cite { font-style: normal; font-weight: 600; }

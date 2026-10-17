@@ -111,7 +111,6 @@ export async function instalarGoogleFalso(page: Page): Promise<GoogleFalso> {
   let falla: { status: number; veces: number } | null = null
 
   await page.clock.setFixedTime(HOY)
-  await page.route(/fonts\.(googleapis|gstatic)\.com/, async (r) => r.abort())
   await page.route('https://accounts.google.com/gsi/client', async (r) =>
     r.fulfill({ contentType: 'application/javascript', body: GIS }))
 
@@ -178,6 +177,15 @@ export { expect } from '@playwright/test'
 
 export type Pantalla = 'Inicio' | 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | 'Fletes' | 'Precios' | 'Caja' | 'Análisis'
 
+// En celular, estas pantallas están en el menú «Más» de la barra inferior.
+const EN_MAS: readonly Pantalla[] = ['Compras', 'Fletes', 'Precios', 'Caja', 'Análisis']
+
 // Cambia de pantalla con el selector del header (escritorio) o la barra inferior (celular): el que esté visible.
-export const ir = async (page: Page, pantalla: Pantalla) =>
-  page.getByLabel('Pantalla', { exact: true }).filter({ visible: true }).getByText(pantalla, { exact: true }).click()
+export const ir = async (page: Page, pantalla: Pantalla) => {
+  const nav = page.getByLabel('Pantalla', { exact: true }).filter({ visible: true })
+  if ((page.viewportSize()?.width ?? 0) < 768 && EN_MAS.includes(pantalla)) {
+    await nav.getByRole('button', { name: 'Más' }).click()
+    return page.getByRole('menuitem', { name: pantalla, exact: true }).click()
+  }
+  return nav.getByText(pantalla, { exact: true }).click()
+}
