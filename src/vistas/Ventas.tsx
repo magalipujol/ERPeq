@@ -30,7 +30,7 @@ export function Ventas({ visible }: { visible: boolean }) {
         { label: 'Comisiones', valor: fmtMoney(suma('comision')) },
         { label: 'Ganancia (antes de fletes)', valor: fmtMoney(suma('ganancia')) },
         { label: 'Fletes del mes', valor: fmtMoney(fletesMes) },
-        { label: 'Clientes distintos', valor: new Set(delMes.map((l) => l.pedido?.cliente)).size },
+        { label: 'Clientes distintos', valor: new Set(delMes.map((l) => l.pedido?.contactoId)).size },
       ]} />
 
       <Grid gap="md" align="flex-start">
@@ -68,7 +68,7 @@ function GraficoVentas({ lineas }: { lineas: M.LineaVendida[] }) {
 
 // Liquidación del mes: comisión de cada vendedor por las entregas del mes.
 function ComisionesMes({ mes }: { mes: string }) {
-  const { datos, nombreVendedor } = useBase();
+  const { datos, nombres } = useBase();
   const fechaVenta = new Map(datos.ventas.map((v) => [v.id, v.fecha]));
   const porVendedor = new Map<string, { monto: number; ventas: Set<string>; editadas: number }>();
   for (const c of datos.ventasComisiones) {
@@ -95,7 +95,7 @@ function ComisionesMes({ mes }: { mes: string }) {
           {filas.map(([id, v]) => (
             <Table.Tr key={id}>
               <Table.Td>
-                {nombreVendedor(id)}
+                {nombres.vendedor(id)}
                 {v.editadas > 0 && <Text size="xs" c="dimmed">{v.editadas} con % distinto de la regla</Text>}
               </Table.Td>
               <Table.Td className="num">{v.ventas.size}</Table.Td>
@@ -110,11 +110,11 @@ function ComisionesMes({ mes }: { mes: string }) {
 }
 
 function DetalleVentas({ lineas }: { lineas: M.LineaVendida[] }) {
-  const { cargando, nombreDeposito } = useBase();
+  const { cargando, nombres } = useBase();
   const [buscar, setBuscar] = useState('');
   const q = buscar.trim().toLowerCase();
   const filas = lineas
-    .filter((l) => !q || (l.pedido?.cliente.toLowerCase().includes(q) ?? false) || l.producto.toLowerCase().includes(q))
+    .filter((l) => !q || [nombres.contacto(l.pedido?.contactoId ?? ''), nombres.producto(l.productoId)].some((t) => t.toLowerCase().includes(q)))
     .sort((a, b) => porFechaDesc(a.venta, b.venta));
 
   return (
@@ -139,10 +139,10 @@ function DetalleVentas({ lineas }: { lineas: M.LineaVendida[] }) {
                 <Table.Td c="dimmed">{fmtFecha(l.venta.fecha)}</Table.Td>
                 <Table.Td c="dimmed">{l.ventaId} · {l.venta.pedidoId}</Table.Td>
                 <Table.Td>
-                  {l.pedido?.cliente}
+                  {l.pedido && nombres.contacto(l.pedido.contactoId)}
                   {l.venta.nota && <Text size="xs" c="dimmed" style={{ whiteSpace: 'normal' }}>{l.venta.nota}</Text>}
                 </Table.Td>
-                <Table.Td>{l.producto}</Table.Td>
+                <Table.Td>{nombres.producto(l.productoId)}</Table.Td>
                 <Table.Td className="num">{fmtNum(l.cantidad)}</Table.Td>
                 <Table.Td className="num">{fmtMoney(l.precio)}</Table.Td>
                 <Table.Td className="num" fw={600}>{fmtMoney(l.importe)}</Table.Td>
@@ -150,7 +150,7 @@ function DetalleVentas({ lineas }: { lineas: M.LineaVendida[] }) {
                 <Table.Td className="num" c={(l.ganancia ?? 0) < 0 ? 'red' : undefined} fw={(l.ganancia ?? 0) < 0 ? 600 : undefined}>
                   {fmtMoney(l.ganancia)}
                 </Table.Td>
-                <Table.Td c="dimmed">{nombreDeposito(l.venta.depositoId)}</Table.Td>
+                <Table.Td c="dimmed">{nombres.deposito(l.venta.depositoId)}</Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>

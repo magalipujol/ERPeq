@@ -2,16 +2,19 @@ import { describe, expect, it } from 'vitest';
 import type { Fila } from './celdas';
 import * as H from './hojas';
 
+// Encabezado esperado de la hoja de un rango.
+const encabezado = (rango: string) => [...H.encabezados(H.CLAVES.find((k) => rango.startsWith(`'${H.nombreHoja(k)}'`)) ?? 'tipos')];
+
 describe('parsear', () => {
   const crudo = (h: Partial<Record<H.ClaveHoja, Fila[]>>) => H.CLAVES.map((k) => h[k] ?? []);
 
   const d = H.parsear(crudo({
     productos: [['P001', ' Almendras ', '', ''], ['', 'sin id'], ['P002', 'Miel', 'unid.', '5']],
-    compras: [[45658, 'BB', 'Prov', 'C0001', 'P001', 'Almendras', 10, 1000, 10000, 'R-1', 'PE0001', ''], ['', '', '', '', ''],
-      [45659, 'ROS', 'Prov', '', 'P002', 'Miel', '3', '', '', '', '', '']],
+    compras: [[45658, 'BB', 'C0001', 'P001', 10, 1000, 10000, 'R-1', 'PE0001', ''], ['', '', '', '', ''],
+      [45659, 'ROS', '', 'P002', '3', '', '', '', '', '']],
     vendedores: [['VEN01', 'Guada/Hernán', ''], ['VEN02', 'Leo', 'no']],
-    pedidosItems: [['PE0001', 1, 'P001', 'Almendras', 2, '', 3000]],
-    ventasComisiones: [['V0001', 1, 'VEN01', 'Guada/Hernán', 3, 5, 300]],
+    pedidosItems: [['PE0001', 1, 'P001', 2, '', 3000]],
+    ventasComisiones: [['V0001', 1, 'VEN01', 3, 5, 300]],
     pedidosEstados: [['PE0001', 46000.5, 'Cerrado']],
   }));
 
@@ -35,7 +38,7 @@ describe('parsear', () => {
   });
 
   it('deja la fecha vacía si la celda no es una fecha', () => {
-    const r = H.parsear(crudo({ compras: [['texto', 'BB', '', '', 'P001', '', 1]] }));
+    const r = H.parsear(crudo({ compras: [['texto', 'BB', '', 'P001', 1]] }));
 
     expect(r.compras[0].fecha).toBeNull();
   });
@@ -57,7 +60,7 @@ describe('socios, cobros y rendiciones', () => {
 
   it('lee cobros y rendiciones con el medio en minúsculas', () => {
     const d = H.parsear(crudo({
-      cobros: [[46311, 'V0001', 8000, 'Efectivo', 'SOC02', 'Guada/Hernán', ''], [46311, '', 5]],
+      cobros: [[46311, 'V0001', 8000, 'Efectivo', 'SOC02', ''], [46311, '', 5]],
       rendiciones: [[46312, 'SOC02', 'SOC01', 5000, 'efectivo', 'Rendición semanal']],
     }));
 
@@ -72,10 +75,10 @@ describe('socios, cobros y rendiciones', () => {
     const titulos = H.CLAVES.map(H.nombreHoja).filter((t) => t !== 'Cobros' && t !== 'Rendiciones');
     const faltantes = H.hojasFaltantes(titulos);
     const pedidos: string[] = [];
-    // Devuelve una fila con el nombre de la hoja de cada rango, para ver que cada hoja recibe la suya.
+    // Devuelve el encabezado y una fila con el nombre de la hoja de cada rango, para ver que cada hoja recibe la suya.
     const d = await H.leerHojas(async (rangos) => {
       pedidos.push(...rangos);
-      return Promise.resolve(rangos.map((r) => [[/^'(.+)'!/.exec(r)?.[1] ?? '', 'x', 'x', 'x']]));
+      return Promise.resolve(rangos.map((r) => [encabezado(r), [/^'(.+)'!/.exec(r)?.[1] ?? '', 'x', 'x', 'x']]));
     }, faltantes);
 
     expect(faltantes).toStrictEqual(['cobros', 'rendiciones']);
@@ -87,18 +90,40 @@ describe('socios, cobros y rendiciones', () => {
 });
 
 describe('rango', () => {
-  it('cubre las columnas de la hoja desde la fila 2', () => {
-    expect(H.rango('ventasItems')).toBe("'Ventas ítems'!A2:I");
-    expect(H.rango('tipos')).toBe("'Tipos de cliente'!A2:A");
+  it('cubre las columnas de la hoja desde el encabezado', () => {
+    expect(H.rango('ventasItems')).toBe("'Ventas ítems'!A1:H");
+    expect(H.rango('tipos')).toBe("'Tipos de cliente'!A1:A");
+  });
+});
+
+describe('encabezados', () => {
+  const leer = (pedidos: Fila) => async (rangos: string[]) =>
+    Promise.resolve(rangos.map((r) => (r.startsWith("'Pedidos'") ? [pedidos, ['PE0001', 46000, 'C0001', 'BB', '']] : [encabezado(r)])));
+
+  it('acepta mayúsculas, espacios y columnas de más a la derecha', async () => {
+    expect.hasAssertions();
+
+    const d = await H.leerHojas(leer(['ID', ' fecha', 'contacto_id', 'deposito_id', 'nota', 'otra']));
+
+    expect(d.pedidos).toMatchObject([{ id: 'PE0001', contactoId: 'C0001', depositoId: 'BB' }]);
+  });
+
+  it('una planilla con las columnas de nombres copiados no se lee', async () => {
+    expect.hasAssertions();
+
+    const viejos = ['id', 'fecha', 'contacto_id', 'cliente', 'tipo_cliente', 'localidad', 'provincia', 'deposito_id', 'nota'];
+
+    await expect(H.leerHojas(leer(viejos))).rejects.toThrow(H.FormatoDistinto);
+    await expect(H.leerHojas(leer(viejos))).rejects.toThrow(/hoja "Pedidos".*normalizar_planilla/);
   });
 });
 
 describe('filas', () => {
   it('compra: calcula el importe y deja vacío el precio desconocido', () => {
-    const base = { fecha: new Date(2026, 9, 1, 12), depositoId: 'BB', proveedor: 'Prov', contactoId: '', productoId: 'P001', producto: 'Almendras', remito: '', pedidoId: '', nota: '' };
+    const base = { fecha: new Date(2026, 9, 1, 12), depositoId: 'BB', contactoId: '', productoId: 'P001', remito: '', pedidoId: '', nota: '' };
 
-    expect(H.filas.compra({ ...base, cantidad: 3, precio: 1.1 })[8]).toBe(3.3);
-    expect(H.filas.compra({ ...base, cantidad: 3, precio: null }).slice(7, 9)).toStrictEqual(['', '']);
+    expect(H.filas.compra({ ...base, cantidad: 3, precio: 1.1 })[6]).toBe(3.3);
+    expect(H.filas.compra({ ...base, cantidad: 3, precio: null }).slice(5, 7)).toStrictEqual(['', '']);
   });
 
   it('unir junta las filas por hoja', () => {

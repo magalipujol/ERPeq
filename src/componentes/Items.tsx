@@ -14,7 +14,7 @@ export type ModoItems = 'compra' | 'pedido' | 'flete';
 export function Items({ modo, deposito, fecha, items, onChange }:
   { modo: ModoItems; deposito: string; fecha: Date | null; items: Item[]; onChange: (items: Item[]) => void }) {
   const { datos, buscarProducto } = useBase();
-  const nombres = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
+  const productos = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
 
   function precioSugerido(id: string) {
     if (modo === 'pedido') return M.precioVigente(datos.precios, id, fecha);
@@ -49,7 +49,7 @@ export function Items({ modo, deposito, fecha, items, onChange }:
               <Grid gap={6} align="flex-start">
                 <Grid.Col span={{ base: 12, xs: modo === 'flete' ? 8 : 5 }}>
                   <Autocomplete
-                    placeholder="Producto" aria-label="Producto" data={nombres}
+                    placeholder="Producto" aria-label="Producto" data={productos}
                     value={it.producto} onChange={(v) => { cambiarProducto(i, v); }}
                   />
                 </Grid.Col>
@@ -90,7 +90,7 @@ export function Items({ modo, deposito, fecha, items, onChange }:
 
 function Info({ modo, item, deposito, fecha, onUnidad }:
   { modo: ModoItems; item: Item; deposito: string; fecha: Date | null; onUnidad: (u: string) => void }) {
-  const { datos, stock, nombreDeposito, buscarProducto } = useBase();
+  const { datos, stock, nombres, buscarProducto } = useBase();
   if (!item.producto) return null;
   const p = buscarProducto(item.producto);
   if (!p) {
@@ -105,7 +105,7 @@ function Info({ modo, item, deposito, fecha, onUnidad }:
         </Group>
       );
   }
-  const dep = nombreDeposito(deposito);
+  const dep = nombres.deposito(deposito);
   const enDep = stock.enDeposito.get(p.id)?.[deposito] ?? 0;
   const cant = numeroOCero(item.cantidad);
   if (modo === 'compra') {

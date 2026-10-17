@@ -40,8 +40,8 @@ test('registra una compra con un producto y un proveedor nuevos en una sola escr
     'Productos': [['P004', 'Pasas', 'kg', '']],
     'Contactos': [['C0005', 'proveedor', 'Prov C', '', '', '', '', '', '', '']],
     'Compras': [
-      [HOY_SERIE, 'BB', 'Prov C', 'C0005', 'P004', 'Pasas', 5, 100, 500, 'R-9', 'PE0002', ''],
-      [HOY_SERIE, 'BB', 'Prov C', 'C0005', 'P002', 'Avena', 10, 500, 5000, 'R-9', 'PE0002', ''],
+      [HOY_SERIE, 'BB', 'C0005', 'P004', 5, 100, 500, 'R-9', 'PE0002', ''],
+      [HOY_SERIE, 'BB', 'C0005', 'P002', 10, 500, 5000, 'R-9', 'PE0002', ''],
     ],
   }])
   await expect(page.getByRole('row').filter({ hasText: 'Pasas' })).toContainText('Prov C')
@@ -55,7 +55,7 @@ test('un proveedor conocido no se vuelve a agregar a Contactos', async ({ page, 
   await form.getByRole('button', { name: 'Registrar compra' }).click()
   await expect(form.getByText(/✓ Compra a prov a registrada/)).toBeVisible()
   expect(Object.keys(google.escrituras[0])).toEqual(['Compras'])
-  expect(google.escrituras[0].Compras[0][3]).toBe('C0002')
+  expect(google.escrituras[0].Compras[0][2]).toBe('C0002')
 })
 
 test('no guarda una compra sin proveedor', async ({ page, google }) => {

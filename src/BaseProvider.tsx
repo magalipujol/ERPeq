@@ -8,8 +8,7 @@ export function BaseProvider({ db, info, datos, cargando, recargar, children }:
     const pedidos = M.resumirPedidos(datos);
     const porNombre = new Map(datos.productos.map((p) => [normalizar(p.producto), p]));
     const contactos = new Map(datos.contactos.map((c) => [`${c.rol}|${normalizar(c.nombre)}`, c]));
-    const depositos = new Map(datos.depositos.map((d) => [d.id, d.nombre]));
-    const vendedores = new Map(datos.vendedores.map((v) => [v.id, v.nombre]));
+    const porId = new Map(datos.contactos.map((c) => [c.id, c]));
     return {
       db, info, datos, cargando, recargar, pedidos,
       stock: M.calcularStock(datos, pedidos),
@@ -17,8 +16,8 @@ export function BaseProvider({ db, info, datos, cargando, recargar, children }:
       estadosFletes: M.estadosActuales(datos.fletesEstados),
       buscarProducto: (nombre) => porNombre.get(normalizar(nombre)),
       buscarContacto: (rol, nombre) => contactos.get(`${rol}|${normalizar(nombre)}`),
-      nombreDeposito: (id) => depositos.get(id) ?? id,
-      nombreVendedor: (id) => vendedores.get(id) ?? id,
+      nombres: M.nombres(datos),
+      contacto: (id) => porId.get(id),
     };
   }, [db, info, datos, cargando, recargar]);
   return <BaseContext value={base}>{children}</BaseContext>;

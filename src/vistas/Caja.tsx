@@ -62,7 +62,7 @@ export function Caja() {
 function FormCobro({ aCobrar, ventaId, onVenta, deshabilitado }: {
   aCobrar: M.CuentaVenta[]; ventaId: string | null; onVenta: (id: string) => void; deshabilitado: boolean;
 }) {
-  const { datos, db } = useBase();
+  const { datos, nombres, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [fecha, setFecha] = useState(hoyISO);
   const [nota, setNota] = useState('');
@@ -90,7 +90,7 @@ function FormCobro({ aCobrar, ventaId, onVenta, deshabilitado }: {
     if (falta || !cuenta || !dia || !socio) { error(falta ?? 'Faltan datos.'); return; }
     guardar(async () => {
       await db.registrarCobro({
-        fecha: dia, ventaId: cuenta.venta.id, importe, medio: valor.medio, socioId: socio.id, socio: socio.nombre, nota: nota.trim(),
+        fecha: dia, ventaId: cuenta.venta.id, importe, medio: valor.medio, socioId: socio.id, nota: nota.trim(),
       });
       setEditado({});
       setNota('');
@@ -105,7 +105,7 @@ function FormCobro({ aCobrar, ventaId, onVenta, deshabilitado }: {
         <Stack gap="sm">
           <Group grow gap="xs" align="flex-start">
             <NativeSelect label="Venta" value={cuenta?.venta.id ?? ''} onChange={(e) => { onVenta(e.currentTarget.value); }}
-              data={ordenadas.map((c) => ({ value: c.venta.id, label: `${c.venta.id} · ${c.pedido?.cliente ?? ''} · falta ${fmtMoney(c.saldo)}` }))} />
+              data={ordenadas.map((c) => ({ value: c.venta.id, label: `${c.venta.id} · ${c.pedido ? nombres.contacto(c.pedido.contactoId) : ''} · falta ${fmtMoney(c.saldo)}` }))} />
             <TextInput label="Fecha" type="date" value={fecha} onChange={(e) => { setFecha(e.currentTarget.value); }} />
           </Group>
           <CamposCobro valor={valor} onChange={(v) => { setEditado(v); }} socios={datos.socios} etiqueta="Importe" />
@@ -181,7 +181,7 @@ function FormRendicion({ cuentas, duenio, deshabilitado }: { cuentas: M.CuentaSo
 }
 
 function ListaACobrar({ aCobrar, onCobrar }: { aCobrar: M.CuentaVenta[]; onCobrar: (id: string) => void }) {
-  const { cargando } = useBase();
+  const { cargando, nombres } = useBase();
   const filas = aCobrar.toSorted((a, b) => porFechaDesc(a.venta, b.venta));
   return (
     <Paper>
@@ -199,7 +199,7 @@ function ListaACobrar({ aCobrar, onCobrar }: { aCobrar: M.CuentaVenta[]; onCobra
               <Table.Tr key={c.venta.id}>
                 <Table.Td fw={500}>{c.venta.id}</Table.Td>
                 <Table.Td c="dimmed">{fmtFecha(c.venta.fecha)}</Table.Td>
-                <Table.Td>{c.pedido?.cliente}</Table.Td>
+                <Table.Td>{c.pedido && nombres.contacto(c.pedido.contactoId)}</Table.Td>
                 <Table.Td className="num">{fmtMoney(c.importe)}</Table.Td>
                 <Table.Td className="num" c="dimmed">{c.cobrado > 0 ? fmtMoney(c.cobrado) : '–'}</Table.Td>
                 <Table.Td className="num" fw={600}>{fmtMoney(c.saldo)}</Table.Td>

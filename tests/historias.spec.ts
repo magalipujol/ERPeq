@@ -150,18 +150,18 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
   // Cada operación se guardó en una sola escritura.
   expect(google.escrituras).toHaveLength(9)
   expect(google.escrituras[1]).toEqual({
-    'Fletes': [['F0002', HOY_SERIE, 'Interprovincial', 'C0004', 'BB', 'ROS', 8000, '', '']],
-    'Fletes ítems': [['F0002', 'P001', 'Almendras', 6]],
+    'Fletes': [['F0002', HOY_SERIE, 'C0004', 'BB', 'ROS', 8000, '', '']],
+    'Fletes ítems': [['F0002', 'P001', 6]],
     'Fletes estados': [['F0002', AHORA, 'preparacion']],
     'Pedidos fletes': [['PE0003', 'F0002', 8000]],
   })
-  expect(google.escrituras[5]).toEqual({ 'Ajustes': [[HOY_SERIE, 'ROS', 'P001', 'Almendras', -1, 'Bolsa rota en flete F0002']] })
+  expect(google.escrituras[5]).toEqual({ 'Ajustes': [[HOY_SERIE, 'ROS', 'P001', -1, 'Bolsa rota en flete F0002']] })
   expect(google.escrituras[6]).toEqual({
     'Ventas': [['V0002', HOY_SERIE, 'PE0003', 'ROS', '']],
-    'Ventas ítems': [['V0002', 1, 1, 'P001', 'Almendras', 10, 2900, 29000, 1500]],
-    'Ventas comisiones': [['V0002', 1, 'VEN02', 'Guada/Hernán', 7, 6, 1740]],
+    'Ventas ítems': [['V0002', 1, 1, 'P001', 10, 2900, 29000, 1500]],
+    'Ventas comisiones': [['V0002', 1, 'VEN02', 7, 6, 1740]],
   })
-  expect(google.escrituras[7]['Ventas comisiones']).toEqual([['V0003', 1, 'VEN02', 'Guada/Hernán', 7, 7, 203]])
+  expect(google.escrituras[7]['Ventas comisiones']).toEqual([['V0003', 1, 'VEN02', 7, 7, 203]])
 })
 
 test('cambiar el precio de lista y la regla de comisión no toca los pedidos ya cargados', async ({ page, google }) => {
@@ -205,8 +205,8 @@ test('cambiar el precio de lista y la regla de comisión no toca los pedidos ya 
 
   expect(google.escrituras.at(-1)).toEqual({
     'Ventas': [['V0002', HOY_SERIE, 'PE0003', 'ROS', '']],
-    'Ventas ítems': [['V0002', 1, 1, 'P002', 'Avena', 5, 800, 4000, 500]],
-    'Ventas comisiones': [['V0002', 1, 'VEN02', 'Guada/Hernán', 4, 4, 160]],
+    'Ventas ítems': [['V0002', 1, 1, 'P002', 5, 800, 4000, 500]],
+    'Ventas comisiones': [['V0002', 1, 'VEN02', 4, 4, 160]],
   })
 })
 
@@ -238,15 +238,15 @@ test('se compra un producto nuevo y se vende en el momento a un cliente nuevo', 
 
   expect(google.escrituras[1]).toEqual({
     'Contactos': [['C0006', 'cliente', 'Bruno', 'Minorista', '', '', '', '', '', '']],
-    'Pedidos': [['PE0003', HOY_SERIE, 'C0006', 'Bruno', 'Minorista', '', '', 'ROS', '']],
-    'Pedidos ítems': [['PE0003', 1, 'P004', 'Pasas', 3, '', 1800]],
+    'Pedidos': [['PE0003', HOY_SERIE, 'C0006', 'ROS', '']],
+    'Pedidos ítems': [['PE0003', 1, 'P004', 3, '', 1800]],
     'Pedidos estados': [['PE0003', AHORA, 'abierto']],
     'Pedidos vendedores': [['PE0003', 'VEN01']],
-    'Precios': [['P004', 'Pasas', 1800, HOY_SERIE]],
+    'Precios': [['P004', 1800, HOY_SERIE]],
     'Ventas': [['V0002', HOY_SERIE, 'PE0003', 'ROS', '']],
-    'Ventas ítems': [['V0002', 1, 1, 'P004', 'Pasas', 3, 1800, 5400, 1000]],
+    'Ventas ítems': [['V0002', 1, 1, 'P004', 3, 1800, 5400, 1000]],
     // Leo cobra su 10% general.
-    'Ventas comisiones': [['V0002', 1, 'VEN01', 'Leo', 10, 10, 540]],
+    'Ventas comisiones': [['V0002', 1, 'VEN01', 10, 10, 540]],
   })
 
   // 3. La venta aparece con su ganancia: 5.400 − 540 − 3 × 1.000 = 1.860. Quedan 17 kg.
@@ -365,7 +365,7 @@ test.describe('desde el celular', () => {
     await expect(pedido.getByText(/✓ Pedido PE0003 de Bruno registrado \(1 producto, \$\s6\.000\)\./)).toBeVisible()
     expect(google.escrituras[0]).toMatchObject({
       'Contactos': [['C0005', 'cliente', 'Bruno', 'Minorista', '', '', '', '', '', '']],
-      'Pedidos': [['PE0003', HOY_SERIE, 'C0005', 'Bruno', 'Minorista', '', '', 'BB', '']],
+      'Pedidos': [['PE0003', HOY_SERIE, 'C0005', 'BB', '']],
       'Pedidos vendedores': [['PE0003', 'VEN01']],
     })
 
@@ -383,8 +383,8 @@ test.describe('desde el celular', () => {
     await expect(fila).toBeHidden()
     expect(google.escrituras[1]).toEqual({
       'Ventas': [['V0002', HOY_SERIE, 'PE0003', 'BB', '']],
-      'Ventas ítems': [['V0002', 1, 1, 'P001', 'Almendras', 2, 3000, 6000, 1500]],
-      'Ventas comisiones': [['V0002', 1, 'VEN01', 'Leo', 10, 10, 600]],
+      'Ventas ítems': [['V0002', 1, 1, 'P001', 2, 3000, 6000, 1500]],
+      'Ventas comisiones': [['V0002', 1, 'VEN01', 10, 10, 600]],
     })
   })
 })
@@ -503,12 +503,50 @@ test('Guada/Hernán cobra en efectivo, rinde una parte y Sampatti le paga la com
   expect(google.escrituras).toHaveLength(5)
   expect(google.escrituras[0]).toEqual({
     'Ventas': [['V0002', HOY_SERIE, 'PE0002', 'ROS', '']],
-    'Ventas ítems': [['V0002', 1, 1, 'P002', 'Avena', 10, 800, 8000, 500]],
-    'Ventas comisiones': [['V0002', 1, 'VEN02', 'Guada/Hernán', 3, 3, 240]],
-    'Cobros': [[HOY_SERIE, 'V0002', 8000, 'efectivo', 'SOC02', 'Guada/Hernán', '']],
+    'Ventas ítems': [['V0002', 1, 1, 'P002', 10, 800, 8000, 500]],
+    'Ventas comisiones': [['V0002', 1, 'VEN02', 3, 3, 240]],
+    'Cobros': [[HOY_SERIE, 'V0002', 8000, 'efectivo', 'SOC02', '']],
   })
   expect(google.escrituras[1]).toEqual({ 'Rendiciones': [[HOY_SERIE, 'SOC02', 'SOC01', 7000, 'efectivo', '']] })
-  expect(google.escrituras[2]['Ventas comisiones']).toEqual([['V0003', 1, 'VEN02', 'Guada/Hernán', 7, 7, 1050]])
-  expect(google.escrituras[3]).toEqual({ 'Cobros': [[HOY_SERIE, 'V0003', 15000, 'transferencia', 'SOC01', 'Sampatti', '']] })
+  expect(google.escrituras[2]['Ventas comisiones']).toEqual([['V0003', 1, 'VEN02', 7, 7, 1050]])
+  expect(google.escrituras[3]).toEqual({ 'Cobros': [[HOY_SERIE, 'V0003', 15000, 'transferencia', 'SOC01', '']] })
   expect(google.escrituras[4]).toEqual({ 'Rendiciones': [[HOY_SERIE, 'SOC01', 'SOC02', 290, 'transferencia', '']] })
+})
+
+test('corregir en la planilla el nombre de un cliente y de un producto cambia todas las pantallas', async ({ page, google }) => {
+  // 1. PE0002 es de Ana y pide Avena.
+  await expect(filaCon(page, 'PE0002')).toContainText('Ana')
+  await expect(filaCon(page, 'PE0002')).toContainText('Avena')
+
+  // 2. Se corrigen a mano los nombres en Contactos y Productos. Pedidos, ventas y fletes guardan solo los
+  //    IDs (C0001, P002), así que no hay nada más que tocar.
+  google.hojas.Contactos[0][2] = 'Ana María'
+  google.hojas.Productos[1][1] = 'Avena arrollada'
+  await page.reload()
+
+  // 3. Pedidos, Inicio y Ventas muestran los nombres nuevos.
+  await expect(filaCon(page, 'PE0002')).toContainText('Ana María')
+  await expect(filaCon(page, 'PE0002')).toContainText('Avena arrollada')
+  await ir(page, 'Inicio')
+  const pendiente = page.getByRole('article', { name: 'Pedido PE0002' })
+  await expect(pendiente).toContainText('Ana María')
+  await expect(pendiente).toContainText('Avena arrollada')
+  await ir(page, 'Ventas')
+  await expect(page.getByRole('row').filter({ hasText: 'V0001' })).toContainText('Ana María')
+
+  // 4. Un pedido nuevo de Ana María usa su contacto: la localidad sale de Contactos y no se puede cambiar
+  //    en el pedido, y no se agrega otro contacto.
+  await ir(page, 'Pedidos')
+  await elegirCliente(page, 'Ana María')
+  const pedido = formPedido(page)
+  await expect(pedido.getByLabel('Localidad', { exact: true })).toHaveValue('Funes')
+  await expect(pedido.getByLabel('Localidad', { exact: true })).toBeDisabled()
+  await pedido.getByLabel('Producto', { exact: true }).fill('Avena arrollada')
+  await pedido.getByLabel('Cantidad', { exact: true }).fill('2')
+  await pedido.getByRole('button', { name: 'Registrar pedido' }).click()
+  await expect(pedido.getByText(/✓ Pedido PE0003 de Ana María registrado/)).toBeVisible()
+
+  expect(Object.keys(google.escrituras[0])).not.toContain('Contactos')
+  expect(google.escrituras[0].Pedidos).toEqual([['PE0003', HOY_SERIE, 'C0001', 'ROS', '']])
+  expect(google.escrituras[0]['Pedidos ítems']).toEqual([['PE0003', 1, 'P002', 2, 800, 800]])
 })

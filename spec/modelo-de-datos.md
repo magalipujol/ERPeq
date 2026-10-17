@@ -60,8 +60,11 @@ sequenceDiagram
   [Valores por defecto y sobreescritura](#valores-por-defecto-y-sobreescritura)).
 - **Referencias por ID.** Cada tabla tiene un ID con prefijo: `P001` (producto), `C0001` (contacto), `VEN01`
   (vendedor), `SOC01` (socio), `PE0001` (pedido), `V0001` (venta), `F0001` (flete); los depósitos usan códigos cortos (`BB`,
-  `ROS`). La app genera el siguiente al mayor existente. Las filas que apuntan a un producto, cliente o
-  vendedor guardan también el nombre como copia, para que la hoja se pueda leer a mano.
+  `ROS`). La app genera el siguiente al mayor existente.
+- **Los nombres viven en una sola hoja.** Las filas que apuntan a un producto, contacto, vendedor o socio
+  guardan solo su ID; el nombre (y el tipo, la localidad y la provincia de un cliente) sale de *Productos*,
+  *Contactos*, *Vendedores* o *Socios*. Corregir un nombre en esa hoja lo corrige en todas las pantallas.
+  Un ID que no está en su hoja se muestra tal cual.
 - **Una operación, un `batchUpdate`.** Un pedido o una venta escribe cabecera, ítems y filas relacionadas en
   varias hojas (y, si hace falta, el contacto o el producto nuevo). Se manda todo en un solo
   `spreadsheets.batchUpdate` con `appendCells`, que la API aplica completo o no aplica nada, así no quedan
@@ -159,7 +162,7 @@ erDiagram
     COMPRA {
         date fecha
         string deposito_id FK
-        string proveedor
+        string contacto_id FK "proveedor"
         string producto_id FK
         number cantidad
         number precio
@@ -170,8 +173,6 @@ erDiagram
         date fecha
         string contacto_id FK
         string deposito_id FK "desde dónde se entrega"
-        string localidad
-        string provincia
         string nota
     }
     PEDIDO_ITEM {
@@ -219,7 +220,7 @@ erDiagram
     FLETE {
         string id PK "F0001"
         date fecha
-        string transporte
+        string contacto_id FK "transporte"
         string origen_id FK "depósito; vacío = proveedor"
         string destino_id FK "depósito; vacío = cliente"
         number costo
@@ -273,7 +274,13 @@ erDiagram
 
 ## Tablas (hojas)
 
-Las columnas se listan en el orden de la hoja. **(c)** indica una copia guardada al momento de la operación.
+Las columnas se listan en el orden de la hoja. **(c)** indica un valor copiado al momento de la operación
+(precio, costo, porcentaje), que no cambia aunque después cambie su origen. Los nombres no se copian: las
+columnas `*_id` apuntan a la hoja donde están.
+
+La fila 1 de cada hoja tiene los encabezados. La app los compara con los que espera (sin distinguir
+mayúsculas; puede haber columnas de más a la derecha) y, si no coinciden, no lee ni escribe nada: con las
+columnas corridas guardaría cada dato en otra columna.
 
 ### Maestros
 
@@ -284,43 +291,43 @@ Las columnas se listan en el orden de la hoja. **(c)** indica una copia guardada
 | **Contactos** | `id`, `rol`, `nombre`, `tipo_cliente`, `telefono`, `direccion`, `email`, `localidad`, `provincia`, `observaciones` | `rol`: `cliente`, `proveedor` o `transporte`. La app agrega el contacto cuando se carga un cliente, proveedor o transporte nuevo. |
 | **Tipos de cliente** | `tipo` | Lista para elegir en el pedido. |
 | **Vendedores** | `id`, `nombre`, `activo` | Quien consigue el pedido y cobra comisión. "Guada/Hernán" es **un** vendedor; "Leo" es otro. `activo` vacío o "sí" = se puede elegir. |
-| **Precios** | `producto_id`, `producto` (c), `precio`, `desde` | Precio por defecto, con historial. Un cambio de precio es una fila nueva; el vigente es el de `desde` más reciente. |
+| **Precios** | `producto_id`, `precio`, `desde` | Precio por defecto, con historial. Un cambio de precio es una fila nueva; el vigente es el de `desde` más reciente. |
 | **Reglas de comisión** | `vendedor_id`, `producto_id`, `porcentaje`, `desde` | Porcentaje por defecto. `producto_id` vacío = regla general del vendedor. |
 
 ### Pedidos y ventas
 
 | Hoja | Columnas | Notas |
 |---|---|---|
-| **Pedidos** | `id`, `fecha`, `contacto_id`, `cliente` (c), `tipo_cliente` (c), `localidad` (c), `provincia` (c), `deposito_id`, `nota` | `deposito_id` es el depósito desde el que se va a entregar. |
-| **Pedidos ítems** | `pedido_id`, `linea`, `producto_id`, `producto` (c), `cantidad`, `precio_lista` (c), `precio` | `precio_lista` es el de *Precios* al crear el pedido (vacío si no había); `precio` es el que se usa. Si difieren, es un precio especial. |
+| **Pedidos** | `id`, `fecha`, `contacto_id`, `deposito_id`, `nota` | `deposito_id` es el depósito desde el que se va a entregar. El cliente, su tipo y su localidad salen del contacto. |
+| **Pedidos ítems** | `pedido_id`, `linea`, `producto_id`, `cantidad`, `precio_lista` (c), `precio` | `precio_lista` es el de *Precios* al crear el pedido (vacío si no había); `precio` es el que se usa. Si difieren, es un precio especial. |
 | **Pedidos estados** | `pedido_id`, `fecha`, `estado` | `abierto` al crearlo; después solo los estados que se deciden a mano (ver [Estados del pedido](#estados-del-pedido)). |
 | **Pedidos vendedores** | `pedido_id`, `vendedor_id` | Quiénes comisionan por este pedido. Comisionan por todas sus líneas. |
-| **Ventas** | `id`, `fecha`, `pedido_id`, `deposito_id`, `nota` | Una entrega. El cliente y la localidad salen del pedido. |
-| **Ventas ítems** | `venta_id`, `linea`, `pedido_linea`, `producto_id`, `producto` (c), `cantidad`, `precio` (c), `importe`, `costo` (c) | Lo entregado de cada línea del pedido. `costo` es el costo promedio unitario al entregar. |
-| **Ventas comisiones** | `venta_id`, `linea`, `vendedor_id`, `vendedor` (c), `porcentaje_regla` (c), `porcentaje`, `monto` | Una fila por ítem entregado y vendedor. `porcentaje_regla` es el que propone la regla; `porcentaje` el que se usó. `monto = importe × porcentaje / 100`. |
+| **Ventas** | `id`, `fecha`, `pedido_id`, `deposito_id`, `nota` | Una entrega. El cliente sale del pedido. |
+| **Ventas ítems** | `venta_id`, `linea`, `pedido_linea`, `producto_id`, `cantidad`, `precio` (c), `importe`, `costo` (c) | Lo entregado de cada línea del pedido. `costo` es el costo promedio unitario al entregar. |
+| **Ventas comisiones** | `venta_id`, `linea`, `vendedor_id`, `porcentaje_regla` (c), `porcentaje`, `monto` | Una fila por ítem entregado y vendedor. `porcentaje_regla` es el que propone la regla; `porcentaje` el que se usó. `monto = importe × porcentaje / 100`. |
 
 ### Stock y logística
 
 | Hoja | Columnas | Notas |
 |---|---|---|
-| **Compras** | `fecha`, `deposito_id`, `proveedor`, `contacto_id`, `producto_id`, `producto` (c), `cantidad`, `precio`, `importe`, `remito`, `pedido_id`, `nota` | `pedido_id` opcional: la compra se hizo para un pedido. No cambia el cálculo de stock. |
-| **Fletes** | `id`, `fecha`, `transporte`, `contacto_id`, `origen_id`, `destino_id`, `costo`, `guia`, `nota` | `origen_id` / `destino_id` son depósitos; vacío = afuera (proveedor o cliente). |
-| **Fletes ítems** | `flete_id`, `producto_id`, `producto` (c), `cantidad` | Solo para mercadería que va **entre depósitos**. |
+| **Compras** | `fecha`, `deposito_id`, `contacto_id`, `producto_id`, `cantidad`, `precio`, `importe`, `remito`, `pedido_id`, `nota` | `contacto_id` es el proveedor. `pedido_id` opcional: la compra se hizo para un pedido. No cambia el cálculo de stock. |
+| **Fletes** | `id`, `fecha`, `contacto_id`, `origen_id`, `destino_id`, `costo`, `guia`, `nota` | `contacto_id` es el transporte. `origen_id` / `destino_id` son depósitos; vacío = afuera (proveedor o cliente). |
+| **Fletes ítems** | `flete_id`, `producto_id`, `cantidad` | Solo para mercadería que va **entre depósitos**. |
 | **Fletes estados** | `flete_id`, `fecha`, `estado` | Cada cambio de estado es una fila nueva. El estado actual es el de la última fila. Un flete que se carga ya despachado o terminado escribe también los estados anteriores. |
 | **Pedidos fletes** | `pedido_id`, `flete_id`, `costo_asignado` | Une pedidos y fletes (N a N). `costo_asignado` es la parte del flete que se carga a ese pedido. |
-| **Ajustes** | `fecha`, `deposito_id`, `producto_id`, `producto` (c), `cantidad`, `motivo` | Correcciones de stock (roturas, conteos). |
+| **Ajustes** | `fecha`, `deposito_id`, `producto_id`, `cantidad`, `motivo` | Correcciones de stock (roturas, conteos). |
 
 ### Caja
 
 Estas tres hojas son **opcionales**: si la planilla no las tiene, la app las lee vacías, la pantalla Caja
-avisa cuáles crear y no deja registrar cobros ni rendiciones (ver `HOJAS_OPCIONALES` en `src/db/sheets/hojas.ts`;
+avisa cuáles crear y no deja registrar cobros ni rendiciones (ver `OPCIONALES` en `src/db/sheets/hojas.ts`;
 el puerto lo informa en `InfoBase.faltantes`). Las demás hojas
 son obligatorias: si falta una, la lectura falla.
 
 | Hoja | Columnas | Notas |
 |---|---|---|
 | **Socios** | `id`, `nombre`, `vendedor_id`, `rol` | Entre quiénes se reparte la plata. `vendedor_id` es un vendedor cuyas comisiones se le acreditan al socio; un socio con varios vendedores tiene una fila por vendedor (con el mismo `id`; el nombre sale de la primera). `rol`: `dueño` para el dueño de la mercadería (uno solo) y `socio` para los demás. |
-| **Cobros** | `fecha`, `venta_id`, `importe`, `medio`, `socio_id`, `socio` (c), `nota` | Lo que pagó el cliente por una venta. Una venta puede tener varios cobros (pagos parciales o mezcla de medios). `medio`: `efectivo` o `transferencia`. `socio_id` es quien recibió la plata (en mano o en su cuenta). |
+| **Cobros** | `fecha`, `venta_id`, `importe`, `medio`, `socio_id`, `nota` | Lo que pagó el cliente por una venta. Una venta puede tener varios cobros (pagos parciales o mezcla de medios). `medio`: `efectivo` o `transferencia`. `socio_id` es quien recibió la plata (en mano o en su cuenta). |
 | **Rendiciones** | `fecha`, `de_socio_id`, `a_socio_id`, `importe`, `medio`, `nota` | Plata que un socio le entrega a otro para saldar la cuenta: un socio que le rinde al dueño lo cobrado, o el dueño que le paga a un socio sus comisiones. |
 
 ## Valores por defecto y sobreescritura
@@ -715,6 +722,27 @@ La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e 
 8. **Socios:** fijos en el script: `SOC01` Sampatti (dueño, con el vendedor de LEO) y `SOC02` Guada/Hernán
    (con el de GUADA/HERNAN). *Cobros* y *Rendiciones* quedan vacías: el Excel no dice quién cobró cada venta,
    así que las ventas históricas aparecen como "a cobrar" hasta que se carguen sus cobros.
+
+## Planillas con nombres copiados
+
+Las planillas generadas antes de normalizar las tablas guardaban, además del ID, el nombre del producto,
+cliente, proveedor, transporte, vendedor o socio, y el tipo, la localidad y la provincia del cliente en
+cada pedido. La app no abre esas planillas (los encabezados no coinciden).
+[herramientas/normalizar_planilla.gs](../herramientas/normalizar_planilla.gs), un Apps Script que se corre
+desde la planilla, las migra:
+
+1. Revisa que cada fila con un nombre copiado tenga su ID y que el ID exista en su hoja. Si no, lista los
+   problemas y no cambia nada.
+2. Completa en *Contactos* el tipo, la localidad y la provincia que el contacto tenga vacíos con los de su
+   último pedido. Lo que ya tiene el contacto no se toca: los pedidos con otra localidad pasan a mostrar
+   la del contacto.
+3. Borra las columnas copiadas: `producto` de *Precios*, *Pedidos ítems*, *Ventas ítems*, *Fletes ítems* y
+   *Ajustes*; `proveedor` y `producto` de *Compras*; `cliente`, `tipo_cliente`, `localidad` y `provincia`
+   de *Pedidos*; `vendedor` de *Ventas comisiones*; `transporte` de *Fletes* y `socio` de *Cobros*.
+
+Ejemplo: `PE0001` tenía `C0001`, "Ana", "Minorista", "Funes", "Santa Fe". Si en *Contactos* `C0001` dice
+"Ana María", con localidad "Funes" y sin tipo ni provincia, después de migrar el pedido queda con `C0001`
+y el contacto con tipo "Minorista" y provincia "Santa Fe"; la app muestra "Ana María".
 
 ## Preguntas abiertas
 

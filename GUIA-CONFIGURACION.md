@@ -94,7 +94,7 @@ pero la pantalla Caja avisa que faltan y no deja registrar cobros. Para agregarl
    | Hoja | Fila 1 (columnas A, B, C…) |
    |---|---|
    | `Socios` | `id`, `nombre`, `vendedor_id`, `rol` |
-   | `Cobros` | `fecha`, `venta_id`, `importe`, `medio`, `socio_id`, `socio`, `nota` |
+   | `Cobros` | `fecha`, `venta_id`, `importe`, `medio`, `socio_id`, `nota` |
    | `Rendiciones` | `fecha`, `de_socio_id`, `a_socio_id`, `importe`, `medio`, `nota` |
 
 3. En *Socios*, cargá los socios desde la fila 2. Con los vendedores de la base (revisá los IDs en la hoja
@@ -109,6 +109,13 @@ pero la pantalla Caja avisa que faltan y no deja registrar cobros. Para agregarl
    tener `dueño` en `rol`: el dueño de la mercadería.
 4. *Cobros* y *Rendiciones* quedan vacías (solo el encabezado): las llena la app.
 5. En la app, **Salir** y volver a ingresar (o recargar la página) para que lea las hojas nuevas.
+
+### Si la app dice que las columnas de una hoja no son las que espera
+
+La planilla es de una versión anterior, que guardaba una copia del nombre del cliente, producto, vendedor o
+socio en cada pedido, venta, flete y cobro. Hay que migrarla una vez con el script
+`herramientas/normalizar_planilla.gs`, siguiendo "Migrar una planilla con nombres copiados" del `README.md`.
+Si agregaste *Cobros* a mano con la columna `socio`, el script también la saca.
 
 ## 3. Completar `src/config.ts`
 

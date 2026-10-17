@@ -1,7 +1,7 @@
 import { Anchor, Button, Group, Modal, Paper, ScrollArea, SegmentedControl, Stack, Text } from '@mantine/core';
 import { useState } from 'react';
 import { useBase } from '../base';
-import { mensajeDeError } from '../formato';
+import { lugar, mensajeDeError } from '../formato';
 import { type CriterioMensaje, enlaceWhatsApp, mensajePedidos, pedidosParaMensaje } from '../whatsapp';
 import { Mensaje } from './comunes';
 
@@ -23,14 +23,14 @@ export function ExportarWhatsApp() {
 }
 
 function Contenido() {
-  const { pedidos, datos, nombreDeposito, nombreVendedor } = useBase();
+  const { pedidos, datos, nombres, contacto } = useBase();
   const [criterio, setCriterio] = useState<CriterioMensaje>('abiertos');
   const [msg, setMsg] = useState<{ texto: string; error: boolean } | null>(null);
   const [hoy] = useState(() => new Date());
   const unidades = new Map(datos.productos.map((p) => [p.id, p.unidad]));
   const elegidos = pedidosParaMensaje(pedidos, criterio, hoy);
   const texto = mensajePedidos(elegidos, criterio, hoy, {
-    deposito: nombreDeposito, vendedor: nombreVendedor, unidad: (id) => unidades.get(id) ?? '',
+    ...nombres, unidad: (id) => unidades.get(id) ?? '', lugar: (id) => lugar(contacto(id)),
   });
   const vacio = elegidos.length === 0;
   // Web Share abre el selector de apps del celular; en la compu suele no estar.

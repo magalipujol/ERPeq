@@ -3,13 +3,13 @@ import {
   SegmentedControl, Stack, Table, Text, TextInput, Title,
 } from '@mantine/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { normalizar, useBase, useGuardar } from '../base';
+import { useBase, useGuardar } from '../base';
 import { CamposCobro, type DatosCobro } from '../componentes/Cobro';
 import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
 import { ExportarWhatsApp } from '../componentes/ExportarWhatsApp';
 import { type Item, itemVacio } from '../componentes/item';
 import { Items } from '../componentes/Items';
-import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, numeroOCero, porFechaDesc, sumable, unicos } from '../formato';
+import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, lugar, numeroOCero, porFechaDesc, sumable, unicos } from '../formato';
 import * as M from '../dominio/modelo';
 
 const COLOR_ESTADO: Record<M.EstadoPedido, string> = {
@@ -64,9 +64,6 @@ export function Pedidos({ nuevo = 0 }: { nuevo?: number }) {
   );
 }
 
-// Primer texto no vacío.
-const primero = (...valores: (string | undefined)[]) => valores.find((v) => v !== undefined && v !== '');
-
 function FormPedido({ nuevo }: { nuevo: number }) {
   const { datos, costos, buscarProducto, buscarContacto, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
@@ -89,13 +86,18 @@ function FormPedido({ nuevo }: { nuevo: number }) {
   const [items, setItems] = useState<Item[]>(() => [itemVacio()]);
 
   const listas = useMemo(() => ({
-    clientes: unicos([...datos.contactos.filter((c) => c.rol === 'cliente').map((c) => c.nombre), ...datos.pedidos.map((p) => p.cliente)]),
-    localidades: unicos([...datos.contactos.map((c) => c.localidad), ...datos.pedidos.map((p) => p.localidad)]),
-    provincias: unicos([...datos.contactos.map((c) => c.provincia), ...datos.pedidos.map((p) => p.provincia)]),
+    clientes: unicos(datos.contactos.filter((c) => c.rol === 'cliente').map((c) => c.nombre)),
+    localidades: unicos(datos.contactos.map((c) => c.localidad)),
+    provincias: unicos(datos.contactos.map((c) => c.provincia)),
     tipos: datos.tipos,
     vendedores: datos.vendedores.filter((v) => v.activo).map((v) => ({ value: v.id, label: v.nombre })),
   }), [datos]);
-  const tipo = tipoSel !== null && listas.tipos.includes(tipoSel) ? tipoSel : listas.tipos[0] ?? '';
+  // El tipo, la localidad y la provincia son del contacto: de un cliente que ya existe se muestran sin
+  // poder cambiarlos; de uno nuevo, se cargan acá y se guardan en el contacto nuevo.
+  const existente = buscarContacto('cliente', cliente);
+  const tipo = existente ? existente.tipo : tipoSel !== null && listas.tipos.includes(tipoSel) ? tipoSel : listas.tipos[0] ?? '';
+  const loc = existente ? existente.localidad : localidad.trim();
+  const prov = existente ? existente.provincia : provincia.trim();
   const dia = fecha ? deISO(fecha) : null;
 
   const lineas = items.map((it) => {
@@ -103,18 +105,11 @@ function FormPedido({ nuevo }: { nuevo: number }) {
     return { p, cantidad: aNumero(it.cantidad), precio: aNumero(it.precio), lista: p ? M.precioVigente(datos.precios, p.id, dia) : null };
   });
 
-  // Completa los datos del cliente con su contacto o su último pedido.
+  // Propone los vendedores del último pedido del cliente.
   function elegirCliente(nombre: string) {
     setCliente(nombre);
-    const n = normalizar(nombre);
     const contacto = buscarContacto('cliente', nombre);
-    const ultimo = datos.pedidos.findLast((p) => normalizar(p.cliente) === n);
-    const t = primero(contacto?.tipo, ultimo?.tipo);
-    if (t && listas.tipos.includes(t)) setTipoSel(t);
-    const loc = primero(contacto?.localidad, ultimo?.localidad);
-    const prov = primero(contacto?.provincia, ultimo?.provincia);
-    if (loc) setLocalidad(loc);
-    if (prov) setProvincia(prov);
+    const ultimo = contacto && datos.pedidos.findLast((p) => p.contactoId === contacto.id);
     if (ultimo && vendedores.length === 0) {
       setVendedores(datos.pedidosVendedores.filter((v) => v.pedidoId === ultimo.id).map((v) => v.vendedorId));
     }
@@ -133,20 +128,16 @@ function FormPedido({ nuevo }: { nuevo: number }) {
     if (falta || !dia) { error(falta ?? 'Elegí la fecha.'); return; }
 
     guardar(async () => {
-      const existente = buscarContacto('cliente', nombre);
       const contactoId = existente?.id ?? M.siguienteId(datos.contactos.map((c) => c.id), 'C');
       const id = M.siguienteId(datos.pedidos.map((p) => p.id), 'PE');
-      const pedido: M.Pedido = {
-        id, fecha: dia, contactoId, cliente: nombre, tipo, localidad: localidad.trim(), provincia: provincia.trim(),
-        depositoId: deposito, nota: nota.trim(),
-      };
+      const pedido: M.Pedido = { id, fecha: dia, contactoId, depositoId: deposito, nota: nota.trim() };
       const pItems: M.PedidoItem[] = lineas.map((l, i) => ({
-        pedidoId: id, linea: i + 1, productoId: l.p?.id ?? '', producto: l.p?.producto ?? '', cantidad: l.cantidad,
+        pedidoId: id, linea: i + 1, productoId: l.p?.id ?? '', cantidad: l.cantidad,
         precioLista: l.lista, precio: l.precio,
       }));
       // Los productos sin precio de lista quedan con el precio de este pedido.
       const preciosNuevos = lineas.filter((l) => l.lista === null && l.p !== undefined)
-        .map((l) => ({ productoId: l.p?.id ?? '', producto: l.p?.producto ?? '', precio: l.precio, desde: dia }));
+        .map((l) => ({ productoId: l.p?.id ?? '', precio: l.precio, desde: dia }));
 
       let entrega: M.Entrega | null = null;
       if (entregarAhora) {
@@ -163,7 +154,7 @@ function FormPedido({ nuevo }: { nuevo: number }) {
       await db.registrarPedido({
         pedido, items: pItems, vendedores, momento: new Date(), preciosNuevos, entrega,
         clienteNuevo: existente ? null
-          : { id: contactoId, rol: 'cliente', nombre, tipo, localidad: pedido.localidad, provincia: pedido.provincia },
+          : { id: contactoId, rol: 'cliente', nombre, tipo, localidad: loc, provincia: prov },
       });
       const total = pItems.reduce((s, it) => s + it.cantidad * it.precio, 0);
       setItems([itemVacio()]);
@@ -190,13 +181,16 @@ function FormPedido({ nuevo }: { nuevo: number }) {
           <Autocomplete ref={clienteRef} label="Cliente" maxLength={120} placeholder="Nombre del cliente" data={listas.clientes}
             value={cliente} onChange={setCliente} onOptionSubmit={elegirCliente} onBlur={() => { elegirCliente(cliente); }} />
           <Group grow gap="xs" align="flex-start">
-            <NativeSelect label="Tipo de cliente" data={listas.tipos} value={tipo} onChange={(e) => { setTipoSel(e.currentTarget.value); }} />
+            <NativeSelect label="Tipo de cliente" data={unicos([...listas.tipos, tipo])} value={tipo} disabled={existente !== undefined}
+              onChange={(e) => { setTipoSel(e.currentTarget.value); }} />
             <MultiSelect label="Vendedores" placeholder={vendedores.length > 0 ? undefined : 'Sin comisión'} data={listas.vendedores}
               value={vendedores} onChange={setVendedores} />
           </Group>
           <Group grow gap="xs" align="flex-start">
-            <Autocomplete label="Localidad" maxLength={80} data={listas.localidades} value={localidad} onChange={setLocalidad} />
-            <Autocomplete label="Provincia" maxLength={80} data={listas.provincias} value={provincia} onChange={setProvincia} />
+            <Autocomplete label="Localidad" maxLength={80} data={listas.localidades} value={existente ? loc : localidad}
+              onChange={setLocalidad} disabled={existente !== undefined} />
+            <Autocomplete label="Provincia" maxLength={80} data={listas.provincias} value={existente ? prov : provincia}
+              onChange={setProvincia} disabled={existente !== undefined} />
           </Group>
 
           <Items modo="pedido" deposito={deposito} fecha={dia} items={items} onChange={setItems} />
@@ -222,7 +216,7 @@ type Porcentajes = Record<string, number | string>;
 const claveCom = (linea: number, vendedor: string) => `${linea}|${vendedor}`;
 
 function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: () => void }) {
-  const { datos, info, stock, costos, nombreDeposito, db } = useBase();
+  const { datos, info, stock, costos, nombres, contacto, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const { pedido } = resumen;
   // Cobro opcional en la misma operación; solo si la base ya tiene lo necesario para la caja.
@@ -271,7 +265,7 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
     guardar(async () => {
       const venta: M.Venta = { id: M.siguienteId(datos.ventas.map((v) => v.id), 'V'), fecha: dia, pedidoId: pedido.id, depositoId: pedido.depositoId, nota: nota.trim() };
       const cobros: M.Cobro[] = conCobro && cobrado > 0 && socio ? [{
-        fecha: dia, ventaId: venta.id, importe: cobrado, medio: cobro.medio, socioId: socio.id, socio: socio.nombre, nota: '',
+        fecha: dia, ventaId: venta.id, importe: cobrado, medio: cobro.medio, socioId: socio.id, nota: '',
       }] : [];
       await db.registrarEntrega(M.armarEntrega(venta, aEntregar), cobros);
       setCobro((c) => ({ ...c, importe: '' }));
@@ -297,7 +291,8 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
       </Encabezado>
       <Stack gap="sm" role="form" aria-label="Registrar entrega">
         <Text size="sm">
-          {pedido.cliente} · {[pedido.localidad, pedido.provincia].filter(Boolean).join(', ')} · desde {nombreDeposito(pedido.depositoId)}
+          {[nombres.contacto(pedido.contactoId), lugar(contacto(pedido.contactoId)), `desde ${nombres.deposito(pedido.depositoId)}`]
+            .filter(Boolean).join(' · ')}
           {vendedores.length > 0 && <> · {vendedores.map((v) => v.nombre).join(', ')}</>}
         </Text>
         <TextInput label="Fecha de entrega" type="date" value={fecha} onChange={(e) => { setFecha(e.currentTarget.value); }} />
@@ -307,23 +302,23 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
             <Paper key={l.linea} p="xs" radius="md" withBorder>
               <Group justify="space-between" gap="xs" wrap="nowrap" align="flex-start">
                 <div>
-                  <Text fw={500} size="sm">{l.producto}</Text>
+                  <Text fw={500} size="sm">{nombres.producto(l.productoId)}</Text>
                   <Text size="xs" c="dimmed">
                     Pedido {fmtNum(l.cantidad)} · entregado {fmtNum(l.entregado)} · {fmtMoney(l.precio)} c/u
                     {l.precioLista !== null && l.precioLista !== l.precio && ` (lista ${fmtMoney(l.precioLista)})`}
                   </Text>
                   <Text size="xs" c={cantidad > enDep ? 'yellow.8' : 'dimmed'} fw={cantidad > enDep ? 500 : undefined}>
-                    Stock en {nombreDeposito(pedido.depositoId)}: {fmtNum(enDep)}{cantidad > enDep ? ' — queda negativo' : ''}
+                    Stock en {nombres.deposito(pedido.depositoId)}: {fmtNum(enDep)}{cantidad > enDep ? ' — queda negativo' : ''}
                   </Text>
                 </div>
-                <NumberInput w={110} aria-label={`Entregar ${l.producto}`} allowNegative={false} max={l.pendiente}
+                <NumberInput w={110} aria-label={`Entregar ${nombres.producto(l.productoId)}`} allowNegative={false} max={l.pendiente}
                   value={cantidades[l.linea] ?? l.pendiente} onChange={(v) => { setCantidades((c) => ({ ...c, [l.linea]: v })); }} />
               </Group>
               {comisiones.length > 0 && (
                 <Group gap="xs" mt={6}>
                   {comisiones.map((c) => (
                     <Group key={c.vendedor.id} gap={4} wrap="nowrap">
-                      <NumberInput size="xs" w={80} min={0} max={100} allowNegative={false} aria-label={`Comisión ${c.vendedor.nombre} ${l.producto}`}
+                      <NumberInput size="xs" w={80} min={0} max={100} allowNegative={false} aria-label={`Comisión ${c.vendedor.nombre} ${nombres.producto(l.productoId)}`}
                         value={editados[claveCom(l.linea, c.vendedor.id)] ?? c.porcentajeRegla}
                         onChange={(v) => { setEditados((e) => ({ ...e, [claveCom(l.linea, c.vendedor.id)]: v })); }}
                         rightSection={<Text size="xs" c="dimmed">%</Text>} rightSectionPointerEvents="none" />
@@ -359,14 +354,14 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
 }
 
 function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir: (id: string) => void }) {
-  const { pedidos, cargando, nombreDeposito, nombreVendedor } = useBase();
+  const { pedidos, cargando, nombres } = useBase();
   const [filtro, setFiltro] = useState('abiertos');
   const [buscar, setBuscar] = useState('');
   const q = buscar.trim().toLowerCase();
   const filas = pedidos
     .filter((r) => filtro === 'todos' || M.pedidoAbierto(r.estado))
-    .filter((r) => !q || r.pedido.cliente.toLowerCase().includes(q) || r.pedido.id.toLowerCase().includes(q)
-      || r.lineas.some((l) => l.producto.toLowerCase().includes(q)))
+    .filter((r) => !q || nombres.contacto(r.pedido.contactoId).toLowerCase().includes(q) || r.pedido.id.toLowerCase().includes(q)
+      || r.lineas.some((l) => nombres.producto(l.productoId).toLowerCase().includes(q)))
     .sort((a, b) => porFechaDesc(a.pedido, b.pedido));
 
   return (
@@ -396,8 +391,8 @@ function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir:
                 <Table.Td fw={500}>{r.pedido.id}</Table.Td>
                 <Table.Td c="dimmed" visibleFrom="sm">{fmtFecha(r.pedido.fecha)}</Table.Td>
                 <Table.Td style={{ whiteSpace: 'normal' }}>
-                  {r.pedido.cliente}
-                  {r.vendedores.length > 0 && <Text size="xs" c="dimmed">{r.vendedores.map(nombreVendedor).join(', ')}</Text>}
+                  {nombres.contacto(r.pedido.contactoId)}
+                  {r.vendedores.length > 0 && <Text size="xs" c="dimmed">{r.vendedores.map(nombres.vendedor).join(', ')}</Text>}
                   {/* En celular, los datos de las columnas ocultas van debajo del cliente. */}
                   <Box hiddenFrom="sm" mt={4}>
                     <ProductosPedido resumen={r} />
@@ -405,7 +400,7 @@ function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir:
                       <EstadoPedido estado={r.estado} />
                       <Text size="sm" fw={500}>{fmtMoney(r.importePedido)}</Text>
                     </Group>
-                    <Text size="xs" c="dimmed">{fmtFecha(r.pedido.fecha)} · desde {nombreDeposito(r.pedido.depositoId)}</Text>
+                    <Text size="xs" c="dimmed">{fmtFecha(r.pedido.fecha)} · desde {nombres.deposito(r.pedido.depositoId)}</Text>
                   </Box>
                 </Table.Td>
                 <Table.Td style={{ whiteSpace: 'normal' }} miw={200} visibleFrom="sm"><ProductosPedido resumen={r} /></Table.Td>
@@ -415,7 +410,7 @@ function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir:
                 <Table.Td className="num" c={r.ganancia < 0 ? 'red' : undefined} visibleFrom="sm">
                   {r.ventas.length > 0 ? `${fmtMoney(r.ganancia)}${r.sinCosto ? '*' : ''}` : '–'}
                 </Table.Td>
-                <Table.Td c="dimmed" visibleFrom="sm">{nombreDeposito(r.pedido.depositoId)}</Table.Td>
+                <Table.Td c="dimmed" visibleFrom="sm">{nombres.deposito(r.pedido.depositoId)}</Table.Td>
                 <Table.Td>
                   {M.pedidoAbierto(r.estado) && (
                     <Button size="compact-sm" variant="light" onClick={() => { onElegir(r.pedido.id); }}>Entregar</Button>
@@ -433,9 +428,10 @@ function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir:
 }
 
 function ProductosPedido({ resumen }: { resumen: M.ResumenPedido }) {
+  const { nombres } = useBase();
   return resumen.lineas.map((l) => (
     <Text key={l.linea} size="xs">
-      {fmtNum(l.cantidad)} {l.producto}
+      {fmtNum(l.cantidad)} {nombres.producto(l.productoId)}
       {l.pendiente > 0 && l.entregado > 0 && <Text span inherit c="dimmed"> (faltan {fmtNum(l.pendiente)})</Text>}
     </Text>
   ));

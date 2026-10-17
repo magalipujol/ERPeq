@@ -29,7 +29,8 @@ VENDEDORES = {'GUADA/HERNAN': 'Guada/Hernán', 'LEO': 'Leo'}
 # Sampatti es la empresa de Leo y la dueña de la mercadería.
 SOCIOS = [('SOC01', 'Sampatti', 'LEO', 'dueño'), ('SOC02', 'Guada/Hernán', 'GUADA/HERNAN', 'socio')]
 
-# Encabezados de cada hoja, en el orden de columnas de src/db/sheets/hojas.ts (HOJAS y filas).
+# Encabezados de cada hoja, en el orden de columnas de src/db/sheets/hojas.ts (HOJAS y filas). Las filas guardan
+# IDs y no nombres: el nombre de un producto, contacto, vendedor o socio está solo en su hoja.
 COLS = {
     'Depósitos': ['id', 'nombre', 'localidad'],
     'Productos': ['id', 'producto', 'unidad', 'minimo'],
@@ -37,25 +38,24 @@ COLS = {
                   'observaciones'],
     'Tipos de cliente': ['tipo'],
     'Vendedores': ['id', 'nombre', 'activo'],
-    'Precios': ['producto_id', 'producto', 'precio', 'desde'],
+    'Precios': ['producto_id', 'precio', 'desde'],
     'Reglas de comisión': ['vendedor_id', 'producto_id', 'porcentaje', 'desde'],
-    'Compras': ['fecha', 'deposito_id', 'proveedor', 'contacto_id', 'producto_id', 'producto', 'cantidad', 'precio',
-                'importe', 'remito', 'pedido_id', 'nota'],
-    'Pedidos': ['id', 'fecha', 'contacto_id', 'cliente', 'tipo_cliente', 'localidad', 'provincia', 'deposito_id', 'nota'],
-    'Pedidos ítems': ['pedido_id', 'linea', 'producto_id', 'producto', 'cantidad', 'precio_lista', 'precio'],
+    'Compras': ['fecha', 'deposito_id', 'contacto_id', 'producto_id', 'cantidad', 'precio', 'importe', 'remito',
+                'pedido_id', 'nota'],
+    'Pedidos': ['id', 'fecha', 'contacto_id', 'deposito_id', 'nota'],
+    'Pedidos ítems': ['pedido_id', 'linea', 'producto_id', 'cantidad', 'precio_lista', 'precio'],
     'Pedidos estados': ['pedido_id', 'fecha', 'estado'],
     'Pedidos vendedores': ['pedido_id', 'vendedor_id'],
     'Ventas': ['id', 'fecha', 'pedido_id', 'deposito_id', 'nota'],
-    'Ventas ítems': ['venta_id', 'linea', 'pedido_linea', 'producto_id', 'producto', 'cantidad', 'precio', 'importe',
-                     'costo'],
-    'Ventas comisiones': ['venta_id', 'linea', 'vendedor_id', 'vendedor', 'porcentaje_regla', 'porcentaje', 'monto'],
-    'Fletes': ['id', 'fecha', 'transporte', 'contacto_id', 'origen_id', 'destino_id', 'costo', 'guia', 'nota'],
-    'Fletes ítems': ['flete_id', 'producto_id', 'producto', 'cantidad'],
+    'Ventas ítems': ['venta_id', 'linea', 'pedido_linea', 'producto_id', 'cantidad', 'precio', 'importe', 'costo'],
+    'Ventas comisiones': ['venta_id', 'linea', 'vendedor_id', 'porcentaje_regla', 'porcentaje', 'monto'],
+    'Fletes': ['id', 'fecha', 'contacto_id', 'origen_id', 'destino_id', 'costo', 'guia', 'nota'],
+    'Fletes ítems': ['flete_id', 'producto_id', 'cantidad'],
     'Fletes estados': ['flete_id', 'fecha', 'estado'],
     'Pedidos fletes': ['pedido_id', 'flete_id', 'costo_asignado'],
-    'Ajustes': ['fecha', 'deposito_id', 'producto_id', 'producto', 'cantidad', 'motivo'],
+    'Ajustes': ['fecha', 'deposito_id', 'producto_id', 'cantidad', 'motivo'],
     'Socios': ['id', 'nombre', 'vendedor_id', 'rol'],
-    'Cobros': ['fecha', 'venta_id', 'importe', 'medio', 'socio_id', 'socio', 'nota'],
+    'Cobros': ['fecha', 'venta_id', 'importe', 'medio', 'socio_id', 'nota'],
     'Rendiciones': ['fecha', 'de_socio_id', 'a_socio_id', 'importe', 'medio', 'nota'],
 }
 COLS_FECHA = {'fecha', 'desde'}
@@ -264,25 +264,23 @@ def main(origen, destino):
         cid = contacto('cliente', primera['cliente'], tipo=primera['tipo'], localidad=primera['localidad'],
                        provincia=primera['provincia']) if primera['cliente'] else ''
         nota = ' · '.join(dict.fromkeys(l['nota'] for l in ls if l['nota']))
-        pedidos.append([pid, cuando, cid, primera['cliente'], primera['tipo'], primera['localidad'],
-                        primera['provincia'], deposito, nota])
+        pedidos.append([pid, cuando, cid, deposito, nota])
         pedidos_estados.append([pid, cuando, 'abierto'])
         ventas.append([vid, cuando, pid, deposito, ''])
         if vendedor:
             pedidos_vendedores.append([pid, vendedor_id[vendedor]])
         for i, l in enumerate(ls, start=1):
-            pedidos_items.append([pid, i, l['id'], l['producto'], l['cantidad'], None, l['precio']])
-            ventas_items.append([vid, i, i, l['id'], l['producto'], l['cantidad'], l['precio'], l['importe'],
-                                 costo_promedio(l['id'], cuando)])
+            pedidos_items.append([pid, i, l['id'], l['cantidad'], None, l['precio']])
+            ventas_items.append([vid, i, i, l['id'], l['cantidad'], l['precio'], l['importe'], costo_promedio(l['id'], cuando)])
             if vendedor and l['comision']:
-                ventas_comisiones.append([vid, i, vendedor_id[vendedor], VENDEDORES[vendedor],
-                                          porcentaje_regla(vendedor_id[vendedor], l['id']), tasa(l), l['comision']])
+                ventas_comisiones.append([vid, i, vendedor_id[vendedor], porcentaje_regla(vendedor_id[vendedor], l['id']),
+                                          tasa(l), l['comision']])
 
     # ---------- Precios: el de la última venta de cada producto ----------
     ultimo = {}
     for l in sorted((l for l in lineas if l['fecha'] and l['precio']), key=lambda l: l['fecha']):
         ultimo[l['id']] = l
-    precios = [[pid, l['producto'], round(l['precio'], 2), l['fecha']] for pid, l in sorted(ultimo.items())]
+    precios = [[pid, round(l['precio'], 2), l['fecha']] for pid, l in sorted(ultimo.items())]
 
     # ---------- Tipos de cliente ----------
     tipos = []
@@ -305,7 +303,7 @@ def main(origen, destino):
         fid = f'F{len(fletes) + 1:04d}'
         cuando = fecha(f[0], f[1], f[2])
         cid = contacto('transporte', nombre) if nombre else ''
-        fletes.append([fid, cuando, nombre, cid, '', '', costo, '', ''])
+        fletes.append([fid, cuando, cid, '', '', costo, '', ''])
         fletes_estados.append([fid, cuando, 'finalizado'])
         if any(num(x) is not None for x in (f[4], f[6], f[7])):
             avisos.append(f'Flete fila {r}: tiene Abonado/Comisión/Total, que el modelo no guarda')
@@ -313,7 +311,8 @@ def main(origen, destino):
     nuevos = sorted(set(producto_id.ids) - conocidos)
     for n in nuevos:
         avisos.append(f'Producto que solo aparece en ventas/compras (¿variante de otro?): {n}')
-    for n in sorted({row[4] for row in ventas_items if row[8] is None}):
+    nombre_de = {pid: n for n, pid in producto_id.ids.items()}
+    for n in sorted({nombre_de[row[3]] for row in ventas_items if row[7] is None}):
         avisos.append(f'Sin compras con precio, la ganancia de sus ventas no descuenta costo: {n}')
 
     # ---------- Escribir ----------
@@ -328,8 +327,8 @@ def main(origen, destino):
         'Vendedores': [[vendedor_id[v], nombre, 'sí'] for v, nombre in VENDEDORES.items()],
         'Precios': precios,
         'Reglas de comisión': reglas,
-        'Compras': [[c['fecha'], c['deposito'], c['proveedor'], c['contacto'], c['id'], c['producto'], c['cantidad'],
-                     c['precio'], c['importe'], c['remito'], '', ''] for c in compras],
+        'Compras': [[c['fecha'], c['deposito'], c['contacto'], c['id'], c['cantidad'], c['precio'], c['importe'],
+                     c['remito'], '', ''] for c in compras],
         'Pedidos': pedidos,
         'Pedidos ítems': pedidos_items,
         'Pedidos estados': pedidos_estados,
@@ -373,7 +372,6 @@ def main(origen, destino):
         stock[(c['id'], c['deposito'])] += c['cantidad']
     for l in lineas:
         stock[(l['id'], l['deposito'])] -= l['cantidad']
-    nombre_de = {pid: n for n, pid in producto_id.ids.items()}
     negativos = sorted(((nombre_de[pid], d, round(s, 2)) for (pid, d), s in stock.items() if s < -0.001),
                        key=lambda x: x[2])
 

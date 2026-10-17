@@ -6,18 +6,23 @@ const fecha = (a: number, m: number, d: number) => new Date(a, m - 1, d, 12);
 const HOY = fecha(2026, 10, 16);
 
 const linea = (l: Partial<M.LineaPedido>): M.LineaPedido => ({
-  pedidoId: 'PE0001', linea: 1, productoId: 'P001', producto: 'Almendras', cantidad: 1, precioLista: null, precio: 100,
+  pedidoId: 'PE0001', linea: 1, productoId: 'P001', cantidad: 1, precioLista: null, precio: 100,
   entregado: 0, pendiente: 1, ...l,
 });
 const resumen = (id: string, estado: M.EstadoPedido, f: Date | null, lineas: M.LineaPedido[] = [], extra: Partial<M.Pedido> = {}): M.ResumenPedido => ({
-  pedido: { id, fecha: f, contactoId: '', cliente: 'Ana', tipo: '', localidad: '', provincia: '', depositoId: 'ROS', nota: '', ...extra },
+  pedido: { id, fecha: f, contactoId: 'C0001', depositoId: 'ROS', nota: '', ...extra },
   estado, lineas, vendedores: [], importePedido: 0, importeEntregado: 0, comisiones: 0, costoMercaderia: 0,
   sinCosto: false, fletes: 0, ganancia: 0, ventas: [],
 });
+const de = (m: Partial<Record<string, string>>, otro?: string) => (id: string) => m[id] ?? otro ?? id;
 const nombres = {
-  deposito: (id: string) => ({ ROS: 'Rosario', BB: 'General' })[id] ?? id,
-  vendedor: (id: string) => ({ VEN01: 'Leo', VEN02: 'Guada/Hernán' })[id] ?? id,
-  unidad: (id: string) => ({ P001: 'kg', P002: 'kg', P003: 'unid.' })[id] ?? '',
+  deposito: de({ ROS: 'Rosario', BB: 'General' }),
+  vendedor: de({ VEN01: 'Leo', VEN02: 'Guada/Hernán' }),
+  producto: de({ P001: 'Almendras', P002: 'Avena', P003: 'Miel', X: 'Caja' }),
+  contacto: de({ C0001: 'Ana', C0002: 'Bruno' }),
+  socio: de({}),
+  unidad: de({ P001: 'kg', P002: 'kg', P003: 'unid.' }, ''),
+  lugar: de({ C0002: 'Funes, Santa Fe' }, ''),
 };
 const ids = (rs: M.ResumenPedido[]) => rs.map((r) => r.pedido.id);
 
@@ -50,9 +55,9 @@ describe('texto del mensaje', () => {
     const pedidos = [
       {
         ...resumen('PE0003', 'parcial', fecha(2026, 10, 12), [
-          linea({ linea: 1, productoId: 'P002', producto: 'Avena', cantidad: 10, entregado: 4, pendiente: 6 }),
-          linea({ linea: 2, productoId: 'P003', producto: 'Miel', cantidad: 2, entregado: 2, pendiente: 0 }),
-        ], { cliente: 'Bruno', localidad: 'Funes', provincia: 'Santa Fe', nota: 'Llamar antes' }),
+          linea({ linea: 1, productoId: 'P002', cantidad: 10, entregado: 4, pendiente: 6 }),
+          linea({ linea: 2, productoId: 'P003', cantidad: 2, entregado: 2, pendiente: 0 }),
+        ], { contactoId: 'C0002', nota: 'Llamar antes' }),
         vendedores: ['VEN01', 'VEN02'],
       },
       resumen('PE0002', 'pendiente', fecha(2026, 10, 10), [linea({ cantidad: 1.5, pendiente: 1.5 })], { depositoId: 'BB' }),
@@ -78,7 +83,7 @@ describe('texto del mensaje', () => {
   });
 
   it('producto sin unidad', () => {
-    const r = resumen('PE1', 'pendiente', HOY, [linea({ productoId: 'X', producto: 'Caja', cantidad: 3 })]);
+    const r = resumen('PE1', 'pendiente', HOY, [linea({ productoId: 'X', cantidad: 3 })]);
 
     expect(mensajePedidos([r], 'hoy', HOY, nombres)).toContain('\n• 3 Caja');
   });

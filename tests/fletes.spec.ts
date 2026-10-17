@@ -42,8 +42,8 @@ test('registra una transferencia en camino con parte del costo asignada a un ped
   await form.getByRole('button', { name: 'Registrar flete' }).click()
   await expect(form.getByText('✓ Flete F0002 registrado (en camino).')).toBeVisible()
   expect(google.escrituras).toEqual([{
-    'Fletes': [['F0002', HOY_SERIE, 'Interprovincial', 'C0004', 'BB', 'ROS', 10000, '', '']],
-    'Fletes ítems': [['F0002', 'P001', 'Almendras', 5]],
+    'Fletes': [['F0002', HOY_SERIE, 'C0004', 'BB', 'ROS', 10000, '', '']],
+    'Fletes ítems': [['F0002', 'P001', 5]],
     'Fletes estados': [['F0002', AHORA, 'preparacion'], ['F0002', AHORA, 'camino']],
     'Pedidos fletes': [['PE0002', 'F0002', 4000]],
   }])

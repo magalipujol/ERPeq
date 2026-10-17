@@ -29,6 +29,10 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
 | Fletes, Fletes ítems, Fletes estados, Pedidos fletes | Viajes con su costo; los que van entre depósitos mueven stock según su estado. |
 | Socios, Cobros, Rendiciones | Quién cobró cada venta (efectivo o transferencia) y lo que los socios se rinden entre sí. Si faltan, la app las lee vacías y la pantalla Caja avisa. |
 
+Cada fila guarda los IDs de lo que referencia (producto, contacto, vendedor, socio), nunca sus nombres: el nombre
+se corrige en *Productos*, *Contactos*, *Vendedores* o *Socios* y cambia en toda la app. La app revisa los
+encabezados de cada hoja y no abre una planilla con las columnas distintas a las que espera.
+
 **Stock** = compras − entregas + ajustes ± fletes entre depósitos (en camino: sale del origen; finalizado: entra en el destino).
 **Costo promedio** = promedio ponderado de todas las compras con precio del producto.
 **Ganancia de un pedido** = lo entregado − comisiones − cantidad × costo promedio − fletes asignados.
@@ -55,6 +59,8 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
 - `.github/workflows/deploy.yml`: corre el CI y, si pasa, compila y publica en GitHub Pages en cada push a `main`
   (en *Settings → Pages*, la fuente tiene que ser **GitHub Actions**).
 - `herramientas/excel_a_base.py`: convierte el Excel histórico en la planilla inicial.
+- `herramientas/normalizar_planilla.gs`: Apps Script que saca de una planilla vieja las columnas con nombres
+  copiados (ver "Migrar una planilla con nombres copiados").
 - `GUIA-CONFIGURACION.md`: paso a paso para configurar Google y la planilla.
 
 ## Generar la base desde el Excel
@@ -67,6 +73,18 @@ uv run --with openpyxl herramientas/excel_a_base.py "ROSARIO ACTUALIZADO.xlsm" "
 comisión deducidas, los productos con stock negativo y los datos a revisar. Para cargarla en la planilla ver
 `GUIA-CONFIGURACION.md`.
 **El `.xlsx` generado tiene datos personales: no lo subas al repo** (`.gitignore` ya lo excluye).
+
+## Migrar una planilla con nombres copiados
+
+Las planillas de antes guardaban en *Pedidos*, *Compras*, *Fletes*, los ítems, las comisiones y los cobros una
+copia del nombre del cliente, producto, vendedor o socio. La app ya no las abre. Para migrarla, en la planilla:
+
+1. *Extensiones → Apps Script*, pegar `herramientas/normalizar_planilla.gs` y guardar.
+2. Ejecutar `revisar`. No cambia nada: el registro de ejecución lista los problemas (filas con un nombre pero
+   sin ID) y las columnas que se van a borrar. Corregir los problemas completando el ID.
+3. Hacer una copia de respaldo (*Archivo → Hacer una copia*) y ejecutar `migrar`.
+
+El detalle está en "Planillas con nombres copiados" de `spec/modelo-de-datos.md`.
 
 ## Probar en la compu
 

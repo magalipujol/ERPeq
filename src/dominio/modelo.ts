@@ -12,46 +12,44 @@ export interface Contacto {
 // Contacto que se da de alta junto con una operación: lo que no se conoce queda vacío.
 export type ContactoNuevo = Pick<Contacto, 'id' | 'rol' | 'nombre'> & Partial<Contacto>;
 export interface Vendedor { id: string; nombre: string; activo: boolean }
-export interface Precio { productoId: string; producto: string; precio: number; desde: Date | null }
+export interface Precio { productoId: string; precio: number; desde: Date | null }
 export interface ReglaComision { vendedorId: string; productoId: string; porcentaje: number; desde: Date | null }
 export interface Compra {
   fila: number; // identifica la compra, que no tiene ID (en la planilla es el número de fila)
-  fecha: Date | null; depositoId: string; proveedor: string; contactoId: string; productoId: string; producto: string;
+  fecha: Date | null; depositoId: string; contactoId: string; productoId: string;
   cantidad: number; precio: number | null; importe: number | null; remito: string; pedidoId: string; nota: string;
 }
-export interface Pedido {
-  id: string; fecha: Date | null; contactoId: string; cliente: string; tipo: string; localidad: string; provincia: string;
-  depositoId: string; nota: string;
-}
+// El cliente, su tipo y su localidad salen del contacto.
+export interface Pedido { id: string; fecha: Date | null; contactoId: string; depositoId: string; nota: string }
 export interface PedidoItem {
-  pedidoId: string; linea: number; productoId: string; producto: string; cantidad: number;
+  pedidoId: string; linea: number; productoId: string; cantidad: number;
   precioLista: number | null; precio: number;
 }
 export interface RegistroEstado { ref: string; fecha: Date | null; estado: string }
 export interface PedidoVendedor { pedidoId: string; vendedorId: string }
 export interface Venta { id: string; fecha: Date | null; pedidoId: string; depositoId: string; nota: string }
 export interface VentaItem {
-  ventaId: string; linea: number; pedidoLinea: number; productoId: string; producto: string; cantidad: number;
+  ventaId: string; linea: number; pedidoLinea: number; productoId: string; cantidad: number;
   precio: number; importe: number; costo: number | null;
 }
 export interface VentaComision {
-  ventaId: string; linea: number; vendedorId: string; vendedor: string; porcentajeRegla: number | null;
+  ventaId: string; linea: number; vendedorId: string; porcentajeRegla: number | null;
   porcentaje: number; monto: number;
 }
 export interface Flete {
-  id: string; fecha: Date | null; transporte: string; contactoId: string; origenId: string; destinoId: string;
+  id: string; fecha: Date | null; contactoId: string; origenId: string; destinoId: string;
   costo: number | null; guia: string; nota: string;
 }
-export interface FleteItem { fleteId: string; productoId: string; producto: string; cantidad: number }
+export interface FleteItem { fleteId: string; productoId: string; cantidad: number }
 export interface PedidoFlete { pedidoId: string; fleteId: string; costoAsignado: number | null }
 export type Medio = 'efectivo' | 'transferencia';
 export const MEDIOS: readonly Medio[] = ['efectivo', 'transferencia'];
 export const NOMBRE_MEDIO: Record<Medio, string> = { efectivo: 'Efectivo', transferencia: 'Transferencia' };
 // `vendedores`: vendedores cuyas comisiones se le acreditan. `duenio`: el dueño de la mercadería.
 export interface Socio { id: string; nombre: string; vendedores: string[]; duenio: boolean }
-export interface Cobro { fecha: Date | null; ventaId: string; importe: number; medio: string; socioId: string; socio: string; nota: string }
+export interface Cobro { fecha: Date | null; ventaId: string; importe: number; medio: string; socioId: string; nota: string }
 export interface Rendicion { fecha: Date | null; deId: string; aId: string; importe: number; medio: string; nota: string }
-export interface Ajuste { fecha: Date | null; depositoId: string; productoId: string; producto: string; cantidad: number; motivo: string }
+export interface Ajuste { fecha: Date | null; depositoId: string; productoId: string; cantidad: number; motivo: string }
 
 export interface Datos {
   depositos: Deposito[]; productos: Producto[]; contactos: Contacto[]; tipos: string[]; vendedores: Vendedor[];
@@ -59,6 +57,29 @@ export interface Datos {
   pedidosEstados: RegistroEstado[]; pedidosVendedores: PedidoVendedor[]; ventas: Venta[]; ventasItems: VentaItem[];
   ventasComisiones: VentaComision[]; fletes: Flete[]; fletesItems: FleteItem[]; fletesEstados: RegistroEstado[];
   pedidosFletes: PedidoFlete[]; ajustes: Ajuste[]; socios: Socio[]; cobros: Cobro[]; rendiciones: Rendicion[];
+}
+
+// Nombres de lo que las filas referencian por ID. Un ID que no existe se muestra tal cual.
+export interface Nombres {
+  producto: (id: string) => string;
+  contacto: (id: string) => string;
+  vendedor: (id: string) => string;
+  socio: (id: string) => string;
+  deposito: (id: string) => string;
+}
+
+export function nombres(datos: Pick<Datos, 'productos' | 'contactos' | 'vendedores' | 'socios' | 'depositos'>): Nombres {
+  const de = <T extends { id: string }>(lista: T[], nombre: (x: T) => string) => {
+    const m = new Map(lista.map((x) => [x.id, nombre(x)]));
+    return (id: string) => m.get(id) ?? id;
+  };
+  return {
+    producto: de(datos.productos, (p) => p.producto),
+    contacto: de(datos.contactos, (c) => c.nombre),
+    vendedor: de(datos.vendedores, (v) => v.nombre),
+    socio: de(datos.socios, (s) => s.nombre),
+    deposito: de(datos.depositos, (d) => d.nombre),
+  };
 }
 
 export function redondear(n: number, d?: number): number;
@@ -357,13 +378,11 @@ export function armarEntrega(venta: Venta, lineas: LineaEntrega[]): Entrega {
     const importe = redondear(l.cantidad * l.linea.precio);
     const linea = i + 1;
     items.push({
-      ventaId: venta.id, linea, pedidoLinea: l.linea.linea, productoId: l.linea.productoId, producto: l.linea.producto,
-      cantidad: l.cantidad, precio: l.linea.precio, importe, costo: l.costo,
+      ventaId: venta.id, linea, pedidoLinea: l.linea.linea, productoId: l.linea.productoId, cantidad: l.cantidad, precio: l.linea.precio, importe, costo: l.costo,
     });
     for (const c of l.comisiones) {
       comisiones.push({
-        ventaId: venta.id, linea, vendedorId: c.vendedor.id, vendedor: c.vendedor.nombre,
-        porcentajeRegla: c.porcentajeRegla, porcentaje: c.porcentaje, monto: montoComision(importe, c.porcentaje),
+        ventaId: venta.id, linea, vendedorId: c.vendedor.id, porcentajeRegla: c.porcentajeRegla, porcentaje: c.porcentaje, monto: montoComision(importe, c.porcentaje),
       });
     }
   });
@@ -439,9 +458,9 @@ export interface CuentaSocio {
 export function cuentasSocios(datos: Datos): CuentaSocio[] {
   const deVendedor = socioDeVendedor(datos.socios);
   const ventas = new Map(datos.ventas.map((v) => [v.id, v]));
-  const clientes = new Map(datos.pedidos.map((p) => [p.id, p.cliente]));
+  const n = nombres(datos);
+  const clientes = new Map(datos.pedidos.map((p) => [p.id, n.contacto(p.contactoId)]));
   const cliente = (ventaId: string) => clientes.get(ventas.get(ventaId)?.pedidoId ?? '') ?? '';
-  const nombres = new Map(datos.socios.map((s) => [s.id, s.nombre]));
 
   const cuentas = new Map(datos.socios.filter((s) => !s.duenio).map((socio) => [socio.id, {
     socio, cobradoEfectivo: 0, cobradoTransferencia: 0, comisiones: 0, entregado: 0, recibido: 0, saldo: 0,
@@ -480,12 +499,12 @@ export function cuentasSocios(datos: Datos): CuentaSocio[] {
     const de = cuentas.get(r.deId);
     if (de) {
       de.entregado += r.importe;
-      de.movimientos.push({ fecha: r.fecha, tipo: 'entrego', ref: nombres.get(r.aId) ?? r.aId, detalle: r.nota, medio: r.medio, importe: -r.importe, saldo: 0 });
+      de.movimientos.push({ fecha: r.fecha, tipo: 'entrego', ref: n.socio(r.aId), detalle: r.nota, medio: r.medio, importe: -r.importe, saldo: 0 });
     }
     const a = cuentas.get(r.aId);
     if (a) {
       a.recibido += r.importe;
-      a.movimientos.push({ fecha: r.fecha, tipo: 'recibio', ref: nombres.get(r.deId) ?? r.deId, detalle: r.nota, medio: r.medio, importe: r.importe, saldo: 0 });
+      a.movimientos.push({ fecha: r.fecha, tipo: 'recibio', ref: n.socio(r.deId), detalle: r.nota, medio: r.medio, importe: r.importe, saldo: 0 });
     }
   }
 

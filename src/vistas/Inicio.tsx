@@ -12,7 +12,7 @@ const porFechaAsc = (a: { fecha: Date | null }, b: { fecha: Date | null }) =>
   (a.fecha?.getTime() ?? 0) - (b.fecha?.getTime() ?? 0);
 
 export function Inicio({ onNuevoPedido, onIr }: { onNuevoPedido: () => void; onIr: (vista: 'pedidos' | 'fletes') => void }) {
-  const { pedidos, stock, datos, estadosFletes, cargando, nombreDeposito } = useBase();
+  const { pedidos, stock, datos, estadosFletes, cargando, nombres } = useBase();
 
   const abiertos = pedidos
     .filter((r) => M.pedidoAbierto(r.estado))
@@ -61,13 +61,13 @@ export function Inicio({ onNuevoPedido, onIr }: { onNuevoPedido: () => void; onI
                   style={faltan.length > 0 ? { borderColor: 'var(--mantine-color-red-5)' } : undefined}>
                   <Group justify="space-between" gap="xs" wrap="nowrap" align="flex-start">
                     <div>
-                      <Text size="sm" fw={500}>{r.pedido.id} · {r.pedido.cliente}</Text>
-                      <Text size="xs" c="dimmed">{fmtFecha(r.pedido.fecha)} · desde {nombreDeposito(r.pedido.depositoId)} · {fmtMoney(r.importePedido)}</Text>
+                      <Text size="sm" fw={500}>{r.pedido.id} · {nombres.contacto(r.pedido.contactoId)}</Text>
+                      <Text size="xs" c="dimmed">{fmtFecha(r.pedido.fecha)} · desde {nombres.deposito(r.pedido.depositoId)} · {fmtMoney(r.importePedido)}</Text>
                       {r.lineas.filter((l) => l.pendiente > 0).map((l) => (
-                        <Text key={l.linea} size="xs">{fmtNum(l.pendiente)} {l.producto}</Text>
+                        <Text key={l.linea} size="xs">{fmtNum(l.pendiente)} {nombres.producto(l.productoId)}</Text>
                       ))}
                       {faltan.length > 0 && (
-                        <Text size="xs" c="red" fw={500}>Falta stock de {faltan.map((l) => l.producto).join(', ')}</Text>
+                        <Text size="xs" c="red" fw={500}>Falta stock de {faltan.map((l) => nombres.producto(l.productoId)).join(', ')}</Text>
                       )}
                     </div>
                     <Stack gap={4} align="flex-end">
@@ -92,11 +92,11 @@ export function Inicio({ onNuevoPedido, onIr }: { onNuevoPedido: () => void; onI
                 <Paper key={f.id} p="xs" radius="md" withBorder role="article" aria-label={`Flete ${f.id}`}>
                   <Group justify="space-between" gap="xs" wrap="nowrap" align="flex-start">
                     <div>
-                      <Text size="sm" fw={500}>{f.id} · {f.transporte}</Text>
+                      <Text size="sm" fw={500}>{f.id} · {nombres.contacto(f.contactoId)}</Text>
                       <Text size="xs" c="dimmed">
                         {fmtFecha(f.fecha)} · <Recorrido flete={f} />
                       </Text>
-                      {(itemsFlete.get(f.id) ?? []).map((it) => <Text key={it.productoId} size="xs">{fmtNum(it.cantidad)} {it.producto}</Text>)}
+                      {(itemsFlete.get(f.id) ?? []).map((it) => <Text key={it.productoId} size="xs">{fmtNum(it.cantidad)} {nombres.producto(it.productoId)}</Text>)}
                     </div>
                     <EstadoFlete estado={estado} />
                   </Group>
