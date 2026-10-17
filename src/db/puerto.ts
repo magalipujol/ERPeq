@@ -2,8 +2,8 @@
 // conoce esta interfaz; cómo se guarda (hojas, columnas, celdas, API) es asunto de cada adaptador.
 // Ver spec/arquitectura.md.
 import type {
-  Ajuste, Compra, ContactoNuevo, Datos, Entrega, EstadoFlete, Flete, FleteItem, Pedido, PedidoFlete, PedidoItem, Precio,
-  Producto, ReglaComision,
+  Ajuste, Cobro, Compra, ContactoNuevo, Datos, Entrega, EstadoFlete, Flete, FleteItem, Pedido, PedidoFlete, PedidoItem, Precio,
+  Producto, ReglaComision, Rendicion,
 } from '../dominio/modelo';
 
 export class SesionVencida extends Error {
@@ -13,7 +13,16 @@ export class SinAcceso extends Error {
   constructor() { super('Esta cuenta no tiene acceso a la planilla de ERPeq.'); }
 }
 
-export interface InfoBase { titulo: string; url: string }
+// Algo que la base todavía no tiene y hay que crear a mano (en Sheets, una hoja con sus encabezados).
+export interface Faltante { nombre: string; encabezados: string[] }
+
+export interface InfoBase {
+  titulo: string;
+  url: string;
+  // Lo que falta para la caja (socios, cobros y rendiciones). Mientras falte algo, esos datos se leen
+  // vacíos y no se registran cobros ni rendiciones; el resto de la app funciona igual.
+  faltantes: Faltante[];
+}
 
 export interface PedidoNuevo {
   pedido: Pedido;
@@ -25,6 +34,8 @@ export interface PedidoNuevo {
   preciosNuevos: Precio[];
   // Venta directa: el pedido se entrega en la misma operación.
   entrega: Entrega | null;
+  // Cobros de la venta directa, en la misma operación.
+  cobros?: Cobro[];
 }
 
 export interface FleteNuevo {
@@ -57,7 +68,8 @@ export interface Sesion {
 // Operaciones de escritura. Cada una es atómica: se guarda todo o nada.
 export interface Operaciones {
   registrarPedido: (p: PedidoNuevo) => Promise<void>;
-  registrarEntrega: (e: Entrega) => Promise<void>;
+  // Los cobros opcionales se guardan junto con la venta.
+  registrarEntrega: (e: Entrega, cobros?: Cobro[]) => Promise<void>;
   cambiarEstadoPedido: (pedidoId: string, estado: 'cancelado' | 'cerrado', momento: Date) => Promise<void>;
   registrarFlete: (f: FleteNuevo) => Promise<void>;
   cambiarEstadoFlete: (fleteId: string, estado: EstadoFlete, momento: Date) => Promise<void>;
@@ -65,6 +77,8 @@ export interface Operaciones {
   registrarAjuste: (a: Ajuste) => Promise<void>;
   registrarPrecio: (p: Precio) => Promise<void>;
   registrarReglaComision: (r: ReglaComision) => Promise<void>;
+  registrarCobro: (c: Cobro) => Promise<void>;
+  registrarRendicion: (r: Rendicion) => Promise<void>;
 }
 
 export interface BaseDeDatos extends Sesion, Operaciones {

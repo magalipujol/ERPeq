@@ -27,10 +27,12 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
 | Ventas, Ventas ítems, Ventas comisiones | Cada entrega de un pedido: descuenta stock y genera la comisión. |
 | Compras, Ajustes | Entradas y correcciones de stock. |
 | Fletes, Fletes ítems, Fletes estados, Pedidos fletes | Viajes con su costo; los que van entre depósitos mueven stock según su estado. |
+| Socios, Cobros, Rendiciones | Quién cobró cada venta (efectivo o transferencia) y lo que los socios se rinden entre sí. Si faltan, la app las lee vacías y la pantalla Caja avisa. |
 
 **Stock** = compras − entregas + ajustes ± fletes entre depósitos (en camino: sale del origen; finalizado: entra en el destino).
 **Costo promedio** = promedio ponderado de todas las compras con precio del producto.
 **Ganancia de un pedido** = lo entregado − comisiones − cantidad × costo promedio − fletes asignados.
+**Saldo de un socio con el dueño** = lo que cobró − las comisiones de sus vendedores − lo que le rindió + lo que recibió del dueño.
 
 ## Archivos
 
@@ -43,7 +45,7 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
     planilla en memoria para las pruebas.
   - `main.tsx`: arranca la app con la base de Google Sheets; `App.tsx`: pantallas de acceso y navegación;
     `vistas/`: Inicio (pantalla por defecto: acceso directo a un pedido nuevo, pedidos pendientes y fletes en
-    curso), Stock, Pedidos, Ventas, Compras, Fletes, Precios y Análisis.
+    curso), Stock, Pedidos, Ventas, Compras, Fletes, Precios, Caja y Análisis.
   - `componentes/`: piezas compartidas (carga de ítems, navegación entre pantallas, KPIs).
   - `celular.css`: ajustes para pantallas de menos de 768 px (barra inferior, campos de 44 px).
   - `whatsapp.ts`: arma el mensaje con los pedidos para mandar a un grupo de WhatsApp (botón *Exportar a WhatsApp* en Pedidos).

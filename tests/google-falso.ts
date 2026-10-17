@@ -67,6 +67,10 @@ export function planillaInicial(): Record<string, Fila[]> {
     'Ajustes': [
       [serie('2026-10-06'), 'ROS', 'P002', 'Avena', -5, 'rotura'],
     ],
+    // Sampatti es la empresa de Leo y la dueña de la mercadería.
+    'Socios': [['SOC01', 'Sampatti', 'VEN01', 'dueño'], ['SOC02', 'Guada/Hernán', 'VEN02', 'socio']],
+    'Cobros': [],
+    'Rendiciones': [],
   }
 }
 
@@ -172,7 +176,7 @@ export const test = base.extend<{ google: GoogleFalso; ingresar: () => Promise<v
 
 export { expect } from '@playwright/test'
 
-export type Pantalla = 'Inicio' | 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | 'Fletes' | 'Precios' | 'Análisis'
+export type Pantalla = 'Inicio' | 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | 'Fletes' | 'Precios' | 'Caja' | 'Análisis'
 
 // Cambia de pantalla con el selector del header (escritorio) o la barra inferior (celular): el que esté visible.
 export const ir = async (page: Page, pantalla: Pantalla) =>

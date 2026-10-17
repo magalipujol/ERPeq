@@ -41,6 +41,51 @@ describe('parsear', () => {
   });
 });
 
+describe('socios, cobros y rendiciones', () => {
+  const crudo = (h: Partial<Record<H.ClaveHoja, Fila[]>>) => H.CLAVES.map((k) => h[k] ?? []);
+
+  it('junta las filas de un socio y reconoce al dueño', () => {
+    const d = H.parsear(crudo({
+      socios: [['SOC01', 'Sampatti', 'VEN02', 'Dueño'], ['SOC02', 'Guada/Hernán', 'VEN01', 'socio'], ['SOC02', '', 'VEN03', ''], ['', 'x']],
+    }));
+
+    expect(d.socios).toStrictEqual([
+      { id: 'SOC01', nombre: 'Sampatti', vendedores: ['VEN02'], duenio: true },
+      { id: 'SOC02', nombre: 'Guada/Hernán', vendedores: ['VEN01', 'VEN03'], duenio: false },
+    ]);
+  });
+
+  it('lee cobros y rendiciones con el medio en minúsculas', () => {
+    const d = H.parsear(crudo({
+      cobros: [[46311, 'V0001', 8000, 'Efectivo', 'SOC02', 'Guada/Hernán', ''], [46311, '', 5]],
+      rendiciones: [[46312, 'SOC02', 'SOC01', 5000, 'efectivo', 'Rendición semanal']],
+    }));
+
+    expect(d.cobros).toHaveLength(1);
+    expect(d.cobros[0]).toMatchObject({ ventaId: 'V0001', importe: 8000, medio: 'efectivo', socioId: 'SOC02' });
+    expect(d.rendiciones[0]).toMatchObject({ deId: 'SOC02', aId: 'SOC01', importe: 5000, nota: 'Rendición semanal' });
+  });
+
+  it('las hojas opcionales que faltan no se piden y se leen vacías', async () => {
+    expect.hasAssertions();
+
+    const titulos = H.CLAVES.map(H.nombreHoja).filter((t) => t !== 'Cobros' && t !== 'Rendiciones');
+    const faltantes = H.hojasFaltantes(titulos);
+    const pedidos: string[] = [];
+    // Devuelve una fila con el nombre de la hoja de cada rango, para ver que cada hoja recibe la suya.
+    const d = await H.leerHojas(async (rangos) => {
+      pedidos.push(...rangos);
+      return Promise.resolve(rangos.map((r) => [[/^'(.+)'!/.exec(r)?.[1] ?? '', 'x', 'x', 'x']]));
+    }, faltantes);
+
+    expect(faltantes).toStrictEqual(['cobros', 'rendiciones']);
+    expect(pedidos.filter((r) => r.includes('Cobros') || r.includes('Rendiciones'))).toStrictEqual([]);
+    expect([d.cobros, d.rendiciones]).toStrictEqual([[], []]);
+    expect(d.socios.map((s) => s.id)).toStrictEqual(['Socios']);
+    expect(d.ajustes.map((a) => a.depositoId)).toStrictEqual(['x']);
+  });
+});
+
 describe('rango', () => {
   it('cubre las columnas de la hoja desde la fila 2', () => {
     expect(H.rango('ventasItems')).toBe("'Ventas ítems'!A2:I");

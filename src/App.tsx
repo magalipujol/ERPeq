@@ -9,6 +9,7 @@ import { type BaseDeDatos, type InfoBase, SinAcceso } from './db/puerto';
 import type * as M from './dominio/modelo';
 import { hora, mensajeDeError } from './formato';
 import { Analisis } from './vistas/Analisis';
+import { Caja } from './vistas/Caja';
 import { Compras } from './vistas/Compras';
 import { Fletes } from './vistas/Fletes';
 import { Inicio } from './vistas/Inicio';
@@ -21,6 +22,7 @@ type Pantalla = 'config' | 'login' | 'sin-acceso' | 'app';
 const NAV = [
   { value: 'inicio', label: 'Inicio' }, { value: 'stock', label: 'Stock' }, { value: 'pedidos', label: 'Pedidos' }, { value: 'ventas', label: 'Ventas' },
   { value: 'compras', label: 'Compras' }, { value: 'fletes', label: 'Fletes' }, { value: 'precios', label: 'Precios' },
+  { value: 'caja', label: 'Caja' },
   { value: 'analisis', label: 'Análisis' },
 ] as const;
 type Vista = (typeof NAV)[number]['value'];
@@ -234,6 +236,7 @@ export function App({ db }: { db: BaseDeDatos }) {
               <Box display={vista === 'compras' ? undefined : 'none'}><Compras /></Box>
               <Box display={vista === 'fletes' ? undefined : 'none'}><Fletes /></Box>
               <Box display={vista === 'precios' ? undefined : 'none'}><Precios /></Box>
+              <Box display={vista === 'caja' ? undefined : 'none'}><Caja /></Box>
               <Box display={vista === 'analisis' ? undefined : 'none'}><Analisis visible={vista === 'analisis'} /></Box>
             </BaseProvider>
           )}

@@ -4,6 +4,7 @@
 //   Avena: 25 kg en Rosario; PE0002 (Ana, Guada/Hernán) pide 10 kg sin entregar. Costo promedio $500.
 //   Precios de lista: Almendras $3.000, Avena $800. Miel sin precio.
 //   Reglas: Leo 10% general; Guada/Hernán 3% general y 7% en Almendras.
+//   Socios: Sampatti (la empresa de Leo, dueña de la mercadería) y Guada/Hernán. Sin cobros ni rendiciones.
 import { devices, type Page } from '@playwright/test'
 import { AHORA, expect, HOY_SERIE, ir, test } from './google-falso'
 
@@ -433,4 +434,81 @@ test('desde Inicio se toma un pedido sin stock y queda destacado entre los pendi
   await expect(kpi(page, 'Fletes en camino')).toContainText('2')
   await expect(kpi(page, 'Con faltante de stock')).toContainText('0')
   await expect(nuevo).not.toContainText('Falta stock')
+})
+
+test('Guada/Hernán cobra en efectivo, rinde una parte y Sampatti le paga la comisión de una venta que cobró por transferencia', async ({ page, google }) => {
+  const cuenta = page.getByRole('region', { name: 'Cuenta de Guada/Hernán' })
+  const rendicion = page.getByRole('form', { name: 'Rendición entre socios' })
+  const aCobrar = page.getByRole('table', { name: 'Ventas a cobrar' })
+
+  // 1. Guada/Hernán entrega los 10 kg de avena de PE0002 ($ 8.000) y cobra todo en efectivo en la entrega.
+  await filaCon(page, 'PE0002').getByRole('button', { name: 'Entregar' }).click()
+  const entrega = formEntrega(page)
+  await expect(entrega.getByRole('group', { name: 'Comisión' })).toContainText('240')
+  await expect(entrega.getByLabel('Recibió', { exact: true })).toHaveValue('SOC02')
+  await expect(entrega.getByLabel('Medio', { exact: true })).toHaveValue('efectivo')
+  await entrega.getByLabel('Cobrado en la entrega', { exact: true }).fill('8000')
+  await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
+  await expect(page.getByText('El pedido PE0002 quedó entregado.')).toBeVisible()
+
+  // 2. Tiene $ 8.000 de Sampatti y $ 240 son su comisión: le debe $ 7.760.
+  await ir(page, 'Caja')
+  await expect(kpi(page, 'Saldo Guada/Hernán')).toContainText(/Debe \$\s7\.760/)
+  await expect(cuenta).toContainText(/Guada\/Hernán le debe \$\s7\.760 a Sampatti/)
+  await expect(cuenta.getByRole('row').filter({ hasText: 'Cobro V0002' })).toContainText('Efectivo')
+  await expect(aCobrar).not.toContainText('V0002')
+
+  // 3. Le rinde $ 7.000 en efectivo a Sampatti: le quedan $ 760 por rendir.
+  await expect(rendicion.getByLabel('Sentido', { exact: true })).toHaveValue('al-duenio')
+  await expect(rendicion.getByLabel('Importe', { exact: true })).toHaveValue('7760')
+  await rendicion.getByLabel('Importe', { exact: true }).fill('7000')
+  await rendicion.getByRole('button', { name: 'Registrar rendición' }).click()
+  await expect(rendicion.getByText(/✓ Guada\/Hernán le entregó \$\s7\.000 a Sampatti/)).toBeVisible()
+  await expect(cuenta).toContainText(/Guada\/Hernán le debe \$\s760 a Sampatti/)
+
+  // 4. Guada/Hernán vende en el momento 5 kg de almendras desde Bahía Blanca ($ 15.000, comisión 7% = $ 1.050).
+  await ir(page, 'Pedidos')
+  await elegirCliente(page, 'Ana')
+  const pedido = formPedido(page)
+  await expect(pedido.getByText('Guada/Hernán')).toBeVisible()
+  await pedido.getByLabel('Entrega desde', { exact: true }).selectOption({ label: 'General' })
+  await pedido.getByLabel('Producto', { exact: true }).fill('Almendras')
+  await pedido.getByLabel('Cantidad', { exact: true }).fill('5')
+  await pedido.getByLabel('Se entrega ahora (venta directa)').check()
+  await pedido.getByRole('button', { name: 'Registrar pedido' }).click()
+  await expect(pedido.getByText(/✓ Pedido PE0003 de Ana registrado y entregado/)).toBeVisible()
+
+  // 5. La cobra Sampatti por transferencia. La comisión es de Guada/Hernán: Sampatti le debe 1.050 − 760 = $ 290.
+  await ir(page, 'Caja')
+  await aCobrar.getByRole('button', { name: 'Cobrar V0003' }).click()
+  const cobro = page.getByRole('form', { name: 'Registrar cobro' })
+  await expect(cobro.getByLabel('Venta', { exact: true })).toHaveValue('V0003')
+  await expect(cobro.getByLabel('Importe', { exact: true })).toHaveValue('15000')
+  await cobro.getByLabel('Medio', { exact: true }).selectOption({ label: 'Transferencia' })
+  await cobro.getByLabel('Recibió', { exact: true }).selectOption({ label: 'Sampatti' })
+  await cobro.getByRole('button', { name: 'Registrar cobro' }).click()
+  await expect(cobro.getByText(/✓ Cobro de \$\s15\.000 de V0003 registrado \(transferencia, Sampatti\)/)).toBeVisible()
+  await expect(aCobrar).not.toContainText('V0003')
+  await expect(kpi(page, 'Saldo Guada/Hernán')).toContainText(/Le deben \$\s290/)
+  await expect(cuenta).toContainText(/Sampatti le debe \$\s290 a Guada\/Hernán/)
+
+  // 6. Sampatti le paga lo que le debe y quedan al día.
+  await expect(rendicion.getByLabel('Sentido', { exact: true })).toHaveValue('del-duenio')
+  await expect(rendicion.getByLabel('Importe', { exact: true })).toHaveValue('290')
+  await rendicion.getByLabel('Medio', { exact: true }).selectOption({ label: 'Transferencia' })
+  await rendicion.getByRole('button', { name: 'Registrar rendición' }).click()
+  await expect(cuenta).toContainText('Guada/Hernán y Sampatti están al día.')
+
+  // La entrega y su cobro se guardaron juntos; cada cobro y cada rendición, en una escritura.
+  expect(google.escrituras).toHaveLength(5)
+  expect(google.escrituras[0]).toEqual({
+    'Ventas': [['V0002', HOY_SERIE, 'PE0002', 'ROS', '']],
+    'Ventas ítems': [['V0002', 1, 1, 'P002', 'Avena', 10, 800, 8000, 500]],
+    'Ventas comisiones': [['V0002', 1, 'VEN02', 'Guada/Hernán', 3, 3, 240]],
+    'Cobros': [[HOY_SERIE, 'V0002', 8000, 'efectivo', 'SOC02', 'Guada/Hernán', '']],
+  })
+  expect(google.escrituras[1]).toEqual({ 'Rendiciones': [[HOY_SERIE, 'SOC02', 'SOC01', 7000, 'efectivo', '']] })
+  expect(google.escrituras[2]['Ventas comisiones']).toEqual([['V0003', 1, 'VEN02', 'Guada/Hernán', 7, 7, 1050]])
+  expect(google.escrituras[3]).toEqual({ 'Cobros': [[HOY_SERIE, 'V0003', 15000, 'transferencia', 'SOC01', 'Sampatti', '']] })
+  expect(google.escrituras[4]).toEqual({ 'Rendiciones': [[HOY_SERIE, 'SOC01', 'SOC02', 290, 'transferencia', '']] })
 })
