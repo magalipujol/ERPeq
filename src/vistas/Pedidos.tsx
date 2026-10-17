@@ -7,8 +7,10 @@ import { normalizar, useBase, useGuardar } from '../base';
 import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
 import { type Item, itemVacio } from '../componentes/item';
 import { Items } from '../componentes/Items';
+import { PegarPedido } from '../componentes/PegarPedido';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, numeroOCero, porFechaDesc, sumable, unicos } from '../formato';
 import * as M from '../dominio/modelo';
+import { type PedidoEmparejado, valorACargar } from '../pedido-texto';
 
 const COLOR_ESTADO: Record<M.EstadoPedido, string> = {
   pendiente: 'yellow', parcial: 'blue', entregado: 'green', cancelado: 'gray', cerrado: 'gray',
@@ -86,6 +88,9 @@ function FormPedido() {
     tipos: datos.tipos,
     vendedores: datos.vendedores.filter((v) => v.activo).map((v) => ({ value: v.id, label: v.nombre })),
   }), [datos]);
+  const contextoIA = useMemo(() => ({
+    productos: datos.productos.map((p) => p.producto), clientes: listas.clientes, localidades: listas.localidades,
+  }), [datos, listas]);
   const tipo = tipoSel !== null && listas.tipos.includes(tipoSel) ? tipoSel : listas.tipos[0] ?? '';
   const dia = fecha ? deISO(fecha) : null;
 
@@ -109,6 +114,21 @@ function FormPedido() {
     if (ultimo && vendedores.length === 0) {
       setVendedores(datos.pedidosVendedores.filter((v) => v.pedidoId === ultimo.id).map((v) => v.vendedorId));
     }
+  }
+
+  // Carga lo que leyó la IA de un mensaje pegado. Lo que no coincide queda escrito para que se corrija.
+  function precargar(p: PedidoEmparejado) {
+    const nombre = valorACargar(p.cliente);
+    if (nombre) elegirCliente(nombre);
+    const loc = valorACargar(p.localidad);
+    if (loc) setLocalidad(loc);
+    if (p.provincia) setProvincia(p.provincia);
+    if (p.items.length === 0) return;
+    setItems(p.items.map((it) => {
+      const prod = buscarProducto(valorACargar(it.producto));
+      const lista = prod ? M.precioVigente(datos.precios, prod.id, dia) : null;
+      return { ...itemVacio(), producto: valorACargar(it.producto), cantidad: it.cantidad ?? '', precio: lista ?? '' };
+    }));
   }
 
   function enviar(e: React.SubmitEvent<HTMLFormElement>) {
@@ -171,6 +191,7 @@ function FormPedido() {
   return (
     <Paper>
       <Encabezado titulo="Nuevo pedido" />
+      <PegarPedido contexto={contextoIA} onPrecargar={precargar} />
       <form onSubmit={enviar} noValidate aria-label="Nuevo pedido">
         <Stack gap="sm">
           <Group grow gap="xs" align="flex-start">
