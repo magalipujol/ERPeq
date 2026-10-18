@@ -66,7 +66,7 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
   - `whatsapp.ts`: arma el mensaje con los pedidos para mandar a un grupo de WhatsApp (botón *Exportar a WhatsApp* en Pedidos).
 - `public/`: lo que se publica tal cual: el manifiesto de la app instalable y sus íconos (`icono.svg` es el
   original; los PNG los genera `herramientas/iconos.mjs`).
-- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`, `legibilidad.md`, `analisis.md`, `mapa.md`, `fichas.md` y `recetas.md`).
+- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`, `legibilidad.md`, `analisis.md`, `mapa.md`, `fichas.md`, `recetas.md` y `stock.md`).
 - `diseño/experimental/`: propuesta de rediseño para celular, una pantalla por archivo `.dc.html` y una hoja
   con colores, íconos y letra (`Sistema.dc.html`). Es referencia: no se abre sola en el navegador.
 - `.github/workflows/ci.yml`: lint, tipos y pruebas en cada pull request y push.
@@ -89,6 +89,7 @@ pnpm dev
 y abrir http://localhost:5500 (tiene que estar autorizado como origen en el proyecto de Google).
 
 `pnpm build` deja la versión publicable en `dist/`; `pnpm preview` la sirve en el mismo puerto.
+`pnpm lint` guarda una caché en `.eslintcache` (ignorada por git) y solo revisa de nuevo lo que cambió.
 
 ## Pruebas
 
@@ -103,6 +104,7 @@ pnpm test:unit                          # unitarias
 pnpm test:unit:watch                    # unitarias, re-corriendo al guardar
 pnpm exec playwright install chromium   # la primera vez, para las de punta a punta
 pnpm test:e2e
+pnpm test:e2e tests/stock.spec.ts --project=chromium   # un solo archivo, solo escritorio
 pnpm test:e2e:ui                        # para verlas paso a paso
 pnpm test                               # todas
 ```

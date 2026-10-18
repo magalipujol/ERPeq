@@ -12,6 +12,7 @@ node_modules/
 dist/
 test-results/
 playwright-report/
+.eslintcache
 .clasp.json
 
 # Worktrees de agentes de Claude Code

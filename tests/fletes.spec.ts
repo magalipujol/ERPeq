@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { AHORA, expect, HOY_SERIE, ir, test } from './google-falso'
+import { AHORA, esperarDatosStock, expect, HOY_SERIE, ir, stockEn, test } from './google-falso'
 
 test.beforeEach(async ({ page, ingresar }) => {
   await page.goto('/#fletes')
@@ -16,10 +16,7 @@ test('marca un flete en camino como recibido y el stock entra en el destino', as
   expect(google.escrituras).toEqual([{ 'Fletes estados': [['F0001', AHORA, 'finalizado']] }])
 
   await ir(page, 'Stock')
-  const almendras = page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Almendras', exact: true }) })
-  // General, Rosario, En camino
-  await expect(almendras.getByRole('cell').nth(3)).toHaveText('6')
-  await expect(almendras.getByRole('cell').nth(4)).toHaveText('–')
+  await esperarDatosStock(page, stockEn(page, 'Rosario', 'Almendras'), { 'En depósito': '6', 'En camino': '–' })
 })
 
 test('registra una transferencia en camino con parte del costo asignada a un pedido', async ({ page, google }) => {

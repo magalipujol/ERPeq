@@ -11,7 +11,7 @@ cada ficha, en `src/componentes/Fichas.tsx`.
 
 | Pantalla | Tabla | Ficha |
 |---|---|---|
-| Stock | Inventario | Producto |
+| Stock | Stock por depósito y Stock total | Producto |
 | Pedidos | Pedidos | Pedido |
 | Ventas | Detalle del mes | Venta (la de esa línea) |
 | Compras | Detalle del mes | Compra |

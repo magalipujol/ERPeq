@@ -74,6 +74,8 @@ em, i, cite { font-style: normal; font-weight: 600; }
 
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .suave { background: var(--erp-soft); border-radius: var(--mantine-radius-md); }
+/* Encabezado de cada grupo de una tabla agrupada (por ejemplo, un depósito en Stock). */
+.grupo > th { background: var(--erp-soft); }
 
 /* Mapa de Inicio (src/componentes/Mapa.tsx): un SVG con las provincias y, encima, las marcas como botones HTML
    ubicados en porcentaje, para que su tamaño no dependa de la escala del mapa. */

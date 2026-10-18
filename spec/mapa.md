@@ -3,7 +3,7 @@
 La pantalla Inicio muestra un mapa de Argentina con tres cosas:
 
 - **Depósitos**: un ícono en la localidad de cada depósito. Tocarlo abre Stock filtrado por ese depósito
-  (selector *Mostrar depósito*: solo su columna y los productos con stock distinto de cero ahí).
+  (selector *Mostrar depósito* de la tabla *Stock por depósito*: solo el grupo de ese depósito). Ver `spec/stock.md`.
 - **Pedidos pendientes**: un globito con la cantidad de pedidos abiertos (pendientes o parciales) de clientes
   de esa localidad. Es naranja y pasa a rojo si alguno tiene faltante de stock. Tocarlo muestra los pedidos;
   tocar uno abre Pedidos con ese pedido elegido para entregarlo.

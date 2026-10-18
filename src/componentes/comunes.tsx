@@ -47,11 +47,11 @@ export function SelectorMes({ fechas, value, onChange }:
   );
 }
 
-export function Resumen({ label, valor }: { label: string; valor: string | number }) {
+export function Resumen({ label, valor, c }: { label: string; valor: string | number; c?: string }) {
   return (
     <div role="group" aria-label={label}>
       <Text size="xs" c="dimmed">{label}</Text>
-      <Text fw={700} style={{ fontVariantNumeric: 'tabular-nums' }}>{valor}</Text>
+      <Text fw={700} c={c} style={{ fontVariantNumeric: 'tabular-nums' }}>{valor}</Text>
     </div>
   );
 }

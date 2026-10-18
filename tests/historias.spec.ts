@@ -8,20 +8,22 @@
 //   Socios: Sampatti (la empresa de Leo, dueña de la mercadería) y Guada/Hernán. Sin cobros ni rendiciones.
 //   Sin recetas ni fabricaciones.
 import { devices, type Page } from '@playwright/test'
-import { AHORA, expect, HOY_SERIE, ir, test } from './google-falso'
+import { AHORA, esperarDatosStock, expect, HOY_SERIE, ir, stockEn, test } from './google-falso'
 
 const filaCon = (page: Page, texto: string) =>
   page.getByRole('row').filter({ has: page.getByRole('cell', { name: texto, exact: true }) })
 // Las filas de pedidos se nombran por cliente y fecha: "Ana · 10/10/26".
 const filaPedido = (page: Page, pedido: string) => page.getByRole('row', { name: `Pedido ${pedido}`, exact: true })
 
-// Columnas del inventario: Producto, Unidad, General, Rosario, En camino, Total, Comprometido, ...
-async function esperarStock(page: Page, producto: string, s: { general: string; rosario: string; camino: string; comprometido: string }) {
-  const celdas = filaCon(page, producto).getByRole('cell')
-  await expect(celdas.nth(2)).toHaveText(s.general)
-  await expect(celdas.nth(3)).toHaveText(s.rosario)
-  await expect(celdas.nth(4)).toHaveText(s.camino)
-  await expect(celdas.nth(6)).toHaveText(s.comprometido)
+// Stock por depósito: [en depósito, en camino hacia ahí, comprometido]; null si el producto no tiene nada en
+// ese depósito (no aparece en su grupo).
+type EnDeposito = [string, string, string] | null
+async function esperarStock(page: Page, producto: string, s: { general: EnDeposito; rosario: EnDeposito }) {
+  for (const [deposito, esperado] of [['General', s.general], ['Rosario', s.rosario]] as const) {
+    const fila = stockEn(page, deposito, producto)
+    if (esperado === null) await expect(fila).toHaveCount(0)
+    else await esperarDatosStock(page, fila, { 'En depósito': esperado[0], 'En camino': esperado[1], 'Comprometido': esperado[2] })
+  }
 }
 
 const formPedido = (page: Page) => page.getByRole('form', { name: 'Nuevo pedido' })
@@ -61,7 +63,7 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
 
   // 2. Stock: el pedido compromete 12 kg; con los 6 que ya vienen en camino faltan 6.
   await ir(page, 'Stock')
-  await esperarStock(page, 'Almendras', { general: '10', rosario: '0', camino: '6', comprometido: '12' })
+  await esperarStock(page, 'Almendras', { general: ['10', '–', '–'], rosario: ['0', '6', '12'] })
   await expect(kpi(page, 'Faltan para pedidos')).toContainText('1')
 
   // 3. Se arma un flete de Bahía Blanca a Rosario con los 6 kg que faltan; todo su costo va al pedido.
@@ -78,14 +80,14 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
 
   // En preparación la mercadería sigue en Bahía Blanca.
   await ir(page, 'Stock')
-  await esperarStock(page, 'Almendras', { general: '10', rosario: '0', camino: '6', comprometido: '12' })
+  await esperarStock(page, 'Almendras', { general: ['10', '–', '–'], rosario: ['0', '6', '12'] })
 
   // 4. Sale el flete: deja Bahía Blanca y queda en camino. Ya no falta nada.
   await ir(page, 'Fletes')
   await page.getByRole('button', { name: 'Despachar flete de Interprovincial · 16/10/26' }).click()
   await expect(page.getByText('✓ Flete de Interprovincial · 16/10/26: en camino.')).toBeVisible()
   await ir(page, 'Stock')
-  await esperarStock(page, 'Almendras', { general: '4', rosario: '0', camino: '12', comprometido: '12' })
+  await esperarStock(page, 'Almendras', { general: ['4', '–', '–'], rosario: ['0', '12', '12'] })
   await expect(kpi(page, 'Faltan para pedidos')).toContainText('0')
 
   // 5. Llegan los dos fletes a Rosario.
@@ -95,7 +97,7 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
   await page.getByRole('button', { name: 'Recibido flete de Interprovincial · 08/10/26' }).click()
   await expect(page.getByText('✓ Flete de Interprovincial · 08/10/26: finalizado.')).toBeVisible()
   await ir(page, 'Stock')
-  await esperarStock(page, 'Almendras', { general: '4', rosario: '12', camino: '–', comprometido: '12' })
+  await esperarStock(page, 'Almendras', { general: ['4', '–', '–'], rosario: ['12', '–', '12'] })
 
   // 6. Una bolsa llegó rota: se ajusta el stock de Rosario después de recibir el flete.
   const ajuste = page.getByRole('form', { name: 'Ajuste de stock' })
@@ -105,7 +107,7 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
   await ajuste.getByLabel('Motivo', { exact: true }).fill('Bolsa rota en flete F0002')
   await ajuste.getByRole('button', { name: 'Registrar ajuste' }).click()
   await expect(ajuste.getByText('✓ Ajuste registrado: -1 kg de Almendras.')).toBeVisible()
-  await esperarStock(page, 'Almendras', { general: '4', rosario: '11', camino: '–', comprometido: '12' })
+  await esperarStock(page, 'Almendras', { general: ['4', '–', '–'], rosario: ['11', '–', '12'] })
 
   // 7. Primera entrega: 10 kg, con la comisión de Guada/Hernán bajada del 7% de la regla al 6%.
   await ir(page, 'Pedidos')
@@ -145,7 +147,7 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
 
   // 10. El stock queda sin comprometer y la liquidación muestra el porcentaje cambiado.
   await ir(page, 'Stock')
-  await esperarStock(page, 'Almendras', { general: '4', rosario: '0', camino: '–', comprometido: '–' })
+  await esperarStock(page, 'Almendras', { general: ['4', '–', '–'], rosario: null })
   await ir(page, 'Ventas')
   const guada = page.getByRole('table', { name: 'Comisiones por vendedor' }).getByRole('row').filter({ hasText: 'Guada/Hernán' })
   await expect(guada).toContainText('1 con % distinto de la regla')
@@ -263,7 +265,7 @@ test('se compra un producto nuevo y se vende en el momento a un cliente que toda
   await expect(venta).toContainText('Pasas')
   await expect(venta).toContainText(/1\.860/)
   await ir(page, 'Stock')
-  await esperarStock(page, 'Pasas', { general: '0', rosario: '17', camino: '–', comprometido: '–' })
+  await esperarStock(page, 'Pasas', { general: null, rosario: ['17', '–', '–'] })
 
   // 4. El próximo pedido de Bruno ya propone a Leo y el precio de lista nuevo.
   await ir(page, 'Pedidos')
@@ -291,7 +293,7 @@ test('un flete cancelado y uno que vuelve sin entregar no mueven stock', async (
   await page.getByRole('button', { name: 'Volvió sin entregar flete de Interprovincial · 08/10/26' }).click()
   await expect(page.getByText('✓ Flete de Interprovincial · 08/10/26: en preparación.')).toBeVisible()
   await ir(page, 'Stock')
-  await esperarStock(page, 'Almendras', { general: '16', rosario: '0', camino: '–', comprometido: '–' })
+  await esperarStock(page, 'Almendras', { general: ['16', '–', '–'], rosario: null })
 
   // 3. Sale de nuevo y esta vez llega.
   await ir(page, 'Fletes')
@@ -300,7 +302,7 @@ test('un flete cancelado y uno que vuelve sin entregar no mueven stock', async (
   await page.getByRole('button', { name: 'Recibido flete de Interprovincial · 08/10/26' }).click()
   await expect(page.getByText('✓ Flete de Interprovincial · 08/10/26: finalizado.')).toBeVisible()
   await ir(page, 'Stock')
-  await esperarStock(page, 'Almendras', { general: '10', rosario: '6', camino: '–', comprometido: '–' })
+  await esperarStock(page, 'Almendras', { general: ['10', '–', '–'], rosario: ['6', '–', '–'] })
 
   expect(google.escrituras.slice(1).map((e) => e['Fletes estados'])).toEqual([
     [['F0002', AHORA, 'cancelado']],
@@ -324,7 +326,7 @@ test('una compra hecha para un pedido cubre lo que faltaba', async ({ page }) =>
   await expect(kpi(page, 'Con faltante de stock')).toContainText('2')
 
   await ir(page, 'Stock')
-  await esperarStock(page, 'Avena', { general: '0', rosario: '25', camino: '–', comprometido: '50' })
+  await esperarStock(page, 'Avena', { general: null, rosario: ['25', '–', '50'] })
   await expect(kpi(page, 'Faltan para pedidos')).toContainText('1')
 
   // 2. Se compran 30 kg en Rosario para ese pedido.
@@ -341,7 +343,7 @@ test('una compra hecha para un pedido cubre lo que faltaba', async ({ page }) =>
 
   // 3. Ya no falta nada.
   await ir(page, 'Stock')
-  await esperarStock(page, 'Avena', { general: '0', rosario: '55', camino: '–', comprometido: '50' })
+  await esperarStock(page, 'Avena', { general: null, rosario: ['55', '–', '50'] })
   await expect(kpi(page, 'Faltan para pedidos')).toContainText('0')
   await ir(page, 'Pedidos')
   await expect(kpi(page, 'Con faltante de stock')).toContainText('0')
@@ -608,9 +610,9 @@ test('llegan las almendras a Rosario, se arma la receta del mix europeo y se fab
 
   // 4. Stock en Rosario: 6 − 1,2 = 4,8 kg de almendras; 25 − 0,8 = 24,2 de avena; 1,85 de mix.
   await ir(page, 'Stock')
-  await esperarStock(page, 'Almendras', { general: '10', rosario: '4,8', camino: '–', comprometido: '–' })
-  await esperarStock(page, 'Avena', { general: '0', rosario: '24,2', camino: '–', comprometido: '10' })
-  await esperarStock(page, 'Mix europeo', { general: '0', rosario: '1,85', camino: '–', comprometido: '–' })
+  await esperarStock(page, 'Almendras', { general: ['10', '–', '–'], rosario: ['4,8', '–', '–'] })
+  await esperarStock(page, 'Avena', { general: null, rosario: ['24,2', '–', '10'] })
+  await esperarStock(page, 'Mix europeo', { general: null, rosario: ['1,85', '–', '–'] })
 })
 
 test('desde una venta se recorre lo relacionado en fichas y se termina entregando otro pedido del cliente', async ({ page }) => {

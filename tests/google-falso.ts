@@ -1,6 +1,6 @@
 // Reemplaza a Google en las pruebas: el script de login (GIS) y la Sheets API.
 // La planilla vive en memoria y cada escritura queda registrada para poder revisarla.
-import { test as base, type Page, type Route } from '@playwright/test'
+import { test as base, expect, type Locator, type Page, type Route } from '@playwright/test'
 import { CONFIG } from '../src/config'
 
 // Fecha "de hoy" en todas las pruebas.
@@ -217,12 +217,67 @@ export type Pantalla = 'Inicio' | 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | '
 // En celular, estas pantallas están en el menú «Más» de la barra inferior.
 const EN_MAS: readonly Pantalla[] = ['Compras', 'Recetas', 'Fletes', 'Precios', 'Caja', 'Análisis']
 
+// Menos de 768 px: el breakpoint `sm` de Mantine.
+export const esCelular = (page: Page) => (page.viewportSize()?.width ?? 0) < 768
+
 // Cambia de pantalla con el selector del header (escritorio) o la barra inferior (celular): el que esté visible.
 export const ir = async (page: Page, pantalla: Pantalla) => {
   const nav = page.getByLabel('Pantalla', { exact: true }).filter({ visible: true })
-  if ((page.viewportSize()?.width ?? 0) < 768 && EN_MAS.includes(pantalla)) {
+  if (esCelular(page) && EN_MAS.includes(pantalla)) {
     await nav.getByRole('button', { name: 'Más' }).click()
     return page.getByRole('menuitem', { name: pantalla, exact: true }).click()
   }
   return nav.getByText(pantalla, { exact: true }).click()
+}
+
+// Stock: en escritorio son tablas y en celular, tarjetas. Estas funciones encuentran lo mismo en los dos.
+
+// El grupo de un depósito en «Stock por depósito»: un grupo de filas de la tabla o una sección de tarjetas.
+export const grupoStock = (page: Page, deposito: string) => esCelular(page)
+  ? page.getByRole('region', { name: 'Stock por depósito' }).getByRole('region', { name: deposito })
+  : page.getByRole('table', { name: 'Stock por depósito' }).getByRole('rowgroup', { name: deposito })
+
+// Los productos de un grupo de «Stock por depósito» (sin el encabezado del grupo).
+export const productosEn = (page: Page, deposito: string) => esCelular(page)
+  ? grupoStock(page, deposito).getByRole('article')
+  : grupoStock(page, deposito).getByRole('row').filter({ has: page.getByRole('cell') })
+
+// Un producto en el grupo de un depósito.
+export const stockEn = (page: Page, deposito: string, producto: string) => esCelular(page)
+  ? grupoStock(page, deposito).getByRole('article', { name: producto, exact: true })
+  : productosEn(page, deposito).filter({ has: page.getByRole('cell', { name: producto, exact: true }) })
+
+// Los productos de «Stock total».
+export const productosTotal = (page: Page) => esCelular(page)
+  ? page.getByRole('region', { name: 'Stock total' }).getByRole('article')
+  : page.getByRole('table', { name: 'Stock total' }).getByRole('row').filter({ has: page.getByRole('cell') })
+
+// Un producto de «Stock total».
+export const stockTotal = (page: Page, producto: string) => esCelular(page)
+  ? page.getByRole('region', { name: 'Stock total' }).getByRole('article', { name: producto, exact: true })
+  : productosTotal(page).filter({ has: page.getByRole('cell', { name: producto, exact: true }) })
+
+// Columna de cada dato en las tablas de stock: Producto, Unidad, En depósito, En camino, Comprometido y
+// Producto, Unidad, En depósitos, En camino, Total, Mínimo, Estado.
+const COLUMNA_STOCK = { 'En depósito': 2, 'En depósitos': 2, 'En camino': 3, 'Comprometido': 4, 'Total': 4, 'Mínimo': 5 }
+
+// Los datos de un producto de stock: la celda de su columna o el valor con esa etiqueta en la tarjeta.
+export async function esperarDatosStock(page: Page, fila: Locator, datos: Partial<Record<keyof typeof COLUMNA_STOCK, string>>) {
+  for (const [dato, esperado] of Object.entries(datos) as [keyof typeof COLUMNA_STOCK, string][]) {
+    const celda = esCelular(page)
+      ? fila.getByRole('group', { name: dato, exact: true }).getByRole('paragraph').last()
+      : fila.getByRole('cell').nth(COLUMNA_STOCK[dato])
+    await expect(celda).toHaveText(esperado)
+  }
+}
+
+// Ordena una lista de stock: con el encabezado de la columna (escritorio, `clics` veces) o con el selector
+// «Ordenar» de la lista (celular).
+export async function ordenarStock(page: Page, lista: 'Stock por depósito' | 'Stock total', columna: string, clics: number, opcion: string) {
+  if (esCelular(page)) {
+    await page.getByRole('combobox', { name: 'Ordenar' }).nth(lista === 'Stock total' ? 1 : 0).selectOption({ label: opcion })
+    return
+  }
+  const boton = page.getByRole('table', { name: lista }).getByRole('button', { name: columna, exact: true })
+  for (let i = 0; i < clics; i++) await boton.click()
 }

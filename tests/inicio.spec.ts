@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { expect, ir, test } from './google-falso'
+import { expect, grupoStock, ir, test } from './google-falso'
 
 test.beforeEach(async ({ page, ingresar }) => {
   await page.goto('/')
@@ -67,9 +67,8 @@ test('tocar un depósito del mapa abre Stock filtrado por ese depósito', async 
   await page.getByRole('button', { name: 'Depósito Rosario' }).click()
   await expect(page).toHaveURL(/#stock$/)
   await expect(page.getByRole('combobox', { name: 'Mostrar depósito' })).toHaveValue('ROS')
-  const encabezados = page.getByRole('table').first().getByRole('columnheader')
-  await expect(encabezados.filter({ hasText: 'Rosario' })).toHaveCount(1)
-  await expect(encabezados.filter({ hasText: 'General' })).toHaveCount(0)
+  await expect(grupoStock(page, 'Rosario')).toHaveCount(1)
+  await expect(grupoStock(page, 'General')).toHaveCount(0)
 })
 
 test('"Tomar pedido nuevo" abre Pedidos con el cursor en el cliente', async ({ page }) => {
