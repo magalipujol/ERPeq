@@ -75,6 +75,7 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
 - `herramientas/iconos.mjs`: genera los íconos PNG desde `public/icono.svg` (`node herramientas/iconos.mjs`, usa
   el Chromium de Playwright).
 - `herramientas/mapa_argentina.py`: genera `src/mapa/argentina.json` con los datos abiertos de Georef (IGN e INDEC).
+- `.tmp/`: salidas temporales de scripts y herramientas (reportes de Playwright, caché de ESLint, capturas). Git la ignora.
 - `GUIA-CONFIGURACION.md`: paso a paso para configurar Google y la planilla.
 
 ## Probar en la compu
@@ -89,7 +90,8 @@ pnpm dev
 y abrir http://localhost:5500 (tiene que estar autorizado como origen en el proyecto de Google).
 
 `pnpm build` deja la versión publicable en `dist/`; `pnpm preview` la sirve en el mismo puerto.
-`pnpm lint` guarda una caché en `.eslintcache` (ignorada por git) y solo revisa de nuevo lo que cambió.
+`pnpm lint` guarda una caché en `.tmp/eslintcache` y solo revisa de nuevo lo que cambió. `.tmp/` (ignorada por
+git) es para las salidas temporales de scripts y herramientas: ahí quedan también los resultados y el reporte de Playwright.
 
 ## Pruebas
 

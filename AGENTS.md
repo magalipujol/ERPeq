@@ -16,7 +16,7 @@ Node 24 y pnpm (`corepack enable`).
 |---|---|
 | `pnpm dev` | Servidor de desarrollo en http://localhost:5500 (tiene que estar autorizado en Google Cloud). |
 | `pnpm typecheck` | `tsc -b`. |
-| `pnpm lint` / `pnpm lint:fix` | ESLint con `--max-warnings 0` y caché (`.eslintcache`): solo vuelve a revisar los archivos cambiados. |
+| `pnpm lint` / `pnpm lint:fix` | ESLint con `--max-warnings 0` y caché (`.tmp/eslintcache`): solo vuelve a revisar los archivos cambiados. |
 | `pnpm test:unit` | Vitest (`src/**/*.test.ts`). |
 | `pnpm test:e2e` | Playwright contra el build (`pnpm build` + `vite preview`), en Chromium escritorio y Pixel 7. |
 | `pnpm build` | Compila a `dist/`. |
@@ -35,6 +35,9 @@ Para trabajar rápido:
   y celular) tarda ~1 min. Corré la completa una vez, antes de commitear.
 - Para cambiar parte de un archivo, usá `Edit` con el fragmento que cambia. `Write` (o un heredoc) es para archivos
   nuevos o reescrituras completas: generar el archivo entero de nuevo es lo más lento de una sesión.
+- Las salidas temporales de scripts y herramientas (capturas, reportes, descargas, archivos intermedios) van en
+  `.tmp/`, que git ignora. Ahí ya escriben Playwright (`.tmp/test-results`, `.tmp/playwright-report`) y la caché de
+  ESLint. No las dejes sueltas en la raíz ni en `tests/`.
 - No esperes la CI en primer plano (`gh pr checks --watch`, `gh run watch`, `sleep`): corré la espera en segundo
   plano, o no la esperes si no hace falta el resultado para seguir.
 
@@ -68,6 +71,7 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 | `public/` | Se copia tal cual a `dist/`: `manifest.webmanifest` (app instalable, sin service worker), `icono.svg` (original del ícono y favicon) y los PNG que genera `herramientas/iconos.mjs` (192, 512 —también *maskable*— y `apple-touch-icon` de 180). Las rutas son relativas porque la app vive en `/ERPeq/`. |
 | `herramientas/iconos.mjs` | Genera los íconos PNG desde `public/icono.svg` con el Chromium de Playwright: `node herramientas/iconos.mjs`. |
 | `herramientas/mapa_argentina.py` | Baja provincias (IGN) y localidades censales (INDEC) del servicio Georef y genera `src/mapa/argentina.json`. |
+| `.tmp/` | Salidas temporales de scripts y herramientas (reportes de Playwright, caché de ESLint, capturas). Git la ignora. |
 | `README.md` | Qué es, cómo funciona, estructura de la planilla, cómo correrlo. |
 | `GUIA-CONFIGURACION.md` | Paso a paso para configurar Google Cloud y la planilla (para el dueño, no técnico). |
 | `TODO.md` | Pendientes. |

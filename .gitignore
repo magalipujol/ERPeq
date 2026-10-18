@@ -3,18 +3,13 @@
 *.xlsm
 *.xls
 *.csv
-*.json
-!package.json
-!tsconfig*.json
-!src/mapa/argentina.json
-!diseño/experimental/canvas.json
+
+# Salidas temporales de scripts y herramientas (reportes de Playwright, caché de ESLint, capturas, etc.)
+.tmp/
 
 __pycache__/
 node_modules/
 dist/
-test-results/
-playwright-report/
-.eslintcache
 .clasp.json
 
 # Worktrees de agentes de Claude Code
