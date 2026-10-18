@@ -15,6 +15,21 @@ El mapa no usa servicios externos ni teselas: es un SVG con las provincias y una
 con la app (`src/mapa/argentina.json`). Inicio lo carga aparte (`React.lazy`) porque pesa ≈ 150 KB (≈ 57 KB
 comprimido).
 
+## Zona de los depósitos
+
+El mapa arranca recortado a la **zona de los depósitos**: el rectángulo que encierra a todos los depósitos
+ubicados, con 30 unidades (≈ 165 km) de margen y al menos 120 unidades (≈ 650 km) de lado, sin salirse del país
+(`zona` de `src/mapa/ubicar.ts`). Un botón con lupa arriba a la derecha de la tarjeta alterna entre la zona
+(*Alejar a todo el país*) y el país entero (*Acercar a la zona de los depósitos*); queda siempre en el mismo
+lugar, aunque el mapa cambie de proporción. Si no hay ningún depósito ubicado, se ve el país entero y no hay
+botón.
+
+Con el mapa recortado, lo que queda fuera de la zona (un pedido de Córdoba, por ejemplo) no se ve hasta alejar.
+
+Ejemplo: con depósitos en Rosario (211, 229), Bahía Blanca (185, 344) y Mar del Plata (259, 330), la zona va de
+x = 185 − 30 = 155 a 259 + 30 = 289 (134 de ancho) y de y = 229 − 30 = 199 a 344 + 30 = 374 (175 de alto). Con
+los datos de prueba (solo Rosario y Bahía Blanca) el ancho daría 86 y se lleva al mínimo de 120.
+
 ## Qué va en el mapa y dónde
 
 ```mermaid

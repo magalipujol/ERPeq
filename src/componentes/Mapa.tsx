@@ -1,21 +1,25 @@
 import { ActionIcon, Box, Popover, Stack, Text, UnstyledButton } from '@mantine/core';
-import { IconBuildingWarehouse, IconTruck } from '@tabler/icons-react';
+import { IconBuildingWarehouse, IconTruck, IconZoomIn, IconZoomOut } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useBase } from '../base';
 import { marcasDelMapa } from '../dominio/mapa';
 import * as M from '../dominio/modelo';
 import { fmtFecha, fmtMoney } from '../formato';
-import { armarMapa, curva, MAPA, type Sitio, type SinUbicar, type Tramo } from '../mapa/ubicar';
+import { armarMapa, type Caja, curva, MAPA, PAIS, type Punto, type Sitio, type SinUbicar, type Tramo, zona } from '../mapa/ubicar';
 import { EstadoFlete, Recorrido } from './estados';
 
 // Unidades del mapa (1 unidad ≈ 5,5 km): lugares más cerca que esto comparten marca.
 const RADIO = 12;
+// Zona de los depósitos: 30 unidades (≈ 165 km) alrededor y al menos 120 (≈ 650 km) de lado.
+const MARGEN_ZONA = 30;
+const LADO_ZONA = 120;
 
 const COLOR_TRAMO: Record<'preparacion' | 'camino', string> = {
   preparacion: 'var(--mantine-color-yellow-6)', camino: 'var(--mantine-color-blue-6)',
 };
 
-const pos = (p: { x: number; y: number }) => ({ left: `${(p.x / MAPA.ancho) * 100}%`, top: `${(p.y / MAPA.alto) * 100}%` });
+// Las marcas se ubican en porcentaje de la parte del mapa que se ve.
+const pos = (p: Punto, c: Caja) => ({ left: `${((p.x - c.x) / c.ancho) * 100}%`, top: `${((p.y - c.y) / c.alto) * 100}%` });
 
 export interface AccionesMapa {
   onPedido: (id: string) => void;
@@ -26,6 +30,10 @@ export interface AccionesMapa {
 export function Mapa({ onPedido, onFlete, onDeposito }: AccionesMapa) {
   const { datos, pedidos, estadosFletes } = useBase();
   const mapa = useMemo(() => armarMapa(marcasDelMapa(datos, pedidos, estadosFletes), RADIO), [datos, pedidos, estadosFletes]);
+  const zonaDepositos = useMemo(() => zona(mapa.sitios.filter((s) => s.depositos.length > 0), MARGEN_ZONA, LADO_ZONA), [mapa]);
+  const [pais, setPais] = useState(false);
+  const caja = pais ? PAIS : zonaDepositos;
+  const recortado = caja !== PAIS;
   // Un solo globo abierto a la vez: la clave del sitio o del tramo.
   const [abierto, setAbierto] = useState<string | null>(null);
   const alternar = (clave: string) => { setAbierto((a) => (a === clave ? null : clave)); };
@@ -35,10 +43,19 @@ export function Mapa({ onPedido, onFlete, onDeposito }: AccionesMapa) {
   });
 
   return (
-    <Stack gap="xs">
-      <Box className="mapa" style={{ width: `min(100%, calc(70vh * ${MAPA.ancho} / ${MAPA.alto}))`, aspectRatio: `${MAPA.ancho} / ${MAPA.alto}` }}>
-        <svg viewBox={`0 0 ${MAPA.ancho} ${MAPA.alto}`} width="100%" height="100%" role="img"
-          aria-label="Mapa de Argentina con depósitos, pedidos pendientes y fletes en curso">
+    // El botón de zoom se ubica en el contenedor, que ocupa todo el ancho de la tarjeta: así no se mueve cuando el
+    // mapa cambia de proporción.
+    <Stack gap="xs" className="mapa-contenedor">
+      {zonaDepositos !== PAIS && (
+        <ActionIcon className="mapa-zoom" variant="default" size="lg" onClick={() => { setAbierto(null); setPais((p) => !p); }}
+          aria-label={pais ? 'Acercar a la zona de los depósitos' : 'Alejar a todo el país'}
+          title={pais ? 'Acercar a la zona de los depósitos' : 'Alejar a todo el país'}>
+          {pais ? <IconZoomIn size={20} /> : <IconZoomOut size={20} />}
+        </ActionIcon>
+      )}
+      <Box className={`mapa${recortado ? ' mapa-recortado' : ''}`} style={{ width: `min(100%, calc(70vh * ${caja.ancho} / ${caja.alto}))`, aspectRatio: `${caja.ancho} / ${caja.alto}` }}>
+        <svg viewBox={`${caja.x} ${caja.y} ${caja.ancho} ${caja.alto}`} width="100%" height="100%" role="img"
+          aria-label={`Mapa de ${recortado ? 'la zona de los depósitos' : 'Argentina'} con depósitos, pedidos pendientes y fletes en curso`}>
           <defs>
             {(['preparacion', 'camino'] as const).map((e) => (
               <marker key={e} id={`flecha-${e}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
@@ -51,12 +68,12 @@ export function Mapa({ onPedido, onFlete, onDeposito }: AccionesMapa) {
         </svg>
 
         {mapa.tramos.map((t) => (
-          <MarcaTramo key={t.clave} tramo={t} globo={globo(t.clave)} onAlternar={() => { alternar(t.clave); }}
+          <MarcaTramo key={t.clave} tramo={t} caja={caja} globo={globo(t.clave)} onAlternar={() => { alternar(t.clave); }}
             onFlete={(id) => { setAbierto(null); onFlete(id); }} />
         ))}
 
         {mapa.sitios.map((s) => (
-          <MarcaSitio key={s.clave} sitio={s} globo={globo(s.clave)} onAlternar={() => { alternar(s.clave); }}
+          <MarcaSitio key={s.clave} sitio={s} caja={caja} globo={globo(s.clave)} onAlternar={() => { alternar(s.clave); }}
             onPedido={(id) => { setAbierto(null); onPedido(id); }} onDeposito={onDeposito} />
         ))}
       </Box>
@@ -81,14 +98,14 @@ function LineaTramo({ tramo, onClick }: { tramo: Tramo; onClick: () => void }) {
 
 interface Globo { opened: boolean; onChange: (o: boolean) => void }
 
-function MarcaTramo({ tramo, globo, onAlternar, onFlete }: {
-  tramo: Tramo; globo: Globo; onAlternar: () => void; onFlete: (id: string) => void;
+function MarcaTramo({ tramo, caja, globo, onAlternar, onFlete }: {
+  tramo: Tramo; caja: Caja; globo: Globo; onAlternar: () => void; onFlete: (id: string) => void;
 }) {
   const { nombres, etiquetas } = useBase();
   const nombre = `${tramo.desde.nombre} a ${tramo.hasta.nombre}`;
   return (
     // El div ubica la marca: el ActionIcon usa su propio `transform` al apretarlo.
-    <div className="mapa-marca" style={pos(curva(tramo.desde, tramo.hasta).medio)}>
+    <div className="mapa-marca" style={pos(curva(tramo.desde, tramo.hasta).medio, caja)}>
       <Popover {...globo} position="top" withArrow shadow="md" width={280}>
         <Popover.Target>
           <ActionIcon size="md" radius="xl" color={tramo.fletes.some((f) => f.estado === 'camino') ? 'blue' : 'yellow'}
@@ -113,8 +130,8 @@ function MarcaTramo({ tramo, globo, onAlternar, onFlete }: {
   );
 }
 
-function MarcaSitio({ sitio, globo, onAlternar, onPedido, onDeposito }: {
-  sitio: Sitio; globo: Globo; onAlternar: () => void;
+function MarcaSitio({ sitio, caja, globo, onAlternar, onPedido, onDeposito }: {
+  sitio: Sitio; caja: Caja; globo: Globo; onAlternar: () => void;
   onPedido: (id: string) => void; onDeposito: (id: string) => void;
 }) {
   const { nombres, etiquetas, stock } = useBase();
@@ -122,7 +139,7 @@ function MarcaSitio({ sitio, globo, onAlternar, onPedido, onDeposito }: {
   const conFaltante = sitio.pedidos.some((r) => M.lineasConFaltante(stock, r).length > 0);
 
   return (
-    <div className="mapa-marca mapa-sitio" style={pos(sitio)}>
+    <div className="mapa-marca mapa-sitio" style={pos(sitio, caja)}>
       {sitio.depositos.length > 0
         ? sitio.depositos.map((d) => (
           <ActionIcon key={d.id} size="lg" radius="xl" variant="filled" aria-label={`Depósito ${d.nombre}`} title={`Depósito ${d.nombre}: ver stock`}

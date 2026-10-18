@@ -97,3 +97,20 @@ describe('curva', () => {
     expect(c.medio).toStrictEqual({ x: 50, y: 10 });
   });
 });
+
+describe('zona', () => {
+  it('encierra los puntos con margen y sin salirse del país', () => {
+    const z = U.zona([{ x: 185, y: 344 }, { x: 211, y: 229 }, { x: 259, y: 330 }], 30, 120);
+
+    expect(z).toStrictEqual({ x: 155, y: 199, ancho: 134, alto: 175 });
+  });
+
+  it('agranda hasta el lado mínimo alrededor de un solo punto, corriéndose si toca el borde', () => {
+    expect(U.zona([{ x: 200, y: 300 }], 30, 120)).toStrictEqual({ x: 140, y: 240, ancho: 120, alto: 120 });
+    expect(U.zona([{ x: 320, y: 10 }], 30, 120)).toStrictEqual({ x: 211, y: 0, ancho: 120, alto: 120 });
+  });
+
+  it('sin puntos es el país entero', () => {
+    expect(U.zona([], 30, 120)).toStrictEqual(U.PAIS);
+  });
+});

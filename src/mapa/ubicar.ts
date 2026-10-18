@@ -140,3 +140,23 @@ export function curva(a: Punto, b: Punto) {
     medio: { x: (a.x + 2 * c.x + b.x) / 4, y: (a.y + 2 * c.y + b.y) / 4 },
   };
 }
+
+export interface Caja { x: number; y: number; ancho: number; alto: number }
+
+export const PAIS: Caja = { x: 0, y: 0, ancho: MAPA.ancho, alto: MAPA.alto };
+
+// Recorte del mapa que encierra los puntos (los depósitos) con `margen` unidades alrededor y al menos `minimo`
+// de lado, sin salirse del país. Sin puntos, el país entero.
+export function zona(puntos: Punto[], margen: number, minimo: number): Caja {
+  if (puntos.length === 0) return PAIS;
+  const xs = puntos.map((p) => p.x);
+  const ys = puntos.map((p) => p.y);
+  const lado = (min: number, max: number, total: number) => {
+    const largo = Math.min(total, Math.max(max - min + 2 * margen, minimo));
+    const inicio = (min + max) / 2 - largo / 2;
+    return [Math.min(Math.max(inicio, 0), total - largo), largo] as const;
+  };
+  const [x, ancho] = lado(Math.min(...xs), Math.max(...xs), MAPA.ancho);
+  const [y, alto] = lado(Math.min(...ys), Math.max(...ys), MAPA.alto);
+  return { x, y, ancho, alto };
+}

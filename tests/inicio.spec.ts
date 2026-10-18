@@ -34,7 +34,7 @@ test('muestra el pantallazo: pedidos pendientes y fletes en curso', async ({ pag
 
 test('el mapa muestra depósitos, pedidos pendientes y fletes en curso', async ({ page }) => {
   const mapa = page.getByRole('region', { name: 'Mapa' })
-  await expect(mapa.getByRole('img', { name: /Mapa de Argentina/ })).toBeVisible()
+  await expect(mapa.getByRole('img', { name: /^Mapa de la zona de los depósitos/ })).toBeVisible()
   await expect(mapa.getByRole('button', { name: 'Depósito General' })).toBeVisible()
   await expect(mapa.getByRole('button', { name: 'Depósito Rosario' })).toBeVisible()
   // Ana es de Funes, a pocos kilómetros de Rosario: su pedido se marca junto al depósito de Rosario.
@@ -42,6 +42,24 @@ test('el mapa muestra depósitos, pedidos pendientes y fletes en curso', async (
   // El flete de Interprovincial va de General (Bahía Blanca) a Rosario.
   await expect(mapa.getByRole('button', { name: 'Fletes de Bahía Blanca a Rosario · Funes: 1' })).toBeVisible()
   await expect(mapa.getByText(/Fuera del mapa/)).toBeHidden()
+})
+
+test('el mapa arranca en la zona de los depósitos y se aleja a todo el país', async ({ page }) => {
+  const mapa = page.getByRole('region', { name: 'Mapa' })
+  const img = mapa.getByRole('img', { name: /^Mapa de/ })
+  // Los depósitos están en Bahía Blanca y Rosario: el mapa muestra solo esa parte, más ancha que alta.
+  await expect(img).toHaveAccessibleName(/^Mapa de la zona de los depósitos/)
+  const zona = await img.boundingBox()
+  expect(zona && zona.width / zona.height).toBeGreaterThan(0.6)
+
+  await mapa.getByRole('button', { name: 'Alejar a todo el país' }).click()
+  await expect(img).toHaveAccessibleName(/^Mapa de Argentina/)
+  const pais = await img.boundingBox()
+  expect(pais && pais.width / pais.height).toBeLessThan(0.6)
+  await expect(mapa.getByRole('button', { name: 'Depósito General' })).toBeVisible()
+
+  await mapa.getByRole('button', { name: 'Acercar a la zona de los depósitos' }).click()
+  await expect(img).toHaveAccessibleName(/^Mapa de la zona de los depósitos/)
 })
 
 test('tocar un pedido del mapa lo abre en Pedidos para entregarlo', async ({ page }) => {

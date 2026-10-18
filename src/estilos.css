@@ -83,6 +83,14 @@ em, i, cite { font-style: normal; font-weight: 600; }
   position: relative;
   margin-inline: auto;
 }
+.mapa-recortado { overflow: hidden; } /* lo que queda fuera de la zona no se ve */
+.mapa-contenedor { position: relative; }
+.mapa-zoom {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+}
 .mapa-provincia {
   fill: var(--erp-soft);
   stroke: var(--mantine-color-dimmed);
