@@ -2,7 +2,7 @@
 // conoce esta interfaz; cómo se guarda (hojas, columnas, celdas, API) es asunto de cada adaptador.
 // Ver spec/arquitectura.md.
 import type {
-  Ajuste, Cobro, Compra, ContactoNuevo, Datos, Entrega, EstadoFlete, Flete, FleteItem, Pedido, PedidoFlete, PedidoItem,
+  Ajuste, Cobro, Compra, ConfigEnvio, ContactoNuevo, Datos, Entrega, EstadoFlete, Flete, FleteItem, Pedido, PedidoItem,
   Precio, Producto, Receta, RecetaItem, ReglaComision, Rendicion,
 } from '../dominio/modelo';
 
@@ -13,9 +13,9 @@ export class SinAcceso extends Error {
   constructor() { super('Esta cuenta no tiene acceso a la planilla de ERPeq.'); }
 }
 
-// Áreas que funcionan solo si la base tiene sus datos: la caja (socios, cobros y rendiciones) y las recetas
-// (recetas y sus insumos).
-export type AreaOpcional = 'caja' | 'recetas';
+// Áreas que funcionan solo si la base tiene sus datos: la caja (socios, cobros y rendiciones), las recetas
+// (recetas y sus insumos) y el envío (mínimo y costo; sin él, ningún pedido cobra envío).
+export type AreaOpcional = 'caja' | 'recetas' | 'envio';
 
 // Algo que la base todavía no tiene y hay que crear a mano (en Sheets, una hoja con sus encabezados).
 export interface Faltante { area: AreaOpcional; nombre: string; encabezados: string[] }
@@ -43,12 +43,12 @@ export interface PedidoNuevo {
   cobros?: Cobro[];
 }
 
+// Un flete lleva productos, no pedidos: no guarda para qué pedidos va.
 export interface FleteNuevo {
   flete: Flete;
   items: FleteItem[];
   estados: EstadoFlete[]; // en orden, todos con el mismo momento
   momento: Date;
-  pedidos: PedidoFlete[];
   transporteNuevo: ContactoNuevo | null;
 }
 
@@ -86,6 +86,8 @@ export interface Operaciones {
   registrarAjuste: (a: Ajuste) => Promise<void>;
   registrarPrecio: (p: Precio) => Promise<void>;
   registrarReglaComision: (r: ReglaComision) => Promise<void>;
+  // Un cambio del mínimo o del costo del envío, con su fecha desde.
+  registrarEnvio: (e: ConfigEnvio) => Promise<void>;
   registrarCobro: (c: Cobro) => Promise<void>;
   registrarRendicion: (r: Rendicion) => Promise<void>;
   registrarReceta: (r: RecetaNueva) => Promise<void>;

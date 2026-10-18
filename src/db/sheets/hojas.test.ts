@@ -111,7 +111,7 @@ describe('encabezados', () => {
   it('acepta mayúsculas, espacios y columnas de más a la derecha', async () => {
     expect.hasAssertions();
 
-    const d = await H.leerHojas(leer(['ID', ' fecha', 'contacto_id', 'deposito_id', 'nota', 'otra']));
+    const d = await H.leerHojas(leer(['ID', ' fecha', 'contacto_id', 'deposito_id', 'nota', 'Cobra_Envio ', 'otra']));
 
     expect(d.pedidos).toMatchObject([{ id: 'PE0001', contactoId: 'C0001', depositoId: 'BB' }]);
   });

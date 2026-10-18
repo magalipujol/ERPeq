@@ -59,7 +59,7 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 | `src/main.tsx` | Raíz de composición: crea el adaptador y se lo pasa a `App`. |
 | `src/base.ts`, `src/BaseProvider.tsx` | Contexto de React con los datos cargados, los cálculos derivados y las operaciones del puerto (`db`). |
 | `src/ficha.ts` | Contexto para abrir fichas (`useFicha`) y `useFila`, que hace que tocar una fila de tabla abra su ficha. |
-| `src/vistas/` | Pantallas: Inicio (por defecto: pedido nuevo, mapa, pedidos pendientes —con el flete para cubrir sus faltantes— y fletes en curso), Stock, Pedidos (alta y entregas), Ventas, Compras, Recetas (recetas y fabricación), Fletes, Precios (precios y reglas de comisión), Caja (cobros y cuentas entre socios) y Análisis. |
+| `src/vistas/` | Pantallas: Inicio (por defecto: pedido nuevo, mapa, pedidos pendientes —con el flete para cubrir sus faltantes— y fletes en curso), Stock, Pedidos (alta y entregas), Ventas, Compras, Recetas (recetas y fabricación), Fletes, Precios (precios, reglas de comisión y envío), Caja (cobros y cuentas entre socios) y Análisis. |
 | `src/componentes/` | Componentes compartidos (carga de ítems, navegación: selector del header y barra inferior del celular, exportar pedidos a WhatsApp, estados de pedidos y fletes, etc.). `Fichas.tsx`: el modal de fichas (`FichaProvider`) y `Vinculo`. |
 | `src/estilos.css`, `src/celular.css` | Estilos globales (incluida la declaración de la fuente); `celular.css` tiene los ajustes para menos de 768 px (breakpoint `sm` de Mantine). |
 | `src/fuentes/` | OpenDyslexic 0.990 (regular y negrita, del repositorio del proyecto) y su licencia OFL. Ver `spec/legibilidad.md`. |

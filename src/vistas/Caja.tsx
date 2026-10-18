@@ -221,10 +221,11 @@ function ListaACobrar({ aCobrar, onCobrar }: { aCobrar: M.CuentaVenta[]; onCobra
   );
 }
 
-// En cobros y comisiones, `ref` es la venta.
+// En cobros, comisiones y envíos, `ref` es la venta.
 const CONCEPTO: Record<M.TipoMovimiento, (m: M.MovimientoSocio, e: Etiquetas) => string> = {
   cobro: (m, e) => `Cobro de la venta a ${e.venta(m.ref)}`,
   comision: (m, e) => `Comisión de la venta a ${e.venta(m.ref)}`,
+  envio: (m, e) => `Envío de la venta a ${e.venta(m.ref)}`,
   entrego: (m) => `Entregó a ${m.ref}${m.detalle ? ` · ${m.detalle}` : ''}`,
   recibio: (m) => `Recibió de ${m.ref}${m.detalle ? ` · ${m.detalle}` : ''}`,
 };
@@ -243,6 +244,7 @@ function CuentaSocio({ cuenta, duenio }: { cuenta: M.CuentaSocio; duenio: M.Soci
         <Resumen label="Cobró en efectivo" valor={fmtMoney(cuenta.cobradoEfectivo)} />
         <Resumen label="Cobró por transferencia" valor={fmtMoney(cuenta.cobradoTransferencia)} />
         <Resumen label="Comisiones" valor={fmtMoney(cuenta.comisiones)} />
+        {cuenta.envios > 0 && <Resumen label="Envíos" valor={fmtMoney(cuenta.envios)} />}
         <Resumen label={`Entregó a ${duenio.nombre}`} valor={fmtMoney(cuenta.entregado)} />
         <Resumen label={`Recibió de ${duenio.nombre}`} valor={fmtMoney(cuenta.recibido)} />
       </Group>

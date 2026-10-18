@@ -31,7 +31,6 @@ export function escrituraFlete(f: FleteNuevo): Escritura {
     fletes: [filas.flete(f.flete)],
     fletesItems: f.items.map(filas.fleteItem),
     fletesEstados: f.estados.map((e) => filas.estado(f.flete.id, e, f.momento)),
-    pedidosFletes: f.pedidos.map(filas.pedidoFlete),
   };
 }
 
@@ -55,6 +54,7 @@ export function operaciones(escribir: (e: Escritura) => Promise<void>): Operacio
     registrarAjuste: async (a) => escribir({ ajustes: [filas.ajuste(a)] }),
     registrarPrecio: async (p) => escribir({ precios: [filas.precio(p)] }),
     registrarReglaComision: async (r) => escribir({ reglas: [filas.regla(r)] }),
+    registrarEnvio: async (e) => escribir({ envios: [filas.envio(e)] }),
     registrarCobro: async (c) => escribir({ cobros: [filas.cobro(c)] }),
     registrarRendicion: async (r) => escribir({ rendiciones: [filas.rendicion(r)] }),
     registrarReceta: async (r) => escribir({ recetas: [filas.receta(r.receta)], recetasItems: r.items.map(filas.recetaItem) }),

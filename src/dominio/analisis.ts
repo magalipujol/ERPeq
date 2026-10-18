@@ -74,14 +74,12 @@ export function masVendidoPorUnidad(productos: AnalisisProducto[]) {
 
 // ---------- Fletes ----------
 
-export interface FletesPeriodo { total: number; asignados: number; sinAsignar: number }
+export interface FletesPeriodo { total: number; cantidad: number }
 
-// Fletes con fecha en el período: lo asignado a pedidos y el resto (gasto de logística).
+// Fletes con fecha en el período. Su costo es gasto de logística: no se asigna a pedidos ni a productos.
 export function fletesDelPeriodo(datos: Datos, desde: Date | null): FletesPeriodo {
-  const ids = new Set(datos.fletes.filter((f) => enPeriodo(f.fecha, desde)).map((f) => f.id));
-  const total = datos.fletes.filter((f) => ids.has(f.id)).reduce((s, f) => s + (f.costo ?? 0), 0);
-  const asignados = datos.pedidosFletes.filter((pf) => ids.has(pf.fleteId)).reduce((s, pf) => s + (pf.costoAsignado ?? 0), 0);
-  return { total: redondear(total), asignados: redondear(asignados), sinAsignar: redondear(Math.max(0, total - asignados)) };
+  const fletes = datos.fletes.filter((f) => enPeriodo(f.fecha, desde));
+  return { total: redondear(fletes.reduce((s, f) => s + (f.costo ?? 0), 0)), cantidad: fletes.length };
 }
 
 // ---------- Clientes ----------

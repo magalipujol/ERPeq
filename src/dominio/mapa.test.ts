@@ -6,7 +6,7 @@ const contacto = (id: string, localidad: string, provincia: string): M.Contacto 
   id, rol: 'cliente', nombre: id, tipo: '', telefono: '', direccion: '', email: '', localidad, provincia, observaciones: '',
 });
 const flete = (id: string, origenId: string, destinoId: string): M.Flete => ({
-  id, fecha: null, contactoId: 'T', origenId, destinoId, costo: null, guia: '', nota: '',
+  id, fecha: null, contactoId: 'T', origenId, destinoId, costo: null, guia: '', nota: '', salida: null, llegadaEstimada: null,
 });
 
 function datos(): M.Datos {
@@ -20,10 +20,10 @@ function datos(): M.Datos {
     contactos: [contacto('ANA', 'Funes', 'Santa Fe'), contacto('BETO', ' funes ', 'santa fe'), contacto('CARO', '', '')],
     tipos: [], vendedores: [], precios: [], reglas: [], compras: [],
     pedidos: [
-      { id: 'PE1', fecha: null, contactoId: 'ANA', depositoId: 'ROS', nota: '' },
-      { id: 'PE2', fecha: null, contactoId: 'BETO', depositoId: 'ROS', nota: '' },
-      { id: 'PE3', fecha: null, contactoId: 'CARO', depositoId: 'ROS', nota: '' },
-      { id: 'PE4', fecha: null, contactoId: 'ANA', depositoId: 'ROS', nota: '' },
+      { id: 'PE1', fecha: null, contactoId: 'ANA', depositoId: 'ROS', nota: '', cobraEnvio: false },
+      { id: 'PE2', fecha: null, contactoId: 'BETO', depositoId: 'ROS', nota: '', cobraEnvio: false },
+      { id: 'PE3', fecha: null, contactoId: 'CARO', depositoId: 'ROS', nota: '', cobraEnvio: false },
+      { id: 'PE4', fecha: null, contactoId: 'ANA', depositoId: 'ROS', nota: '', cobraEnvio: false },
     ],
     pedidosItems: ['PE1', 'PE2', 'PE3', 'PE4'].map((pedidoId) => ({
       pedidoId, linea: 1, productoId: 'P1', cantidad: 1, precioLista: null, precio: 100,
@@ -36,12 +36,7 @@ function datos(): M.Datos {
       { ref: 'F1', fecha: null, estado: 'camino' },
       { ref: 'F4', fecha: null, estado: 'finalizado' },
     ],
-    pedidosFletes: [
-      { pedidoId: 'PE1', fleteId: 'F2', costoAsignado: null },
-      { pedidoId: 'PE2', fleteId: 'F2', costoAsignado: null },
-      { pedidoId: 'PE3', fleteId: 'F2', costoAsignado: null },
-    ],
-    ajustes: [], socios: [], cobros: [], rendiciones: [], recetas: [], recetasItems: [],
+    ajustes: [], socios: [], cobros: [], rendiciones: [], recetas: [], recetasItems: [], envios: [],
   };
 }
 
@@ -69,8 +64,8 @@ describe('marcasDelMapa', () => {
     // F4 ya terminó. F3 sale de un proveedor: no tiene origen en el mapa.
     expect(m.fletes.map((x) => [x.flete.id, x.estado, x.origen?.localidad ?? null, x.destinos.map((l) => l.localidad)])).toStrictEqual([
       ['F1', 'camino', 'Bahía Blanca', ['Rosario']],
-      // Va a clientes: ANA y BETO están en la misma localidad (escrita distinto) y CARO no tiene.
-      ['F2', 'preparacion', 'Rosario', ['Funes']],
+      // Sale a clientes: un flete no sabe para qué pedidos va, así que no tiene destino en el mapa.
+      ['F2', 'preparacion', 'Rosario', []],
       ['F3', 'preparacion', null, ['Bahía Blanca']],
     ]);
   });

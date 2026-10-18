@@ -19,8 +19,8 @@ function armar(pedidos: PedidoPrueba[], extra: Partial<M.Datos> = {}): M.Datos {
     ],
     contactos: [], tipos: [], vendedores: [], precios: [], reglas: [], compras: [], pedidos: [],
     pedidosItems: [], pedidosEstados: [], pedidosVendedores: [], ventas: [], ventasItems: [], ventasComisiones: [],
-    fletes: [], fletesItems: [], fletesEstados: [], pedidosFletes: [], ajustes: [], socios: [], cobros: [], rendiciones: [],
-    recetas: [], recetasItems: [],
+    fletes: [], fletesItems: [], fletesEstados: [], ajustes: [], socios: [], cobros: [], rendiciones: [],
+    recetas: [], recetasItems: [], envios: [],
     ...extra,
   };
   for (const p of pedidos) {
@@ -31,10 +31,10 @@ function armar(pedidos: PedidoPrueba[], extra: Partial<M.Datos> = {}): M.Datos {
         provincia: '', observaciones: '',
       });
     }
-    d.pedidos.push({ id: p.id, fecha: p.fecha, contactoId, depositoId: 'BB', nota: '' });
+    d.pedidos.push({ id: p.id, fecha: p.fecha, contactoId, depositoId: 'BB', nota: '', cobraEnvio: false });
     if (p.cancelado === true) d.pedidosEstados.push({ ref: p.id, fecha: null, estado: 'cancelado' });
     const ventaId = `V-${p.id}`;
-    d.ventas.push({ id: ventaId, fecha: p.fecha, pedidoId: p.id, depositoId: 'BB', nota: '' });
+    d.ventas.push({ id: ventaId, fecha: p.fecha, pedidoId: p.id, depositoId: 'BB', nota: '', envio: 0, envioVendedorId: '' });
     p.lineas.forEach(([productoId, cantidad, precio, costo, comision], i) => {
       d.ventasItems.push({
         ventaId, linea: i + 1, pedidoLinea: i + 1, productoId, cantidad, precio, importe: cantidad * precio, costo,
@@ -92,16 +92,15 @@ describe('analizarProductos', () => {
 });
 
 describe('fletesDelPeriodo', () => {
-  it('separa lo asignado a pedidos del gasto de logística', () => {
-    const flete = (id: string, f: Date, costo: number): M.Flete => ({
-      id, fecha: f, contactoId: '', origenId: 'BB', destinoId: 'ROS', costo, guia: '', nota: '',
+  it('suma el costo de los fletes con fecha en el período: todo es gasto de logística', () => {
+    const flete = (id: string, f: Date, costo: number | null): M.Flete => ({
+      id, fecha: f, contactoId: '', origenId: 'BB', destinoId: 'ROS', costo, guia: '', nota: '', salida: null, llegadaEstimada: null,
     });
     const d = armar([], {
-      fletes: [flete('F1', fecha(2026, 10, 1), 5000), flete('F2', fecha(2025, 1, 1), 9999)],
-      pedidosFletes: [{ pedidoId: 'PE1', fleteId: 'F1', costoAsignado: 3000 }, { pedidoId: 'PE9', fleteId: 'F2', costoAsignado: 9999 }],
+      fletes: [flete('F1', fecha(2026, 10, 1), 5000), flete('F2', fecha(2026, 9, 1), null), flete('F3', fecha(2025, 1, 1), 9999)],
     });
 
-    expect(A.fletesDelPeriodo(d, A.inicioPeriodo('6', HOY))).toStrictEqual({ total: 5000, asignados: 3000, sinAsignar: 2000 });
+    expect(A.fletesDelPeriodo(d, A.inicioPeriodo('6', HOY))).toStrictEqual({ total: 5000, cantidad: 2 });
   });
 });
 

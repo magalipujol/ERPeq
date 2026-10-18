@@ -168,8 +168,8 @@ function GananciaPorProducto({ productos, fletes }: { productos: A.AnalisisProdu
       </ScrollArea.Autosize>
       {filas.length === 0 && <Text c="dimmed" mt="xs">No hay ventas en el período.</Text>}
       <Text size="xs" c="dimmed" mt="xs">
-        Ganancia = vendido − comisiones − costo. Los fletes no se reparten entre productos: en el período suman{' '}
-        {fmtMoney(fletes.total)} ({fmtMoney(fletes.asignados)} asignados a pedidos y {fmtMoney(fletes.sinAsignar)} de logística).
+        Ganancia = vendido − comisiones − costo. Los fletes son gasto de logística y no se reparten entre productos:
+        en el período son {fletes.cantidad} y suman {fmtMoney(fletes.total)}.
         {sinCosto > 0 && ' Las ventas sin costo no cuentan para la ganancia ni el margen.'}
       </Text>
     </Paper>

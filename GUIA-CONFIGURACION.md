@@ -78,29 +78,29 @@ Entrá a https://console.cloud.google.com con la cuenta del dueño.
    | `Precios` | `producto_id`, `precio`, `desde` |
    | `Reglas de comisión` | `vendedor_id`, `producto_id`, `porcentaje`, `desde` |
    | `Compras` | `fecha`, `deposito_id`, `contacto_id`, `producto_id`, `cantidad`, `precio`, `importe`, `remito`, `pedido_id`, `nota` |
-   | `Pedidos` | `id`, `fecha`, `contacto_id`, `deposito_id`, `nota` |
+   | `Pedidos` | `id`, `fecha`, `contacto_id`, `deposito_id`, `nota`, `cobra_envio` |
    | `Pedidos ítems` | `pedido_id`, `linea`, `producto_id`, `cantidad`, `precio_lista`, `precio` |
    | `Pedidos estados` | `pedido_id`, `fecha`, `estado` |
    | `Pedidos vendedores` | `pedido_id`, `vendedor_id` |
-   | `Ventas` | `id`, `fecha`, `pedido_id`, `deposito_id`, `nota` |
+   | `Ventas` | `id`, `fecha`, `pedido_id`, `deposito_id`, `nota`, `envio`, `envio_vendedor_id` |
    | `Ventas ítems` | `venta_id`, `linea`, `pedido_linea`, `producto_id`, `cantidad`, `precio`, `importe`, `costo` |
    | `Ventas comisiones` | `venta_id`, `linea`, `vendedor_id`, `porcentaje_regla`, `porcentaje`, `monto` |
-   | `Fletes` | `id`, `fecha`, `contacto_id`, `origen_id`, `destino_id`, `costo`, `guia`, `nota` |
+   | `Fletes` | `id`, `fecha`, `contacto_id`, `origen_id`, `destino_id`, `costo`, `guia`, `nota`, `salida`, `llegada_estimada` |
    | `Fletes ítems` | `flete_id`, `producto_id`, `cantidad` |
    | `Fletes estados` | `flete_id`, `fecha`, `estado` |
-   | `Pedidos fletes` | `pedido_id`, `flete_id`, `costo_asignado` |
    | `Ajustes` | `fecha`, `deposito_id`, `producto_id`, `cantidad`, `motivo` |
    | `Socios` | `id`, `nombre`, `vendedor_id`, `rol` |
    | `Cobros` | `fecha`, `venta_id`, `importe`, `medio`, `socio_id`, `nota` |
    | `Rendiciones` | `fecha`, `de_socio_id`, `a_socio_id`, `importe`, `medio`, `nota` |
    | `Recetas` | `id`, `version`, `desde`, `producto_id`, `cantidad`, `activa` |
    | `Recetas ítems` | `receta_id`, `version`, `producto_id`, `cantidad` |
+   | `Envío` | `minimo`, `costo`, `desde` |
 
 3. Cargá desde la fila 2 los datos fijos: *Depósitos* (por ejemplo `BB`, `General`, `Bahía Blanca`),
    *Productos*, *Tipos de cliente*, *Vendedores* (`activo` = `sí`; `localidad`, donde trabaja), los clientes,
    proveedores y transportes en *Contactos* y los socios en *Socios* (ver el paso 3 de "Agregar las hojas de
    caja"). Los clientes se cargan solo acá: la app no los da de alta. Las demás hojas quedan con el
-   encabezado solo: las llena la app.
+   encabezado solo: las llena la app. El mínimo y el costo del envío se cargan desde la pantalla Precios.
 4. Copiá el **ID** de la URL: `https://docs.google.com/spreadsheets/d/`**`ESTE-ES-EL-ID`**`/edit`.
 
 > La planilla tiene datos personales (agenda de clientes). No la compartas por canales públicos.
@@ -155,6 +155,20 @@ La hoja *Vendedores* tiene una cuarta columna, `localidad`: al tomar un pedido, 
 de la localidad del cliente. Si la planilla no la tiene, la app no abre hasta agregarla: escribí `localidad` en la celda **D1** de *Vendedores* y, en cada vendedor, su localidad
 tal como figura en *Contactos* (por ejemplo, `Rosario` para Guada/Hernán). Puede quedar vacía. Después,
 recargá la página.
+
+### Pasar una planilla que ya existe al modelo de fletes y envío
+
+Los fletes ya no se asignan a pedidos (su costo es gasto de logística del mes), los fletes guardan la salida y la
+llegada previstas, y los pedidos chicos pagan envío. Si la planilla es anterior a este cambio, la app no abre
+hasta migrarla. Los datos que ya tiene no se tocan: solo se agregan columnas vacías al final.
+
+1. En **Pedidos**, escribí `cobra_envio` en la celda **F1**. Los pedidos anteriores quedan vacíos (no cobran envío).
+2. En **Ventas**, escribí `envio` en **F1** y `envio_vendedor_id` en **G1**. Las ventas anteriores quedan vacías.
+3. En **Fletes**, escribí `salida` en **I1** y `llegada_estimada` en **J1**. Los fletes anteriores quedan vacíos.
+4. La hoja **Pedidos fletes** ya no se usa: la app la ignora. Podés borrarla o dejarla como historial.
+5. Agregá una hoja **Envío** (con tilde) con `minimo`, `costo`, `desde` en la fila 1. Queda vacía: el mínimo y el
+   costo se cargan desde la pantalla **Precios** (hoy, $150.000 y $5.000). Sin esta hoja, ningún pedido cobra envío.
+6. Recargá la página.
 
 ### Si la app dice que las columnas de una hoja no son las que espera
 

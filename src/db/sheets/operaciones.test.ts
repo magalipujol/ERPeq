@@ -6,11 +6,13 @@ import { crearPlanillaEnMemoria } from './memoria';
 const dia = new Date(2026, 9, 16, 12);
 const DIA = Math.floor(aSerie(dia));
 const MOMENTO = aSerie(dia);
-const pedido: M.Pedido = { id: 'PE0001', fecha: dia, contactoId: 'C0001', depositoId: 'BB', nota: '' };
+const pedido: M.Pedido = { id: 'PE0001', fecha: dia, contactoId: 'C0001', depositoId: 'BB', nota: '', cobraEnvio: false };
 const item: M.PedidoItem = { pedidoId: 'PE0001', linea: 1, productoId: 'P001', cantidad: 2, precioLista: null, precio: 3000 };
 const leo: M.Vendedor = { id: 'VEN01', nombre: 'Leo', activo: true, localidad: '' };
 const cobro: M.Cobro = { fecha: dia, ventaId: 'V0001', importe: 6000, medio: 'efectivo', socioId: 'SOC02', nota: '' };
-const entrega = (id = 'V0001') => M.armarEntrega({ id, fecha: dia, pedidoId: 'PE0001', depositoId: 'BB', nota: '' }, [{
+const entrega = (id = 'V0001', envio = 0) => M.armarEntrega({
+  id, fecha: dia, pedidoId: 'PE0001', depositoId: 'BB', nota: '', envio, envioVendedorId: envio > 0 ? 'VEN01' : '',
+}, [{
   linea: { ...item, entregado: 0, pendiente: 2 }, cantidad: 2, costo: 1500,
   comisiones: [{ vendedor: leo, porcentajeRegla: 10, porcentaje: 10 }],
 }]);
@@ -27,12 +29,12 @@ describe('operaciones sobre la planilla', () => {
 
     expect(db.escrituras).toHaveLength(1);
     expect(db.hojas).toMatchObject({
-      pedidos: [['PE0001', DIA, 'C0001', 'BB', '']],
+      pedidos: [['PE0001', DIA, 'C0001', 'BB', '', 'no']],
       pedidosItems: [['PE0001', 1, 'P001', 2, '', 3000]],
       pedidosEstados: [['PE0001', MOMENTO, 'abierto']],
       pedidosVendedores: [['PE0001', 'VEN01']],
       precios: [['P001', 3000, DIA]],
-      ventas: [['V0001', DIA, 'PE0001', 'BB', '']],
+      ventas: [['V0001', DIA, 'PE0001', 'BB', '', '', '']],
       ventasItems: [['V0001', 1, 1, 'P001', 2, 3000, 6000, 1500]],
       ventasComisiones: [['V0001', 1, 'VEN01', 10, 10, 600]],
       cobros: [[DIA, 'V0001', 6000, 'efectivo', 'SOC02', '']],
@@ -43,6 +45,31 @@ describe('operaciones sobre la planilla', () => {
 
     expect(r).toMatchObject({ estado: 'entregado', importeEntregado: 6000, comisiones: 600, ganancia: 2400 });
     expect(M.ventasACobrar(leidos)).toStrictEqual([]);
+  });
+
+  it('el envío de una venta directa queda en la venta con el vendedor que lo lleva, y suma a lo que se cobra', async () => {
+    expect.hasAssertions();
+
+    const db = crearPlanillaEnMemoria();
+    await db.registrarEnvio({ minimo: 150000, costo: 5000, desde: dia });
+    await db.registrarPedido({
+      pedido: { ...pedido, cobraEnvio: true }, items: [item], vendedores: ['VEN01'], momento: dia, entrega: entrega('V0001', 5000),
+      cobros: [{ ...cobro, importe: 11000 }], preciosNuevos: [],
+    });
+
+    expect(db.hojas).toMatchObject({
+      envios: [[150000, 5000, DIA]],
+      pedidos: [['PE0001', DIA, 'C0001', 'BB', '', 'sí']],
+      ventas: [['V0001', DIA, 'PE0001', 'BB', '', 5000, 'VEN01']],
+    });
+
+    const leidos = await db.leer();
+
+    // `desde` se guarda como fecha sin hora.
+    expect(leidos.envios).toStrictEqual([{ minimo: 150000, costo: 5000, desde: new Date(2026, 9, 16) }]);
+    expect(M.resumirPedidos(leidos)[0]).toMatchObject({ envio: 5000, ganancia: 2400 });
+    // 6.000 de productos + 5.000 de envío, cobrados enteros.
+    expect(M.cuentasVentas(leidos)[0]).toMatchObject({ importe: 11000, cobrado: 11000, saldo: 0 });
   });
 
   it('una entrega con cobro guarda la venta y el cobro juntos; sin cobro, no toca Cobros', async () => {
@@ -59,22 +86,25 @@ describe('operaciones sobre la planilla', () => {
     expect(M.cuentasVentas(await db.leer()).find((c) => c.venta.id === 'V0001')).toMatchObject({ importe: 6000, cobrado: 2000, saldo: 4000 });
   });
 
-  it('un flete ya despachado guarda los estados anteriores y el reparto a pedidos', async () => {
+  it('un flete ya despachado guarda los estados anteriores y la salida y llegada previstas', async () => {
     expect.hasAssertions();
 
     const db = crearPlanillaEnMemoria();
     await db.registrarFlete({
-      flete: { id: 'F0001', fecha: dia, contactoId: 'C0004', origenId: 'BB', destinoId: 'ROS', costo: 900, guia: '', nota: '' },
+      flete: {
+        id: 'F0001', fecha: dia, contactoId: 'C0004', origenId: 'BB', destinoId: 'ROS', costo: 900, guia: '', nota: '',
+        salida: dia, llegadaEstimada: null,
+      },
       items: [{ fleteId: 'F0001', productoId: 'P001', cantidad: 3 }],
       estados: M.caminoFlete('camino'), momento: dia,
-      pedidos: [{ pedidoId: 'PE0001', fleteId: 'F0001', costoAsignado: 900 }],
       transporteNuevo: null,
     });
     await db.cambiarEstadoFlete('F0001', 'finalizado', dia);
 
     expect(db.hojas.contactos).toStrictEqual([]);
     expect(db.hojas.fletesEstados).toStrictEqual([['F0001', MOMENTO, 'preparacion'], ['F0001', MOMENTO, 'camino'], ['F0001', MOMENTO, 'finalizado']]);
-    expect(db.hojas.pedidosFletes).toStrictEqual([['PE0001', 'F0001', 900]]);
+    expect(db.hojas.fletes).toStrictEqual([['F0001', DIA, 'C0004', 'BB', 'ROS', 900, '', '', MOMENTO, '']]);
+    expect((await db.leer()).fletes[0]).toMatchObject({ salida: dia, llegadaEstimada: null });
     expect(M.estadoFlete(M.estadosActuales((await db.leer()).fletesEstados), 'F0001')).toBe('finalizado');
   });
 

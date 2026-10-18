@@ -9,13 +9,12 @@ export interface RefFicha { tipo: TipoFicha; id: string }
 const recientes = <T extends { fecha: Date | null }>(lista: T[]) =>
   [...lista].sort((a, b) => (b.fecha?.getTime() ?? 0) - (a.fecha?.getTime() ?? 0));
 
+// `importe` es lo que paga el cliente: productos más envío.
 export interface VentaDePedido { venta: M.Venta; importe: number; cobrado: number; saldo: number }
-export interface FleteDePedido { flete: M.Flete; estado: M.EstadoFlete; costoAsignado: number | null }
 
 export interface FichaPedido {
   resumen: M.ResumenPedido;
   ventas: VentaDePedido[];
-  fletes: FleteDePedido[];
   compras: M.Compra[]; // compras hechas para este pedido
 }
 
@@ -23,17 +22,11 @@ export function fichaPedido(datos: M.Datos, resumenes: M.ResumenPedido[], id: st
   const resumen = resumenes.find((r) => r.pedido.id === id);
   if (!resumen) return null;
   const cuentas = new Map(M.cuentasVentas(datos).map((c) => [c.venta.id, c]));
-  const estados = M.estadosActuales(datos.fletesEstados);
-  const fletes = new Map(datos.fletes.map((f) => [f.id, f]));
   return {
     resumen,
     ventas: recientes(resumen.ventas).map((venta) => {
       const c = cuentas.get(venta.id);
       return { venta, importe: c?.importe ?? 0, cobrado: c?.cobrado ?? 0, saldo: c?.saldo ?? 0 };
-    }),
-    fletes: datos.pedidosFletes.filter((pf) => pf.pedidoId === id).flatMap((pf) => {
-      const flete = fletes.get(pf.fleteId);
-      return flete ? [{ flete, estado: M.estadoFlete(estados, flete.id), costoAsignado: pf.costoAsignado }] : [];
     }),
     compras: recientes(datos.compras.filter((c) => c.pedidoId === id)),
   };
@@ -47,8 +40,10 @@ export interface FichaVenta {
   items: ItemVenta[];
   comisiones: { vendedorId: string; monto: number }[]; // por vendedor, sumando los ítems
   cobros: M.Cobro[];
+  // `importe` es lo que paga el cliente (productos más `venta.envio`); el saldo es sobre ese total.
   importe: number; cobrado: number; saldo: number;
-  // Importe − comisiones − costo de la mercadería. Null si algún ítem no tiene costo.
+  // Productos − comisiones − costo de la mercadería (el envío no cuenta: va para el vendedor). Null si algún
+  // ítem no tiene costo.
   ganancia: number | null;
 }
 
@@ -68,7 +63,7 @@ export function fichaVenta(datos: M.Datos, id: string): FichaVenta | null {
     cobros: recientes(datos.cobros.filter((c) => c.ventaId === id)),
     importe: cuenta.importe, cobrado: cuenta.cobrado, saldo: cuenta.saldo,
     ganancia: items.some((it) => it.ganancia === null) ? null
-      : M.redondear(cuenta.importe - comision - items.reduce((s, it) => s + it.cantidad * (it.costo ?? 0), 0)),
+      : M.redondear(items.reduce((s, it) => s + it.importe - it.cantidad * (it.costo ?? 0), 0) - comision),
   };
 }
 
@@ -150,7 +145,6 @@ export interface FichaFlete {
   estado: M.EstadoFlete;
   historial: M.RegistroEstado[]; // en el orden en que se agregaron
   items: M.FleteItem[];
-  pedidos: M.PedidoFlete[];
 }
 
 export function fichaFlete(datos: M.Datos, id: string): FichaFlete | null {
@@ -161,7 +155,6 @@ export function fichaFlete(datos: M.Datos, id: string): FichaFlete | null {
     estado: M.estadoFlete(M.estadosActuales(datos.fletesEstados), id),
     historial: datos.fletesEstados.filter((e) => e.ref === id),
     items: datos.fletesItems.filter((it) => it.fleteId === id),
-    pedidos: datos.pedidosFletes.filter((pf) => pf.fleteId === id),
   };
 }
 

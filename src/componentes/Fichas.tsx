@@ -5,7 +5,7 @@ import { useBase } from '../base';
 import * as F from '../dominio/fichas';
 import * as M from '../dominio/modelo';
 import { FichaContext, useFicha } from '../ficha';
-import { fmtFecha, fmtMoney, fmtNum, lugar } from '../formato';
+import { fmtFecha, fmtFechaHora, fmtMoney, fmtNum, lugar } from '../formato';
 import { Resumen } from './comunes';
 import { EstadoFlete, EstadoPedido, Recorrido } from './estados';
 
@@ -194,7 +194,7 @@ function Recientes<T>({ lista, children }: { lista: T[]; children: (visibles: T[
 }
 
 function FichaPedido({ id, acciones }: { id: string; acciones: Acciones }) {
-  const { datos, pedidos, nombres, etiquetas } = useBase();
+  const { datos, pedidos, nombres } = useBase();
   const f = F.fichaPedido(datos, pedidos, id);
   if (!f) return <NoEsta />;
   const { resumen: r } = f;
@@ -206,6 +206,7 @@ function FichaPedido({ id, acciones }: { id: string; acciones: Acciones }) {
         ['Entrega desde', nombres.deposito(r.pedido.depositoId)],
         ['Estado', <EstadoPedido key="e" estado={r.estado} />],
         ['Vendedores', r.vendedores.map(nombres.vendedor).join(', ') || 'Sin comisión'],
+        ['Envío', r.pedido.cobraEnvio ? (r.envio > 0 ? `Se cobró ${fmtMoney(r.envio)}` : 'Se cobra en la primera entrega') : ''],
         ['Nota', r.pedido.nota],
       ]} />
       {M.pedidoAbierto(r.estado) && (
@@ -236,15 +237,6 @@ function FichaPedido({ id, acciones }: { id: string; acciones: Acciones }) {
             ])} />
         </Seccion>
       )}
-      {f.fletes.length > 0 && (
-        <Seccion titulo="Fletes">
-          <Tabla label="Fletes del pedido" columnas={[{ titulo: 'Flete' }, { titulo: 'Estado' }, { titulo: 'Costo asignado', num: true }]}
-            filas={f.fletes.map((x) => [
-              <Vinculo key="f" a={{ tipo: 'flete', id: x.flete.id }}>{etiquetas.flete(x.flete.id)}</Vinculo>,
-              <EstadoFlete key="e" estado={x.estado} />, fmtMoney(x.costoAsignado),
-            ])} />
-        </Seccion>
-      )}
       {f.compras.length > 0 && <Seccion titulo="Compras para este pedido"><TablaCompras compras={f.compras} /></Seccion>}
     </Stack>
   );
@@ -262,6 +254,7 @@ function FichaVenta({ id }: { id: string }) {
         ['Fecha', fmtFecha(f.venta.fecha)],
         ['Depósito', nombres.deposito(f.venta.depositoId)],
         ['Comisiones', f.comisiones.map((c) => `${nombres.vendedor(c.vendedorId)} ${fmtMoney(c.monto)}`).join(', ')],
+        ['Envío', f.venta.envio > 0 ? `${fmtMoney(f.venta.envio)} para ${nombres.vendedor(f.venta.envioVendedorId) || 'el dueño'}` : ''],
         ['Nota', f.venta.nota],
       ]} />
       <Seccion titulo="Productos">
@@ -415,7 +408,7 @@ function FichaContacto({ id }: { id: string }) {
 }
 
 function FichaFlete({ id, acciones }: { id: string; acciones: Acciones }) {
-  const { datos, nombres, etiquetas } = useBase();
+  const { datos, nombres } = useBase();
   const f = F.fichaFlete(datos, id);
   if (!f) return <NoEsta />;
   return (
@@ -426,6 +419,8 @@ function FichaFlete({ id, acciones }: { id: string; acciones: Acciones }) {
         ['Recorrido', <Recorrido key="r" flete={f.flete} />],
         ['Estado', <EstadoFlete key="e" estado={f.estado} />],
         ['Costo', fmtMoney(f.flete.costo)],
+        ['Salida prevista', f.flete.salida ? fmtFechaHora(f.flete.salida) : ''],
+        ['Llegada estimada', f.flete.llegadaEstimada ? fmtFechaHora(f.flete.llegadaEstimada) : ''],
         ['Guía', f.flete.guia],
         ['Nota', f.flete.nota],
       ]} />
@@ -435,15 +430,6 @@ function FichaFlete({ id, acciones }: { id: string; acciones: Acciones }) {
           <Tabla label="Mercadería del flete" columnas={[{ titulo: 'Producto' }, { titulo: 'Cant.', num: true }]}
             filas={f.items.map((it) => [
               <Vinculo key="p" a={{ tipo: 'producto', id: it.productoId }}>{nombres.producto(it.productoId)}</Vinculo>, fmtNum(it.cantidad),
-            ])} />
-        </Seccion>
-      )}
-      {f.pedidos.length > 0 && (
-        <Seccion titulo="Pedidos">
-          <Tabla label="Pedidos del flete" columnas={[{ titulo: 'Pedido' }, { titulo: 'Costo asignado', num: true }]}
-            filas={f.pedidos.map((pf) => [
-              <Vinculo key="p" a={{ tipo: 'pedido', id: pf.pedidoId }}>{etiquetas.pedido(pf.pedidoId) || pf.pedidoId}</Vinculo>,
-              fmtMoney(pf.costoAsignado),
             ])} />
         </Seccion>
       )}
