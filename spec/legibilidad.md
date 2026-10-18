@@ -15,7 +15,8 @@ Association (BDA) y las pautas de contraste de WCAG. Los valores están en `src/
 | Sin mayúsculas sostenidas | Encabezados de tabla y etiquetas de estado (Badge) en mayúscula inicial. |
 | Sin itálicas ni subrayados para énfasis | El énfasis va en negrita; `em`/`i` se muestran en negrita. |
 | Sin texto justificado | Todo alineado a la izquierda; los números, a la derecha. |
-| Contraste alto sin blanco puro sobre negro puro | Fondo crema (`#f6f3ec`, tarjetas `#fffdf8`) y texto `#1f241c`. Texto secundario `#545a50` (contraste mayor a 6:1); en modo oscuro, texto `#e6e4dc` sobre `#20241d`. |
+| Polaridad positiva: texto oscuro sobre fondo claro | Siempre en esquema claro, aunque el dispositivo esté en modo oscuro (`forceColorScheme` en `src/main.tsx`). Botones y etiquetas `filled` con fondo claro del color (tono 2), borde del tono 6 y el texto normal, en lugar de texto blanco sobre color (`variantColorResolver` en `src/tema.ts`); lo mismo los globitos del mapa. |
+| Contraste alto sin blanco puro sobre negro puro | Fondo crema (`#f6f3ec`, tarjetas `#fffdf8`) y texto `#1f241c`. Texto secundario `#545a50` (contraste mayor a 6:1). Los textos de color (`c="red"`, etiquetas `light`) usan el tono 9; los tonos 8 y 9 de rojo, verde, amarillo y naranja están oscurecidos en `src/tema.ts` para pasar 4,5:1 sobre el fondo. |
 | Cifras fáciles de comparar | Números tabulares en las tablas y en los KPI; columnas numéricas alineadas a la derecha. |
 
 ## Al escribir pantallas

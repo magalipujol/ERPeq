@@ -21,11 +21,13 @@
   line-gap-override: 0%;
 }
 
-/* Colores: fondo crema y texto gris muy oscuro (sin blanco puro sobre negro puro); el texto secundario
-   (dimmed) y los placeholders con contraste de al menos 4,5:1 sobre el fondo de las tarjetas.
+/* Colores: polaridad positiva siempre (texto oscuro sobre fondo claro; la app no tiene modo oscuro). Fondo crema y
+   texto gris muy oscuro (sin blanco puro sobre negro puro); el texto secundario (dimmed), los placeholders y los
+   textos de color (`c="red"`, etc.) con contraste de al menos 4,5:1 sobre el fondo de las tarjetas.
    Con el selector de esquema para ganarle a los valores que Mantine define para modo claro. */
 :root,
 :root[data-mantine-color-scheme='light'] {
+  color-scheme: light;
   --erp-bg: #f6f3ec;
   --erp-soft: #e8f0e1;
   --c1: #4f7a3a;
@@ -35,18 +37,11 @@
   --mantine-color-text: #1f241c;
   --mantine-color-dimmed: #545a50;
   --mantine-color-placeholder: #6e746a;
-}
-
-:root[data-mantine-color-scheme='dark'] {
-  --erp-bg: #171a15;
-  --erp-soft: #2a3423;
-  --c1: #8bbf6e;
-  --c2: #e2b04a;
-  --c3: #8fb1d6;
-  --mantine-color-body: #20241d;
-  --mantine-color-text: #e6e4dc;
-  --mantine-color-dimmed: #b3b8ab;
-  --mantine-color-placeholder: #8f9589;
+  --mantine-color-red-text: var(--mantine-color-red-9);
+  --mantine-color-green-text: var(--mantine-color-green-9);
+  --mantine-color-blue-text: var(--mantine-color-blue-9);
+  --mantine-color-yellow-text: var(--mantine-color-yellow-9);
+  --mantine-color-orange-text: var(--mantine-color-orange-9);
 }
 
 body {
@@ -136,15 +131,15 @@ em, i, cite { font-style: normal; font-weight: 600; }
   height: 26px;
   padding-inline: 6px;
   border-radius: 13px;
-  background: var(--mantine-color-orange-7);
-  color: #fff;
-  border: 2px solid var(--mantine-color-body);
+  background: var(--mantine-color-orange-2);
+  color: var(--mantine-color-text);
+  border: 2px solid var(--mantine-color-orange-7);
   font-size: var(--mantine-font-size-sm);
   font-weight: 700;
   line-height: 22px;
   text-align: center;
 }
-.mapa-burbuja-falta { background: var(--mantine-color-red-8); }
+.mapa-burbuja-falta { background: var(--mantine-color-red-2); border-color: var(--mantine-color-red-8); }
 .mapa-burbuja-chica {
   position: static;
   display: inline-block;
