@@ -107,6 +107,36 @@ describe('resumirPedidos', () => {
   });
 });
 
+describe('propuestaPedido', () => {
+  const contacto = (id: string, localidad: string): M.Contacto => ({
+    id, rol: 'cliente', nombre: id, tipo: '', telefono: '', direccion: '', email: '', localidad, provincia: '', observaciones: '',
+  });
+  const base = datos({
+    depositos: [{ id: 'BB', nombre: 'General', localidad: 'Bahía Blanca' }, { id: 'ROS', nombre: 'Rosario', localidad: 'Rosario, Santa Fe' }],
+    contactos: [contacto('C1', 'ROSARIO'), contacto('C2', 'Funes'), contacto('C3', ''), contacto('C4', 'Bahia Blanca')],
+    vendedores: [
+      { id: 'VEN01', nombre: 'Leo', activo: true, localidad: '' },
+      { id: 'VEN02', nombre: 'Guada/Hernán', activo: true, localidad: 'Rosario' },
+      { id: 'VEN03', nombre: 'Ex', activo: false, localidad: 'Rosario' },
+    ],
+    pedidos: [{ ...pedido('PE1', 'BB'), contactoId: 'C1' }, { ...pedido('PE2', 'BB'), contactoId: 'C2' }],
+    pedidosVendedores: [{ pedidoId: 'PE1', vendedorId: 'VEN01' }, { pedidoId: 'PE2', vendedorId: 'VEN01' }],
+  });
+
+  it('propone los vendedores activos y el depósito de la localidad del cliente, sin mirar tildes ni mayúsculas', () => {
+    expect(M.propuestaPedido(base, 'C1')).toStrictEqual({ vendedores: ['VEN02'], depositoId: 'ROS' });
+  });
+
+  it('si en su localidad no hay vendedor ni depósito, propone los de su último pedido', () => {
+    expect(M.propuestaPedido(base, 'C2')).toStrictEqual({ vendedores: ['VEN01'], depositoId: 'BB' });
+  });
+
+  it('resuelve cada cosa por separado y no propone nada si no hay de dónde sacarlo', () => {
+    expect(M.propuestaPedido(base, 'C4')).toStrictEqual({ vendedores: [], depositoId: 'BB' });
+    expect(M.propuestaPedido(base, 'C3')).toStrictEqual({ vendedores: [], depositoId: null });
+  });
+});
+
 describe('calcularStock', () => {
   const productos = [producto('P001')];
 
@@ -190,7 +220,7 @@ describe('calcularStock', () => {
 
 describe('armarEntrega', () => {
   it('numera los ítems entregados, calcula importes y una comisión por vendedor', () => {
-    const vend: M.Vendedor = { id: 'VEN01', nombre: 'Guada/Hernán', activo: true };
+    const vend: M.Vendedor = { id: 'VEN01', nombre: 'Guada/Hernán', activo: true, localidad: '' };
     const linea = (n: number, precio: number): M.LineaPedido => ({ ...item('PE1', n, `P00${n}`, 25, precio), entregado: 0, pendiente: 25 });
     const e = M.armarEntrega(venta('V1', 'PE1'), [
       { linea: linea(1, 4080), cantidad: 25, costo: 1450, comisiones: [{ vendedor: vend, porcentajeRegla: 7, porcentaje: 7 }] },
@@ -367,7 +397,7 @@ describe('socioPropuesto', () => {
 
 describe('nombres', () => {
   it('salen de la hoja de cada cosa por ID; un ID que no existe se muestra tal cual', () => {
-    const n = M.nombres(caja({ productos: [producto('P001')], vendedores: [{ id: 'VEN01', nombre: 'Guada/Hernán', activo: true }] }));
+    const n = M.nombres(caja({ productos: [producto('P001')], vendedores: [{ id: 'VEN01', nombre: 'Guada/Hernán', activo: true, localidad: '' }] }));
 
     expect([n.producto('P001'), n.contacto('C0002'), n.vendedor('VEN01'), n.socio('SOC01'), n.deposito('BB')])
       .toStrictEqual(['P001', 'Bruno', 'Guada/Hernán', 'Sampatti', 'General']);

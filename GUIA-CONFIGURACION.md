@@ -126,6 +126,14 @@ Quedan vacías: las recetas se cargan desde la app. El producto que sale de cada
 *Productos* y tener precio de lista (en la pantalla Precios). Las fabricaciones se guardan en *Ajustes*. Después,
 recargá la página.
 
+### Agregar la localidad de los vendedores a una planilla que ya existe
+
+La hoja *Vendedores* tiene una cuarta columna, `localidad`: al tomar un pedido, la app propone los vendedores
+de la localidad del cliente. Una base generada con el script ya la tiene. En una planilla anterior, la app no
+abre hasta agregarla: escribí `localidad` en la celda **D1** de *Vendedores* y, en cada vendedor, su localidad
+tal como figura en *Contactos* (por ejemplo, `Rosario` para Guada/Hernán). Puede quedar vacía. Después,
+recargá la página.
+
 ### Si la app dice que las columnas de una hoja no son las que espera
 
 La planilla es de una versión anterior, que guardaba una copia del nombre del cliente, producto, vendedor o

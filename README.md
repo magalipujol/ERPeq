@@ -25,7 +25,7 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
 
 | Hojas | Contenido |
 |---|---|
-| Depósitos, Productos, Contactos, Tipos de cliente, Vendedores | Datos maestros. |
+| Depósitos, Productos, Contactos, Tipos de cliente, Vendedores | Datos maestros. Los clientes se cargan a mano en *Contactos*; el pedido propone los vendedores y el depósito de la localidad del cliente. |
 | Precios, Reglas de comisión | Valores por defecto (precio de lista y % de comisión por vendedor y producto), con fecha desde. |
 | Pedidos, Pedidos ítems, Pedidos estados, Pedidos vendedores | Lo que pide el cliente, con el precio fijado al crearlo. Reserva stock. |
 | Ventas, Ventas ítems, Ventas comisiones | Cada entrega de un pedido: descuenta stock y genera la comisión. |

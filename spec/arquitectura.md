@@ -73,7 +73,9 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
   la UI abre la base sin pasar por `ingresar()`. En Sheets, el token se guarda en `localStorage` hasta que
   vence; las pestañas lo comparten y, si una reconecta, las demás toman el token nuevo en su próxima llamada.
 - **Lectura:** `leer()` devuelve todos los `Datos` del dominio; lo que está en `faltantes` se lee vacío.
-  Las filas traen IDs y no nombres: la UI los resuelve con `nombres(datos)` del dominio. En Sheets, si los
+  Las filas traen IDs y no nombres: la UI los resuelve con `nombres(datos)` del dominio. Los IDs son para
+  relacionar filas y la UI no los muestra: un pedido, una venta o un flete se nombra por cliente (o
+  transportista) y fecha, "Ana · 10/10/26", con `etiquetas` de `base.ts`. En Sheets, si los
   encabezados de una hoja no son los que espera el adaptador, `leer()` lanza `FormatoDistinto` y no lee nada.
   Los cálculos (stock, resúmenes de pedidos, cuentas entre socios) los hace la UI con las funciones del
   dominio.
@@ -82,7 +84,7 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
 
 | Operación | Datos | Hojas donde agrega filas (adaptador Sheets) |
 |---|---|---|
-| `registrarPedido` | `pedido`, `items`, `vendedores`, `momento`, `clienteNuevo`, `preciosNuevos`, `entrega`, `cobros` (opcional) | *Contactos* (si el cliente es nuevo), *Pedidos*, *Pedidos ítems*, *Pedidos estados* (`abierto`), *Pedidos vendedores*, *Precios* (productos sin precio de lista) y, en una venta directa, las de `registrarEntrega`. |
+| `registrarPedido` | `pedido`, `items`, `vendedores`, `momento`, `preciosNuevos`, `entrega`, `cobros` (opcional) | *Pedidos*, *Pedidos ítems*, *Pedidos estados* (`abierto`), *Pedidos vendedores*, *Precios* (productos sin precio de lista) y, en una venta directa, las de `registrarEntrega`. |
 | `registrarEntrega` | `Entrega` (`venta`, `items`, `comisiones`) y `cobros` (opcional) | *Ventas*, *Ventas ítems*, *Ventas comisiones* (si hay), *Cobros* (si hay). |
 | `cambiarEstadoPedido` | `pedidoId`, `cancelado` o `cerrado`, `momento` | *Pedidos estados*. |
 | `registrarFlete` | `flete`, `items`, `estados`, `momento`, `pedidos`, `transporteNuevo` | *Contactos* (si el transporte es nuevo), *Fletes*, *Fletes ítems*, *Fletes estados* (uno por estado), *Pedidos fletes*. |
@@ -106,7 +108,7 @@ La pantalla de Pedidos arma con el dominio el `Pedido` `PE0001`, su ítem y la e
 numera los ítems, calcula el importe de $6000 y la comisión de $600) y llama una sola vez a:
 
 ```ts
-db.registrarPedido({ pedido, items, vendedores: ['VEN01'], momento, clienteNuevo, preciosNuevos: [], entrega })
+db.registrarPedido({ pedido, items, vendedores: ['VEN01'], momento, preciosNuevos: [], entrega })
 ```
 
 El adaptador de Sheets lo traduce en un `batchUpdate` que agrega una fila en *Contactos*, *Pedidos*,

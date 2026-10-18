@@ -28,7 +28,7 @@ test('registra una compra con un producto y un proveedor nuevos en una sola escr
   // Toma el último precio de compra del producto.
   await expect(form.getByLabel('Precio unitario', { exact: true }).nth(1)).toHaveValue('500')
   await expect(form.getByText('Stock en General: 0 → 10 kg')).toBeVisible()
-  await form.getByLabel('Para el pedido', { exact: true }).selectOption({ label: 'PE0002 · Ana' })
+  await form.getByLabel('Para el pedido', { exact: true }).selectOption({ label: 'Ana · 10/10/26' })
 
   await expect(form.getByRole('group', { name: 'Total' })).toContainText('5.500')
   await expect(form.getByRole('group', { name: 'Productos nuevos' })).toContainText('1')

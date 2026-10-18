@@ -4,9 +4,9 @@ test('ventas a cobrar y cuenta de cada socio al empezar', async ({ page, ingresa
   await page.goto('/#caja')
   await ingresar()
 
-  // V0001 (Leo, $ 12.000) no tiene cobros. Su comisión es de Leo, que es Sampatti: no entra en ninguna cuenta.
+  // La venta del 05/10 a Ana (vendedor Leo, $ 12.000) no tiene cobros. Su comisión es de Leo, que es Sampatti: no entra en ninguna cuenta.
   await expect(page.getByRole('group', { name: 'A cobrar de clientes' })).toContainText('12.000')
-  await expect(page.getByRole('table', { name: 'Ventas a cobrar' }).getByRole('row').nth(1)).toContainText(/V0001.*Ana/)
+  await expect(page.getByRole('table', { name: 'Ventas a cobrar' }).getByRole('row', { name: 'Venta a Ana · 05/10/26' })).toContainText('12.000')
   await expect(page.getByRole('region', { name: 'Cuenta de Guada/Hernán' })).toContainText('Guada/Hernán y Sampatti están al día.')
   await expect(page.getByText('Faltan hojas en la planilla')).toHaveCount(0)
 })
@@ -33,9 +33,9 @@ test('si la planilla todavía no tiene las hojas de caja, la app funciona y avis
 
   // La entrega se registra igual, sin la parte del cobro.
   await ir(page, 'Pedidos')
-  await page.getByRole('row').filter({ hasText: 'PE0002' }).getByRole('button', { name: 'Entregar' }).click()
+  await page.getByRole('row', { name: 'Pedido Ana · 10/10/26' }).getByRole('button', { name: 'Entregar' }).click()
   const entrega = page.getByRole('form', { name: 'Registrar entrega' })
   await expect(entrega.getByLabel('Cobrado en la entrega')).toHaveCount(0)
   await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
-  await expect(page.getByText('El pedido PE0002 quedó entregado.')).toBeVisible()
+  await expect(page.getByText('El pedido de Ana · 10/10/26 quedó entregado.')).toBeVisible()
 })

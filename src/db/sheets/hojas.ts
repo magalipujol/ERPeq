@@ -17,7 +17,7 @@ export const HOJAS = {
   productos: ['Productos', ['id', 'producto', 'unidad', 'minimo']],
   contactos: ['Contactos', ['id', 'rol', 'nombre', 'tipo_cliente', 'telefono', 'direccion', 'email', 'localidad', 'provincia', 'observaciones']],
   tipos: ['Tipos de cliente', ['tipo']],
-  vendedores: ['Vendedores', ['id', 'nombre', 'activo']],
+  vendedores: ['Vendedores', ['id', 'nombre', 'activo', 'localidad']],
   precios: ['Precios', ['producto_id', 'precio', 'desde']],
   reglas: ['Reglas de comisión', ['vendedor_id', 'producto_id', 'porcentaje', 'desde']],
   compras: ['Compras', ['fecha', 'deposito_id', 'contacto_id', 'producto_id', 'cantidad', 'precio', 'importe', 'remito', 'pedido_id', 'nota']],
@@ -106,7 +106,9 @@ export function parsear(crudo: Fila[][]): Datos {
       direccion: txt(f[5]), email: txt(f[6]), localidad: txt(f[7]), provincia: txt(f[8]), observaciones: txt(f[9]),
     })),
     tipos: de('tipos', 0, (f) => txt(f[0])),
-    vendedores: de('vendedores', 0, (f) => ({ id: txt(f[0]), nombre: txt(f[1]) || txt(f[0]), activo: txt(f[2]) === '' || bool(f[2]) })),
+    vendedores: de('vendedores', 0, (f) => ({
+      id: txt(f[0]), nombre: txt(f[1]) || txt(f[0]), activo: txt(f[2]) === '' || bool(f[2]), localidad: txt(f[3]),
+    })),
     precios: de('precios', 0, (f) => ({ productoId: txt(f[0]), precio: num(f[1]) ?? 0, desde: fecha(f[2]) }))
       .filter((p) => p.precio > 0),
     reglas: de('reglas', 0, (f) => ({ vendedorId: txt(f[0]), productoId: txt(f[1]), porcentaje: num(f[2]) ?? 0, desde: fecha(f[3]) })),

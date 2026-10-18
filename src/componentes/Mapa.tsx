@@ -84,6 +84,7 @@ interface Globo { opened: boolean; onChange: (o: boolean) => void }
 function MarcaTramo({ tramo, globo, onAlternar, onFlete }: {
   tramo: Tramo; globo: Globo; onAlternar: () => void; onFlete: (id: string) => void;
 }) {
+  const { nombres, etiquetas } = useBase();
   const nombre = `${tramo.desde.nombre} a ${tramo.hasta.nombre}`;
   return (
     // El div ubica la marca: el ActionIcon usa su propio `transform` al apretarlo.
@@ -99,8 +100,8 @@ function MarcaTramo({ tramo, globo, onAlternar, onFlete }: {
           <Text size="sm" fw={700} mb={4}>Fletes de {nombre}</Text>
           <Stack gap={4}>
             {tramo.fletes.map(({ flete, estado }) => (
-              <Enlace key={flete.id} onClick={() => { onFlete(flete.id); }} etiqueta={`Ver flete ${flete.id}`}>
-                <Text size="sm" fw={500}>{flete.id} · {fmtFecha(flete.fecha)}</Text>
+              <Enlace key={flete.id} onClick={() => { onFlete(flete.id); }} etiqueta={`Ver flete ${etiquetas.flete(flete.id)}`}>
+                <Text size="sm" fw={500}>{nombres.contacto(flete.contactoId)} · {fmtFecha(flete.fecha)}</Text>
                 <Text size="xs" c="dimmed"><Recorrido flete={flete} /></Text>
                 <EstadoFlete estado={estado} />
               </Enlace>
@@ -116,7 +117,7 @@ function MarcaSitio({ sitio, globo, onAlternar, onPedido, onDeposito }: {
   sitio: Sitio; globo: Globo; onAlternar: () => void;
   onPedido: (id: string) => void; onDeposito: (id: string) => void;
 }) {
-  const { nombres, stock } = useBase();
+  const { nombres, etiquetas, stock } = useBase();
   const n = sitio.pedidos.length;
   const conFaltante = sitio.pedidos.some((r) => M.lineasConFaltante(stock, r).length > 0);
 
@@ -142,8 +143,8 @@ function MarcaSitio({ sitio, globo, onAlternar, onPedido, onDeposito }: {
             <Text size="sm" fw={700} mb={4}>Pedidos pendientes en {sitio.nombre}</Text>
             <Stack gap={4}>
               {sitio.pedidos.map((r) => (
-                <Enlace key={r.pedido.id} onClick={() => { onPedido(r.pedido.id); }} etiqueta={`Ver pedido ${r.pedido.id}`}>
-                  <Text size="sm" fw={500}>{r.pedido.id} · {nombres.contacto(r.pedido.contactoId)}</Text>
+                <Enlace key={r.pedido.id} onClick={() => { onPedido(r.pedido.id); }} etiqueta={`Ver pedido ${etiquetas.pedido(r.pedido.id)}`}>
+                  <Text size="sm" fw={500}>{nombres.contacto(r.pedido.contactoId)}</Text>
                   <Text size="xs" c="dimmed">{fmtFecha(r.pedido.fecha)} · {fmtMoney(r.importePedido)} · desde {nombres.deposito(r.pedido.depositoId)}</Text>
                 </Enlace>
               ))}
@@ -173,15 +174,15 @@ function Leyenda() {
 }
 
 function SinUbicarAviso({ items }: { items: SinUbicar[] }) {
-  const { nombres, contacto } = useBase();
+  const { nombres, etiquetas, contacto } = useBase();
   const texto = (x: SinUbicar) => {
     switch (x.tipo) {
       case 'deposito': return `depósito ${x.deposito.nombre} (${x.deposito.localidad})`;
       case 'pedido': {
         const loc = contacto(x.resumen.pedido.contactoId)?.localidad ?? '';
-        return `${x.resumen.pedido.id} de ${nombres.contacto(x.resumen.pedido.contactoId)} (${loc || 'sin localidad'})`;
+        return `pedido de ${nombres.contacto(x.resumen.pedido.contactoId)} (${loc || 'sin localidad'})`;
       }
-      case 'flete': return x.flete.id;
+      case 'flete': return `flete ${etiquetas.flete(x.flete.id)}`;
     }
   };
   return (

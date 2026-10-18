@@ -19,7 +19,7 @@ export function Inicio({ onNuevoPedido, onIr, onPedido, onFlete, onDeposito }: {
   onNuevoPedido: () => void; onIr: (vista: 'pedidos' | 'fletes') => void;
   onPedido: (id: string) => void; onFlete: (id: string) => void; onDeposito: (id: string) => void;
 }) {
-  const { pedidos, stock, datos, estadosFletes, cargando, nombres } = useBase();
+  const { pedidos, stock, datos, estadosFletes, cargando, nombres, etiquetas } = useBase();
 
   const abiertos = pedidos
     .filter((r) => M.pedidoAbierto(r.estado))
@@ -68,11 +68,11 @@ export function Inicio({ onNuevoPedido, onIr, onPedido, onFlete, onDeposito }: {
               </Encabezado>
               <Stack gap="xs">
                 {abiertos.map(({ r, faltan }) => (
-                  <Paper key={r.pedido.id} p="xs" radius="md" withBorder role="article" aria-label={`Pedido ${r.pedido.id}`}
+                  <Paper key={r.pedido.id} p="xs" radius="md" withBorder role="article" aria-label={`Pedido ${etiquetas.pedido(r.pedido.id)}`}
                     style={faltan.length > 0 ? { borderColor: 'var(--mantine-color-red-5)' } : undefined}>
                     <Group justify="space-between" gap="xs" wrap="nowrap" align="flex-start">
                       <div>
-                        <Text size="sm" fw={500}>{r.pedido.id} · {nombres.contacto(r.pedido.contactoId)}</Text>
+                        <Text size="sm" fw={500}>{nombres.contacto(r.pedido.contactoId)}</Text>
                         <Text size="xs" c="dimmed">{fmtFecha(r.pedido.fecha)} · desde {nombres.deposito(r.pedido.depositoId)} · {fmtMoney(r.importePedido)}</Text>
                         {r.lineas.filter((l) => l.pendiente > 0).map((l) => (
                           <Text key={l.linea} size="xs">{fmtNum(l.pendiente)} {nombres.producto(l.productoId)}</Text>
@@ -98,10 +98,10 @@ export function Inicio({ onNuevoPedido, onIr, onPedido, onFlete, onDeposito }: {
               </Encabezado>
               <Stack gap="xs">
                 {fletes.map(({ f, estado }) => (
-                  <Paper key={f.id} p="xs" radius="md" withBorder role="article" aria-label={`Flete ${f.id}`}>
+                  <Paper key={f.id} p="xs" radius="md" withBorder role="article" aria-label={`Flete ${etiquetas.flete(f.id)}`}>
                     <Group justify="space-between" gap="xs" wrap="nowrap" align="flex-start">
                       <div>
-                        <Text size="sm" fw={500}>{f.id} · {nombres.contacto(f.contactoId)}</Text>
+                        <Text size="sm" fw={500}>{nombres.contacto(f.contactoId)}</Text>
                         <Text size="xs" c="dimmed">
                           {fmtFecha(f.fecha)} · <Recorrido flete={f} />
                         </Text>

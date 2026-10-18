@@ -38,7 +38,7 @@ export function Compras() {
 }
 
 function FormCompra() {
-  const { datos, pedidos, buscarProducto, buscarContacto, nombres, db } = useBase();
+  const { datos, pedidos, buscarProducto, buscarContacto, etiquetas, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [fecha, setFecha] = useState(hoyISO);
   const [depSel, setDepSel] = useState<string | null>(null);
@@ -117,7 +117,7 @@ function FormCompra() {
           <Items modo="compra" deposito={deposito} fecha={fecha ? deISO(fecha) : null} items={items} onChange={setItems} />
           <NativeSelect label="Para el pedido" value={pedido} onChange={(e) => { setPedido(e.currentTarget.value); }} data={[
             { value: '', label: 'Ninguno (stock general)' },
-            ...abiertos.map((r) => ({ value: r.pedido.id, label: `${r.pedido.id} · ${nombres.contacto(r.pedido.contactoId)}` })),
+            ...abiertos.map((r) => ({ value: r.pedido.id, label: etiquetas.pedido(r.pedido.id) })),
           ]} />
 
           <TextInput label="Nota" maxLength={200} placeholder="Opcional" value={nota} onChange={(e) => { setNota(e.currentTarget.value); }} />
@@ -136,7 +136,7 @@ function FormCompra() {
 }
 
 function DetalleCompras({ compras }: { compras: M.Compra[] }) {
-  const { cargando, nombres } = useBase();
+  const { cargando, nombres, etiquetas } = useBase();
   const [buscar, setBuscar] = useState('');
   const q = buscar.trim().toLowerCase();
   const filas = compras
@@ -165,7 +165,7 @@ function DetalleCompras({ compras }: { compras: M.Compra[] }) {
                 <Table.Td>
                   {nombres.contacto(c.contactoId)}
                   {c.remito && <Text size="xs" c="dimmed">Remito {c.remito}</Text>}
-                  {c.pedidoId && <Text size="xs" c="dimmed">Para {c.pedidoId}</Text>}
+                  {c.pedidoId && <Text size="xs" c="dimmed">Para el pedido de {etiquetas.pedido(c.pedidoId)}</Text>}
                 </Table.Td>
                 <Table.Td>{nombres.producto(c.productoId)}</Table.Td>
                 <Table.Td className="num">{fmtNum(c.cantidad)}</Table.Td>

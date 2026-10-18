@@ -53,7 +53,7 @@ export function Recorrido({ flete }: { flete: M.Flete }) {
 }
 
 function FormFlete() {
-  const { datos, pedidos, buscarProducto, buscarContacto, nombres, db } = useBase();
+  const { datos, pedidos, buscarProducto, buscarContacto, etiquetas, db } = useBase();
   // En celular los tres estados no entran en una fila.
   const enCelular = useMatches({ base: true, sm: false });
   const { guardando, msg, guardar, error } = useGuardar();
@@ -74,7 +74,7 @@ function FormFlete() {
   ]), [datos]);
   const opcionesPedidos = pedidos.filter((r) => r.estado !== 'cancelado')
     .sort((a, b) => porFechaDesc(a.pedido, b.pedido))
-    .map((r) => ({ value: r.pedido.id, label: `${r.pedido.id} · ${nombres.contacto(r.pedido.contactoId)}` }));
+    .map((r) => ({ value: r.pedido.id, label: etiquetas.pedido(r.pedido.id) }));
   const lugares = (afuera: string) => [{ value: '', label: afuera }, ...datos.depositos.map((d) => ({ value: d.id, label: d.nombre }))];
   const transferencia = origen !== '' && destino !== '' && origen !== destino;
   const costo = aNumero(costoTxt);
@@ -125,7 +125,7 @@ function FormFlete() {
       setCostoTxt('');
       setGuia('');
       setNota('');
-      return `✓ Flete ${id} registrado (${M.NOMBRE_ESTADO_FLETE[estadoInicial].toLowerCase()}).`;
+      return `✓ Flete de ${nombre} registrado (${M.NOMBRE_ESTADO_FLETE[estadoInicial].toLowerCase()}).`;
     });
   }
 
@@ -156,8 +156,8 @@ function FormFlete() {
             value={pedidosSel} onChange={setPedidosSel} />
           {asignacion.map((a) => (
             <Group key={a.id} gap="xs" wrap="nowrap">
-              <Text size="sm" w={80}>{a.id}</Text>
-              <NumberInput size="xs" w={140} allowNegative={false} aria-label={`Costo asignado a ${a.id}`}
+              <Text size="sm" style={{ flex: 1 }}>{etiquetas.pedido(a.id)}</Text>
+              <NumberInput size="xs" w={140} allowNegative={false} aria-label={`Costo asignado a ${etiquetas.pedido(a.id)}`}
                 value={asignado[a.id] ?? propuesto(a.id)} onChange={(v) => { setAsignado((x) => ({ ...x, [a.id]: v })); }}
                 leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none" />
             </Group>
@@ -185,7 +185,7 @@ function FormFlete() {
 }
 
 function ListaFletes({ resaltar }: { resaltar: FleteResaltado | null }) {
-  const { datos, estadosFletes, cargando, nombres, db } = useBase();
+  const { datos, estadosFletes, cargando, nombres, etiquetas, db } = useBase();
   const { guardando, msg, guardar } = useGuardar();
   const [filtro, setFiltro] = useState('activos');
   const tablaRef = useRef<HTMLTableElement>(null);
@@ -206,7 +206,7 @@ function ListaFletes({ resaltar }: { resaltar: FleteResaltado | null }) {
   function cambiar(id: string, estado: M.EstadoFlete) {
     guardar(async () => {
       await db.cambiarEstadoFlete(id, estado, new Date());
-      return `✓ Flete ${id}: ${M.NOMBRE_ESTADO_FLETE[estado].toLowerCase()}.`;
+      return `✓ Flete de ${etiquetas.flete(id)}: ${M.NOMBRE_ESTADO_FLETE[estado].toLowerCase()}.`;
     });
   }
 
@@ -221,22 +221,19 @@ function ListaFletes({ resaltar }: { resaltar: FleteResaltado | null }) {
         <Table ref={tablaRef} stickyHeader highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Flete</Table.Th><Table.Th>Recorrido</Table.Th><Table.Th className="num">Costo</Table.Th><Table.Th>Estado</Table.Th>
+              <Table.Th>Fecha</Table.Th><Table.Th>Recorrido</Table.Th><Table.Th className="num">Costo</Table.Th><Table.Th>Estado</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {filas.map(({ f, estado }) => (
-              <Table.Tr key={f.id} data-flete={f.id} bg={f.id === resaltar?.id ? 'var(--erp-soft)' : undefined}
+              <Table.Tr key={f.id} data-flete={f.id} aria-label={`Flete ${etiquetas.flete(f.id)}`} bg={f.id === resaltar?.id ? 'var(--erp-soft)' : undefined}
                 aria-current={f.id === resaltar?.id ? 'true' : undefined}>
+                <Table.Td c="dimmed">{fmtFecha(f.fecha)}</Table.Td>
                 <Table.Td>
-                  <Text size="sm" fw={500}>{f.id}</Text>
-                  <Text size="xs" c="dimmed">{fmtFecha(f.fecha)}</Text>
-                </Table.Td>
-                <Table.Td>
-                  <Text size="sm">{nombres.contacto(f.contactoId)}</Text>
+                  <Text size="sm" fw={500}>{nombres.contacto(f.contactoId)}</Text>
                   <Text size="xs" c="dimmed"><Recorrido flete={f} /></Text>
                   {(items.get(f.id) ?? []).map((it) => <Text key={it.productoId} size="xs">{fmtNum(it.cantidad)} {nombres.producto(it.productoId)}</Text>)}
-                  {pedidos.has(f.id) && <Text size="xs" c="dimmed">Pedidos: {(pedidos.get(f.id) ?? []).join(', ')}</Text>}
+                  {pedidos.has(f.id) && <Text size="xs" c="dimmed">Pedidos: {(pedidos.get(f.id) ?? []).map(etiquetas.pedido).join(', ')}</Text>}
                 </Table.Td>
                 <Table.Td className="num">{fmtMoney(f.costo)}</Table.Td>
                 <Table.Td>
@@ -244,7 +241,7 @@ function ListaFletes({ resaltar }: { resaltar: FleteResaltado | null }) {
                   <Stack gap={4} mt={6} align="flex-start">
                     {M.SIGUIENTES_FLETE[estado].map((e) => (
                       <Button key={e} size="compact-xs" variant={e === 'cancelado' || e === 'preparacion' ? 'subtle' : 'light'}
-                        disabled={guardando} onClick={() => { cambiar(f.id, e); }} aria-label={`${ACCION[e]} ${f.id}`}>
+                        disabled={guardando} onClick={() => { cambiar(f.id, e); }} aria-label={`${ACCION[e]} flete de ${etiquetas.flete(f.id)}`}>
                         {ACCION[e]}
                       </Button>
                     ))}

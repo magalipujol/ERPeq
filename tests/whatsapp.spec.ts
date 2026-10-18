@@ -11,7 +11,7 @@ const ABIERTOS = [
   '*Pedidos abiertos* (16/10/26)',
   '1 pedido',
   '',
-  '*Ana* · PE0002 · 10/10/26',
+  '*Ana* · 10/10/26',
   'Funes, Santa Fe · desde Rosario',
   'Estado: Pendiente',
   'Vendedores: Guada/Hernán',
@@ -44,9 +44,9 @@ test('cambia el criterio: de hoy y últimos 7 días', async ({ page }) => {
   await expect(dialogo.getByRole('button', { name: 'Copiar' })).toBeDisabled()
   await expect(dialogo.getByRole('link', { name: 'Abrir en WhatsApp' })).toBeHidden()
 
-  // PE0002 es del 10/10 (entra); PE0001, del 05/10 (queda afuera).
+  // Ana tiene un pedido del 10/10 (entra) y otro del 05/10 (queda afuera).
   await criterio.getByText('Últimos 7 días').click()
   await expect(vista).toContainText('*Pedidos de los últimos 7 días* (16/10/26)')
-  await expect(vista).toContainText('PE0002')
-  await expect(vista).not.toContainText('PE0001')
+  await expect(vista).toContainText('*Ana* · 10/10/26')
+  await expect(vista).not.toContainText('05/10/26')
 })

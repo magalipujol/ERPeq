@@ -127,7 +127,7 @@ function DetalleVentas({ lineas }: { lineas: M.LineaVendida[] }) {
         <Table stickyHeader highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1, whiteSpace: 'nowrap' }}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Fecha</Table.Th><Table.Th>Venta</Table.Th><Table.Th>Cliente</Table.Th><Table.Th>Producto</Table.Th>
+              <Table.Th>Fecha</Table.Th><Table.Th>Cliente</Table.Th><Table.Th>Producto</Table.Th>
               <Table.Th className="num">Cant.</Table.Th><Table.Th className="num">Precio</Table.Th>
               <Table.Th className="num">Importe</Table.Th><Table.Th className="num">Comisión</Table.Th>
               <Table.Th className="num">Ganancia</Table.Th><Table.Th>Depósito</Table.Th>
@@ -137,7 +137,6 @@ function DetalleVentas({ lineas }: { lineas: M.LineaVendida[] }) {
             {filas.map((l) => (
               <Table.Tr key={`${l.ventaId}#${l.linea}`}>
                 <Table.Td c="dimmed">{fmtFecha(l.venta.fecha)}</Table.Td>
-                <Table.Td c="dimmed">{l.ventaId} · {l.venta.pedidoId}</Table.Td>
                 <Table.Td>
                   {l.pedido && nombres.contacto(l.pedido.contactoId)}
                   {l.venta.nota && <Text size="xs" c="dimmed" style={{ whiteSpace: 'normal' }}>{l.venta.nota}</Text>}

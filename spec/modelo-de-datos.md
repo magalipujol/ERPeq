@@ -152,6 +152,7 @@ erDiagram
         string id PK "VEN01"
         string nombre "Guada/Hernán"
         boolean activo
+        string localidad "Rosario"
     }
     REGLA_COMISION {
         string vendedor_id FK
@@ -307,9 +308,9 @@ columnas corridas guardaría cada dato en otra columna.
 |---|---|---|
 | **Depósitos** | `id`, `nombre`, `localidad` | `BB` General (Bahía Blanca) y `ROS` Rosario. |
 | **Productos** | `id`, `producto`, `unidad`, `minimo` | El stock no se guarda: lo calcula la app. |
-| **Contactos** | `id`, `rol`, `nombre`, `tipo_cliente`, `telefono`, `direccion`, `email`, `localidad`, `provincia`, `observaciones` | `rol`: `cliente`, `proveedor` o `transporte`. La app agrega el contacto cuando se carga un cliente, proveedor o transporte nuevo. |
-| **Tipos de cliente** | `tipo` | Lista para elegir en el pedido. |
-| **Vendedores** | `id`, `nombre`, `activo` | Quien consigue el pedido y cobra comisión. "Guada/Hernán" es **un** vendedor; "Leo" es otro. `activo` vacío o "sí" = se puede elegir. |
+| **Contactos** | `id`, `rol`, `nombre`, `tipo_cliente`, `telefono`, `direccion`, `email`, `localidad`, `provincia`, `observaciones` | `rol`: `cliente`, `proveedor` o `transporte`. Los clientes se cargan a mano en la hoja: el pedido solo elige uno que ya existe. La app agrega el contacto cuando se carga un proveedor o transporte nuevo. |
+| **Tipos de cliente** | `tipo` | Lista de tipos para la columna `tipo_cliente` de *Contactos*. |
+| **Vendedores** | `id`, `nombre`, `activo`, `localidad` | Quien consigue el pedido y cobra comisión. "Guada/Hernán" es **un** vendedor; "Leo" es otro. `activo` vacío o "sí" = se puede elegir. `localidad`: donde trabaja; se lo propone en los pedidos de clientes de esa localidad (ver [Pedidos](#pedidos)). |
 | **Precios** | `producto_id`, `precio`, `desde` | Precio por defecto, con historial. Un cambio de precio es una fila nueva; el vigente es el de `desde` más reciente. |
 | **Reglas de comisión** | `vendedor_id`, `producto_id`, `porcentaje`, `desde` | Porcentaje por defecto. `producto_id` vacío = regla general del vendedor. |
 
@@ -392,6 +393,30 @@ flowchart LR
 
 El pedido registra lo que pidió el cliente y a qué precio. **No mueve stock**: lo reserva. Se puede crear
 aunque no haya stock: lo que falta aparece en `faltante` (ver [Cálculo de stock](#cálculo-de-stock)).
+
+El cliente tiene que estar en *Contactos* (con `rol` = `cliente`): el pedido no da de alta clientes ni
+cambia su tipo, localidad o provincia. Al elegir el cliente, la app propone los vendedores y el depósito de
+entrega (`propuestaPedido` del dominio), y se pueden cambiar antes de guardar:
+
+```mermaid
+flowchart TD
+    C["Cliente elegido"] --> V{"¿Hay vendedores activos<br/>con su localidad?"}
+    V -- sí --> V1["Esos vendedores"]
+    V -- no --> V2["Los vendedores de su último pedido<br/>(ninguno si no tiene)"]
+    C --> D{"¿Hay un depósito<br/>en su localidad?"}
+    D -- sí --> D1["Ese depósito"]
+    D -- no --> D2["El depósito de su último pedido<br/>(si no tiene, queda el que estaba elegido)"]
+```
+
+Las localidades se comparan sin mayúsculas ni tildes; la de un depósito puede traer la provincia después
+de una coma ("Rosario, Santa Fe"). Ejemplos con Guada/Hernán en Rosario, Leo sin localidad y los depósitos
+General (Bahía Blanca) y Rosario:
+
+| Cliente | Localidad | Último pedido | Vendedores propuestos | Depósito propuesto |
+|---|---|---|---|---|
+| Dietética de ejemplo | Rosario | — | Guada/Hernán | Rosario |
+| Almacén de Funes | Funes | General, con Leo | Leo | General |
+| Cliente sin datos | — | — | ninguno | el elegido |
 
 ### Precio
 

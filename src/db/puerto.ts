@@ -35,7 +35,6 @@ export interface PedidoNuevo {
   items: PedidoItem[];
   vendedores: string[]; // IDs de los vendedores que comisionan
   momento: Date; // del estado inicial "abierto"
-  clienteNuevo: ContactoNuevo | null;
   // Productos sin precio de lista, que quedan con el precio de este pedido.
   preciosNuevos: Precio[];
   // Venta directa: el pedido se entrega en la misma operación.

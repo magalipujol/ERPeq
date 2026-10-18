@@ -16,7 +16,6 @@ export function escrituraEntrega({ venta, items, comisiones }: Entrega, cobros: 
 export function escrituraPedido(p: PedidoNuevo): Escritura {
   const { id } = p.pedido;
   const escritura: Escritura = {
-    ...(p.clienteNuevo ? { contactos: [filas.contacto(p.clienteNuevo)] } : {}),
     pedidos: [filas.pedido(p.pedido)],
     pedidosItems: p.items.map(filas.pedidoItem),
     pedidosEstados: [filas.estado(id, 'abierto', p.momento)],

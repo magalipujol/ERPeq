@@ -15,17 +15,18 @@ test('muestra el pantallazo: pedidos pendientes y fletes en curso', async ({ pag
   await expect(kpi(page, 'Fletes en preparación')).toContainText('0')
   await expect(kpi(page, 'Fletes en camino')).toContainText('1')
 
-  // PE0001 ya se entregó: solo queda PE0002.
+  // El pedido de Ana del 05/10 ya se entregó: solo queda el del 10/10.
   const pendientes = page.getByRole('region', { name: 'Pedidos pendientes' })
   await expect(pendientes.getByRole('article')).toHaveCount(1)
-  const pe2 = pendientes.getByRole('article', { name: 'Pedido PE0002' })
-  await expect(pe2).toContainText('PE0002 · Ana')
+  const pe2 = pendientes.getByRole('article', { name: 'Pedido Ana · 10/10/26' })
+  await expect(pe2).toContainText('Ana')
+  await expect(pe2).toContainText('10/10/26')
   await expect(pe2).toContainText('desde Rosario')
   await expect(pe2).toContainText('10 Avena')
   await expect(pe2).toContainText('Pendiente')
 
-  const f1 = page.getByRole('region', { name: 'Fletes en curso' }).getByRole('article', { name: 'Flete F0001' })
-  await expect(f1).toContainText('F0001 · Interprovincial')
+  const f1 = page.getByRole('region', { name: 'Fletes en curso' }).getByRole('article', { name: 'Flete Interprovincial · 08/10/26' })
+  await expect(f1).toContainText('Interprovincial')
   await expect(f1).toContainText('General → Rosario')
   await expect(f1).toContainText('6 Almendras')
   await expect(f1).toContainText('En camino')
@@ -38,28 +39,28 @@ test('el mapa muestra depósitos, pedidos pendientes y fletes en curso', async (
   await expect(mapa.getByRole('button', { name: 'Depósito Rosario' })).toBeVisible()
   // Ana es de Funes, a pocos kilómetros de Rosario: su pedido se marca junto al depósito de Rosario.
   await expect(mapa.getByRole('button', { name: 'Pedidos pendientes en Rosario · Funes: 1' })).toHaveText('1')
-  // F0001 va de General (Bahía Blanca) a Rosario.
+  // El flete de Interprovincial va de General (Bahía Blanca) a Rosario.
   await expect(mapa.getByRole('button', { name: 'Fletes de Bahía Blanca a Rosario · Funes: 1' })).toBeVisible()
   await expect(mapa.getByText(/Fuera del mapa/)).toBeHidden()
 })
 
 test('tocar un pedido del mapa lo abre en Pedidos para entregarlo', async ({ page }) => {
   await page.getByRole('button', { name: /^Pedidos pendientes en Rosario/ }).click()
-  const pedido = page.getByRole('button', { name: 'Ver pedido PE0002' })
-  await expect(pedido).toContainText('PE0002 · Ana')
+  const pedido = page.getByRole('button', { name: 'Ver pedido Ana · 10/10/26' })
+  await expect(pedido).toContainText('Ana')
   await pedido.click()
   await expect(page).toHaveURL(/#pedidos$/)
-  await expect(page.getByRole('heading', { name: 'Entregar PE0002' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Entregar pedido de Ana · 10/10/26' })).toBeVisible()
 })
 
 test('tocar un flete del mapa lo muestra resaltado en Fletes', async ({ page }) => {
   await page.getByRole('button', { name: 'Fletes de Bahía Blanca a Rosario · Funes: 1' }).click()
-  const flete = page.getByRole('button', { name: 'Ver flete F0001' })
+  const flete = page.getByRole('button', { name: 'Ver flete Interprovincial · 08/10/26' })
   await expect(flete).toContainText('General → Rosario')
   await expect(flete).toContainText('En camino')
   await flete.click()
   await expect(page).toHaveURL(/#fletes$/)
-  await expect(page.getByRole('row', { name: /F0001/ })).toHaveAttribute('aria-current', 'true')
+  await expect(page.getByRole('row', { name: 'Flete Interprovincial · 08/10/26' })).toHaveAttribute('aria-current', 'true')
 })
 
 test('tocar un depósito del mapa abre Stock filtrado por ese depósito', async ({ page }) => {

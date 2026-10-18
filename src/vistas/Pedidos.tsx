@@ -24,7 +24,7 @@ export function EstadoPedido({ estado }: { estado: M.EstadoPedido }) {
 // `nuevo` cambia cada vez que se pide tomar un pedido nuevo desde otra pantalla: lleva el foco al formulario.
 // `abrir` cambia cada vez que otra pantalla (el mapa de Inicio) pide ver un pedido: lo elige para entregarlo.
 export function Pedidos({ nuevo = 0, abrir = null }: { nuevo?: number; abrir?: PedidoElegido | null }) {
-  const { pedidos, stock, datos } = useBase();
+  const { pedidos, stock, datos, etiquetas } = useBase();
   const [elegido, setElegido] = useState<string | null>(abrir?.id ?? null);
   const [abrirAnterior, setAbrirAnterior] = useState(abrir);
   if (abrir !== abrirAnterior) {
@@ -57,7 +57,7 @@ export function Pedidos({ nuevo = 0, abrir = null }: { nuevo?: number; abrir?: P
                 <Encabezado titulo="Registrar entrega" />
                 {elegidoRes && (
                   <Text size="sm" mb="xs">
-                    El pedido {elegidoRes.pedido.id} quedó {M.NOMBRE_ESTADO_PEDIDO[elegidoRes.estado].toLowerCase()}.
+                    El pedido de {etiquetas.pedido(elegidoRes.pedido.id)} quedó {M.NOMBRE_ESTADO_PEDIDO[elegidoRes.estado].toLowerCase()}.
                   </Text>
                 )}
                 <Text c="dimmed" size="sm">Elegí un pedido abierto de la lista para registrar una entrega, cerrarlo o cancelarlo.</Text>
@@ -84,9 +84,8 @@ function FormPedido({ nuevo }: { nuevo: number }) {
   const [depSel, setDepSel] = useState<string | null>(null);
   const deposito = depSel ?? datos.depositos.at(-1)?.id ?? '';
   const [cliente, setCliente] = useState('');
-  const [tipoSel, setTipoSel] = useState<string | null>(null);
-  const [localidad, setLocalidad] = useState('');
-  const [provincia, setProvincia] = useState('');
+  // Cliente para el que ya se propusieron vendedores y depósito: no se vuelven a proponer hasta que cambie.
+  const [propuestoPara, setPropuestoPara] = useState<string | null>(null);
   const [vendedores, setVendedores] = useState<string[]>([]);
   const [nota, setNota] = useState('');
   const [entregarAhora, setEntregarAhora] = useState(false);
@@ -94,17 +93,10 @@ function FormPedido({ nuevo }: { nuevo: number }) {
 
   const listas = useMemo(() => ({
     clientes: unicos(datos.contactos.filter((c) => c.rol === 'cliente').map((c) => c.nombre)),
-    localidades: unicos(datos.contactos.map((c) => c.localidad)),
-    provincias: unicos(datos.contactos.map((c) => c.provincia)),
-    tipos: datos.tipos,
     vendedores: datos.vendedores.filter((v) => v.activo).map((v) => ({ value: v.id, label: v.nombre })),
   }), [datos]);
-  // El tipo, la localidad y la provincia son del contacto: de un cliente que ya existe se muestran sin
-  // poder cambiarlos; de uno nuevo, se cargan acá y se guardan en el contacto nuevo.
+  // Los clientes se dan de alta y se corrigen en la hoja Contactos: el pedido solo elige uno que ya existe.
   const existente = buscarContacto('cliente', cliente);
-  const tipo = existente ? existente.tipo : tipoSel !== null && listas.tipos.includes(tipoSel) ? tipoSel : listas.tipos[0] ?? '';
-  const loc = existente ? existente.localidad : localidad.trim();
-  const prov = existente ? existente.provincia : provincia.trim();
   const dia = fecha ? deISO(fecha) : null;
 
   const lineas = items.map((it) => {
@@ -112,14 +104,15 @@ function FormPedido({ nuevo }: { nuevo: number }) {
     return { p, cantidad: aNumero(it.cantidad), precio: aNumero(it.precio), lista: p ? M.precioVigente(datos.precios, p.id, dia) : null };
   });
 
-  // Propone los vendedores del último pedido del cliente.
+  // Propone los vendedores y el depósito de la localidad del cliente o, si no hay, los de su último pedido.
   function elegirCliente(nombre: string) {
     setCliente(nombre);
     const contacto = buscarContacto('cliente', nombre);
-    const ultimo = contacto && datos.pedidos.findLast((p) => p.contactoId === contacto.id);
-    if (ultimo && vendedores.length === 0) {
-      setVendedores(datos.pedidosVendedores.filter((v) => v.pedidoId === ultimo.id).map((v) => v.vendedorId));
-    }
+    if (!contacto || contacto.id === propuestoPara) return;
+    setPropuestoPara(contacto.id);
+    const propuesta = M.propuestaPedido(datos, contacto.id);
+    setVendedores(propuesta.vendedores);
+    if (propuesta.depositoId !== null) setDepSel(propuesta.depositoId);
   }
 
   function enviar(e: React.SubmitEvent<HTMLFormElement>) {
@@ -127,15 +120,16 @@ function FormPedido({ nuevo }: { nuevo: number }) {
     const nombre = cliente.trim();
     const falta = !dia ? 'Elegí la fecha.'
       : !nombre ? 'Ingresá el cliente.'
+      : !existente ? `${nombre} no está en la lista de clientes. Los clientes se agregan en la hoja Contactos de la planilla.`
       : !deposito ? 'Elegí el depósito de entrega.'
       : lineas.some((l) => !l.p) ? 'Hay productos que no existen en la lista.'
       : lineas.some((l) => !(l.cantidad > 0)) ? 'Todas las cantidades tienen que ser mayores a 0.'
       : lineas.some((l) => !(l.precio >= 0)) ? 'Falta el precio de algún producto.'
       : null;
-    if (falta || !dia) { error(falta ?? 'Elegí la fecha.'); return; }
+    if (falta || !dia || !existente) { error(falta ?? 'Elegí la fecha.'); return; }
 
     guardar(async () => {
-      const contactoId = existente?.id ?? M.siguienteId(datos.contactos.map((c) => c.id), 'C');
+      const contactoId = existente.id;
       const id = M.siguienteId(datos.pedidos.map((p) => p.id), 'PE');
       const pedido: M.Pedido = { id, fecha: dia, contactoId, depositoId: deposito, nota: nota.trim() };
       const pItems: M.PedidoItem[] = lineas.map((l, i) => ({
@@ -160,15 +154,14 @@ function FormPedido({ nuevo }: { nuevo: number }) {
       }
       await db.registrarPedido({
         pedido, items: pItems, vendedores, momento: new Date(), preciosNuevos, entrega,
-        clienteNuevo: existente ? null
-          : { id: contactoId, rol: 'cliente', nombre, tipo, localidad: loc, provincia: prov },
       });
       const total = pItems.reduce((s, it) => s + it.cantidad * it.precio, 0);
       setItems([itemVacio()]);
       setCliente('');
+      setPropuestoPara(null);
       setNota('');
       setEntregarAhora(false);
-      return `✓ Pedido ${id} de ${nombre} registrado${entregarAhora ? ' y entregado' : ''} (${pItems.length} producto${pItems.length > 1 ? 's' : ''}, ${fmtMoney(total)}).`;
+      return `✓ Pedido de ${nombre} registrado${entregarAhora ? ' y entregado' : ''} (${pItems.length} producto${pItems.length > 1 ? 's' : ''}, ${fmtMoney(total)}).`;
     });
   }
 
@@ -186,19 +179,10 @@ function FormPedido({ nuevo }: { nuevo: number }) {
               onChange={(e) => { setDepSel(e.currentTarget.value); }} />
           </Group>
           <Autocomplete ref={clienteRef} label="Cliente" maxLength={120} placeholder="Nombre del cliente" data={listas.clientes}
-            value={cliente} onChange={setCliente} onOptionSubmit={elegirCliente} onBlur={() => { elegirCliente(cliente); }} />
-          <Group grow gap="xs" align="flex-start">
-            <NativeSelect label="Tipo de cliente" data={unicos([...listas.tipos, tipo])} value={tipo} disabled={existente !== undefined}
-              onChange={(e) => { setTipoSel(e.currentTarget.value); }} />
-            <MultiSelect label="Vendedores" placeholder={vendedores.length > 0 ? undefined : 'Sin comisión'} data={listas.vendedores}
-              value={vendedores} onChange={setVendedores} />
-          </Group>
-          <Group grow gap="xs" align="flex-start">
-            <Autocomplete label="Localidad" maxLength={80} data={listas.localidades} value={existente ? loc : localidad}
-              onChange={setLocalidad} disabled={existente !== undefined} />
-            <Autocomplete label="Provincia" maxLength={80} data={listas.provincias} value={existente ? prov : provincia}
-              onChange={setProvincia} disabled={existente !== undefined} />
-          </Group>
+            value={cliente} onChange={setCliente} onOptionSubmit={elegirCliente} onBlur={() => { elegirCliente(cliente); }}
+            description={lugar(existente) || undefined} />
+          <MultiSelect label="Vendedores" placeholder={vendedores.length > 0 ? undefined : 'Sin comisión'} data={listas.vendedores}
+            value={vendedores} onChange={setVendedores} />
 
           <Items modo="pedido" deposito={deposito} fecha={dia} items={items} onChange={setItems} />
 
@@ -223,7 +207,7 @@ type Porcentajes = Record<string, number | string>;
 const claveCom = (linea: number, vendedor: string) => `${linea}|${vendedor}`;
 
 function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: () => void }) {
-  const { datos, info, stock, costos, nombres, contacto, db } = useBase();
+  const { datos, info, stock, costos, nombres, etiquetas, contacto, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const { pedido } = resumen;
   // Cobro opcional en la misma operación; solo si la base ya tiene lo necesario para la caja.
@@ -280,20 +264,20 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
       setCantidades({});
       setEditados({});
       setNota('');
-      return `✓ Entrega ${venta.id} registrada (${fmtMoney(importe)}).`;
+      return `✓ Entrega a ${nombres.contacto(pedido.contactoId)} registrada (${fmtMoney(importe)}).`;
     });
   }
 
   function cambiarEstado(estado: 'cancelado' | 'cerrado') {
     guardar(async () => {
       await db.cambiarEstadoPedido(pedido.id, estado, new Date());
-      return `✓ Pedido ${pedido.id} ${estado}.`;
+      return `✓ Pedido de ${etiquetas.pedido(pedido.id)} ${estado}.`;
     });
   }
 
   return (
     <Paper ref={ref} className="ancla">
-      <Encabezado titulo={`Entregar ${pedido.id}`}>
+      <Encabezado titulo={`Entregar pedido de ${etiquetas.pedido(pedido.id)}`}>
         <Button size="xs" variant="default" onClick={onCerrar}>Cerrar</Button>
       </Encabezado>
       <Stack gap="sm" role="form" aria-label="Registrar entrega">
@@ -364,21 +348,20 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
 export interface PedidoElegido { id: string; vez: number }
 
 function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir: (id: string) => void }) {
-  const { pedidos, cargando, nombres } = useBase();
+  const { pedidos, cargando, nombres, etiquetas } = useBase();
   const [filtro, setFiltro] = useState('abiertos');
   const [buscar, setBuscar] = useState('');
   const q = buscar.trim().toLowerCase();
   const filas = pedidos
     .filter((r) => filtro === 'todos' || M.pedidoAbierto(r.estado))
-    .filter((r) => !q || nombres.contacto(r.pedido.contactoId).toLowerCase().includes(q) || r.pedido.id.toLowerCase().includes(q)
-      || r.lineas.some((l) => nombres.producto(l.productoId).toLowerCase().includes(q)))
+    .filter((r) => !q || nombres.contacto(r.pedido.contactoId).toLowerCase().includes(q)      || r.lineas.some((l) => nombres.producto(l.productoId).toLowerCase().includes(q)))
     .sort((a, b) => porFechaDesc(a.pedido, b.pedido));
 
   return (
     <Paper>
       <Encabezado titulo="Pedidos">
         <Group gap="xs">
-          <TextInput type="search" w={{ base: 260, xs: 220 }} placeholder="Buscar cliente, pedido o producto…" aria-label="Buscar pedidos"
+          <TextInput type="search" w={{ base: 260, xs: 220 }} placeholder="Buscar cliente o producto…" aria-label="Buscar pedidos"
             value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
           <SegmentedControl size="xs" value={filtro} onChange={setFiltro} aria-label="Mostrar"
             data={[{ value: 'abiertos', label: 'Abiertos' }, { value: 'todos', label: 'Todos' }]} />
@@ -389,7 +372,7 @@ function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir:
         <Table stickyHeader highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1, whiteSpace: 'nowrap' }}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Pedido</Table.Th><Table.Th visibleFrom="sm">Fecha</Table.Th><Table.Th>Cliente</Table.Th>
+              <Table.Th visibleFrom="sm">Fecha</Table.Th><Table.Th>Cliente</Table.Th>
               <Table.Th visibleFrom="sm">Productos</Table.Th><Table.Th visibleFrom="sm">Estado</Table.Th>
               <Table.Th className="num" visibleFrom="sm">Importe</Table.Th><Table.Th className="num" visibleFrom="sm">Entregado</Table.Th>
               <Table.Th className="num" visibleFrom="sm">Ganancia</Table.Th><Table.Th visibleFrom="sm">Desde</Table.Th><Table.Th />
@@ -397,10 +380,10 @@ function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir:
           </Table.Thead>
           <Table.Tbody>
             {filas.map((r) => (
-              <Table.Tr key={r.pedido.id} bg={r.pedido.id === elegido ? 'var(--erp-soft)' : undefined}>
-                <Table.Td fw={500}>{r.pedido.id}</Table.Td>
+              <Table.Tr key={r.pedido.id} aria-label={`Pedido ${etiquetas.pedido(r.pedido.id)}`}
+                bg={r.pedido.id === elegido ? 'var(--erp-soft)' : undefined}>
                 <Table.Td c="dimmed" visibleFrom="sm">{fmtFecha(r.pedido.fecha)}</Table.Td>
-                <Table.Td style={{ whiteSpace: 'normal' }}>
+                <Table.Td style={{ whiteSpace: 'normal' }} fw={500}>
                   {nombres.contacto(r.pedido.contactoId)}
                   {r.vendedores.length > 0 && <Text size="xs" c="dimmed">{r.vendedores.map(nombres.vendedor).join(', ')}</Text>}
                   {/* En celular, los datos de las columnas ocultas van debajo del cliente. */}

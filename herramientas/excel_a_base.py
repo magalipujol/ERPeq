@@ -23,8 +23,9 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 # Depósito de cada hoja de compras del Excel.
 DEPOSITOS = [('BB', 'General', 'Bahía Blanca'), ('ROS', 'Rosario', 'Rosario')]
-# Nombre de cada vendedor según la columna CARGA del Excel.
-VENDEDORES = {'GUADA/HERNAN': 'Guada/Hernán', 'LEO': 'Leo'}
+# Nombre y localidad de cada vendedor según la columna CARGA del Excel. La app propone el vendedor en los
+# pedidos de clientes de su localidad.
+VENDEDORES = {'GUADA/HERNAN': ('Guada/Hernán', 'Rosario'), 'LEO': ('Leo', '')}
 # Socios entre los que se reparte la plata de las ventas: (id, nombre, vendedor de la columna CARGA, rol).
 # Sampatti es la empresa de Leo y la dueña de la mercadería.
 SOCIOS = [('SOC01', 'Sampatti', 'LEO', 'dueño'), ('SOC02', 'Guada/Hernán', 'GUADA/HERNAN', 'socio')]
@@ -37,7 +38,7 @@ COLS = {
     'Contactos': ['id', 'rol', 'nombre', 'tipo_cliente', 'telefono', 'direccion', 'email', 'localidad', 'provincia',
                   'observaciones'],
     'Tipos de cliente': ['tipo'],
-    'Vendedores': ['id', 'nombre', 'activo'],
+    'Vendedores': ['id', 'nombre', 'activo', 'localidad'],
     'Precios': ['producto_id', 'precio', 'desde'],
     'Reglas de comisión': ['vendedor_id', 'producto_id', 'porcentaje', 'desde'],
     'Compras': ['fecha', 'deposito_id', 'contacto_id', 'producto_id', 'cantidad', 'precio', 'importe', 'remito',
@@ -326,7 +327,7 @@ def main(origen, destino):
                        c.get('email', ''), c.get('localidad', ''), c.get('provincia', ''), c.get('observaciones', '')]
                       for c in sorted(contactos.values(), key=lambda c: c['id'])],
         'Tipos de cliente': [[t] for t in tipos],
-        'Vendedores': [[vendedor_id[v], nombre, 'sí'] for v, nombre in VENDEDORES.items()],
+        'Vendedores': [[vendedor_id[v], nombre, 'sí', localidad] for v, (nombre, localidad) in VENDEDORES.items()],
         'Precios': precios,
         'Reglas de comisión': reglas,
         'Compras': [[c['fecha'], c['deposito'], c['contacto'], c['id'], c['cantidad'], c['precio'], c['importe'],

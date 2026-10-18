@@ -11,7 +11,8 @@ export interface Contacto {
 }
 // Contacto que se da de alta junto con una operación: lo que no se conoce queda vacío.
 export type ContactoNuevo = Pick<Contacto, 'id' | 'rol' | 'nombre'> & Partial<Contacto>;
-export interface Vendedor { id: string; nombre: string; activo: boolean }
+// `localidad`: donde trabaja el vendedor; se lo propone en los pedidos de clientes de esa localidad.
+export interface Vendedor { id: string; nombre: string; activo: boolean; localidad: string }
 export interface Precio { productoId: string; precio: number; desde: Date | null }
 export interface ReglaComision { vendedorId: string; productoId: string; porcentaje: number; desde: Date | null }
 export interface Compra {
@@ -238,6 +239,32 @@ export function resumirPedidos(datos: Datos): ResumenPedido[] {
       ganancia: redondear(importeEntregado - comisiones - costoMercaderia - costoFletes),
     };
   });
+}
+
+// ---------- Propuesta para un pedido nuevo ----------
+
+// Compara localidades sin mayúsculas ni tildes. La de un depósito puede traer la provincia: "Rosario, Santa Fe".
+const claveLocalidad = (s: string) => (s.split(',')[0] ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '')
+  .toLowerCase().replace(/\s+/g, ' ').trim();
+export const mismaLocalidad = (a: string, b: string) => claveLocalidad(a) !== '' && claveLocalidad(a) === claveLocalidad(b);
+
+export interface PropuestaPedido { vendedores: string[]; depositoId: string | null }
+
+// Vendedores y depósito que se proponen para un pedido del cliente. Primero los de su localidad (los
+// vendedores activos y el depósito que están ahí); lo que no se resuelve así sale de su último pedido.
+// `depositoId` es null si no hay de dónde sacarlo.
+export function propuestaPedido(
+  datos: Pick<Datos, 'contactos' | 'vendedores' | 'depositos' | 'pedidos' | 'pedidosVendedores'>, contactoId: string,
+): PropuestaPedido {
+  const localidad = datos.contactos.find((c) => c.id === contactoId)?.localidad ?? '';
+  const ultimo = datos.pedidos.findLast((p) => p.contactoId === contactoId);
+  const locales = datos.vendedores.filter((v) => v.activo && mismaLocalidad(v.localidad, localidad)).map((v) => v.id);
+  const deposito = datos.depositos.find((d) => mismaLocalidad(d.localidad, localidad));
+  return {
+    vendedores: locales.length > 0 ? locales
+      : ultimo ? datos.pedidosVendedores.filter((v) => v.pedidoId === ultimo.id).map((v) => v.vendedorId) : [],
+    depositoId: deposito?.id ?? ultimo?.depositoId ?? null,
+  };
 }
 
 // ---------- Stock ----------

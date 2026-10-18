@@ -100,7 +100,7 @@ function Fabricar({ activas, hechas, deshabilitado }: { activas: M.VersionReceta
     guardar(async () => {
       await db.registrarFabricacion(ajustes);
       setSalioTxt('');
-      return `✓ ${id}: ${fmtNum(salio)} ${unidad} de ${nombre} en ${nombres.deposito(deposito)}.`;
+      return `✓ Fabricado: ${fmtNum(salio)} ${unidad} de ${nombre} en ${nombres.deposito(deposito)}.`;
     });
   }
 
@@ -371,7 +371,7 @@ function ListaFabricaciones({ hechas }: { hechas: M.Fabricacion[] }) {
         <Table highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }} aria-label="Últimas fabricaciones">
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Fabricación</Table.Th><Table.Th>Producto</Table.Th><Table.Th className="num">Salió</Table.Th>
+              <Table.Th>Fecha</Table.Th><Table.Th>Producto</Table.Th><Table.Th className="num">Salió</Table.Th>
               <Table.Th>Depósito</Table.Th><Table.Th>Receta</Table.Th>
             </Table.Tr>
           </Table.Thead>
@@ -380,14 +380,11 @@ function ListaFabricaciones({ hechas }: { hechas: M.Fabricacion[] }) {
               const unidad = unidadDe(datos, f.productoId);
               return (
                 <Table.Tr key={f.id}>
-                  <Table.Td>
-                    <Text size="sm" fw={500}>{f.id}</Text>
-                    <Text size="xs" c="dimmed">{fmtFecha(f.fecha)}</Text>
-                  </Table.Td>
-                  <Table.Td>{nombres.producto(f.productoId)}</Table.Td>
+                  <Table.Td c="dimmed">{fmtFecha(f.fecha)}</Table.Td>
+                  <Table.Td fw={500}>{nombres.producto(f.productoId)}</Table.Td>
                   <Table.Td className="num">{fmtNum(f.cantidad)} {unidad}</Table.Td>
                   <Table.Td>{nombres.deposito(f.depositoId)}</Table.Td>
-                  <Table.Td c="dimmed">{f.recetaId} v{f.version}</Table.Td>
+                  <Table.Td c="dimmed">Versión {f.version}</Table.Td>
                 </Table.Tr>
               );
             })}

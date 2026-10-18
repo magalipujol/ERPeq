@@ -23,7 +23,7 @@ export const ENCABEZADOS: Record<string, string[]> = {
   'Productos': ['id', 'producto', 'unidad', 'minimo'],
   'Contactos': ['id', 'rol', 'nombre', 'tipo_cliente', 'telefono', 'direccion', 'email', 'localidad', 'provincia', 'observaciones'],
   'Tipos de cliente': ['tipo'],
-  'Vendedores': ['id', 'nombre', 'activo'],
+  'Vendedores': ['id', 'nombre', 'activo', 'localidad'],
   'Precios': ['producto_id', 'precio', 'desde'],
   'Reglas de comisión': ['vendedor_id', 'producto_id', 'porcentaje', 'desde'],
   'Compras': ['fecha', 'deposito_id', 'contacto_id', 'producto_id', 'cantidad', 'precio', 'importe', 'remito', 'pedido_id', 'nota'],
@@ -63,7 +63,7 @@ export function planillaInicial(): Record<string, Fila[]> {
       ['C0004', 'transporte', 'Interprovincial', '', '', '', '', '', '', ''],
     ],
     'Tipos de cliente': [['Minorista'], ['Revendedor']],
-    'Vendedores': [['VEN01', 'Leo', 'sí'], ['VEN02', 'Guada/Hernán', 'sí']],
+    'Vendedores': [['VEN01', 'Leo', 'sí', 'Bahía Blanca'], ['VEN02', 'Guada/Hernán', 'sí', 'Rosario']],
     'Precios': [
       ['P001', 3000, serie('2026-01-01')],
       ['P002', 800, serie('2026-01-01')],

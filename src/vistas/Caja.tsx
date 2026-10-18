@@ -1,6 +1,6 @@
 import { Alert, Button, Code, Grid, Group, NativeSelect, NumberInput, Paper, ScrollArea, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { useMemo, useState } from 'react';
-import { useBase, useGuardar } from '../base';
+import { type Etiquetas, useBase, useGuardar } from '../base';
 import { faltantesDe } from '../db/puerto';
 import { CamposCobro, type DatosCobro } from '../componentes/Cobro';
 import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
@@ -63,7 +63,7 @@ export function Caja() {
 function FormCobro({ aCobrar, ventaId, onVenta, deshabilitado }: {
   aCobrar: M.CuentaVenta[]; ventaId: string | null; onVenta: (id: string) => void; deshabilitado: boolean;
 }) {
-  const { datos, nombres, db } = useBase();
+  const { datos, etiquetas, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [fecha, setFecha] = useState(hoyISO);
   const [nota, setNota] = useState('');
@@ -95,7 +95,7 @@ function FormCobro({ aCobrar, ventaId, onVenta, deshabilitado }: {
       });
       setEditado({});
       setNota('');
-      return `✓ Cobro de ${fmtMoney(importe)} de ${cuenta.venta.id} registrado (${M.NOMBRE_MEDIO[valor.medio].toLowerCase()}, ${socio.nombre}).`;
+      return `✓ Cobro de ${fmtMoney(importe)} de la venta a ${etiquetas.venta(cuenta.venta.id)} registrado (${M.NOMBRE_MEDIO[valor.medio].toLowerCase()}, ${socio.nombre}).`;
     });
   }
 
@@ -106,7 +106,7 @@ function FormCobro({ aCobrar, ventaId, onVenta, deshabilitado }: {
         <Stack gap="sm">
           <Group grow gap="xs" align="flex-start">
             <NativeSelect label="Venta" value={cuenta?.venta.id ?? ''} onChange={(e) => { onVenta(e.currentTarget.value); }}
-              data={ordenadas.map((c) => ({ value: c.venta.id, label: `${c.venta.id} · ${c.pedido ? nombres.contacto(c.pedido.contactoId) : ''} · falta ${fmtMoney(c.saldo)}` }))} />
+              data={ordenadas.map((c) => ({ value: c.venta.id, label: `${etiquetas.venta(c.venta.id)} · falta ${fmtMoney(c.saldo)}` }))} />
             <TextInput label="Fecha" type="date" value={fecha} onChange={(e) => { setFecha(e.currentTarget.value); }} />
           </Group>
           <CamposCobro valor={valor} onChange={(v) => { setEditado(v); }} socios={datos.socios} etiqueta="Importe" />
@@ -182,7 +182,7 @@ function FormRendicion({ cuentas, duenio, deshabilitado }: { cuentas: M.CuentaSo
 }
 
 function ListaACobrar({ aCobrar, onCobrar }: { aCobrar: M.CuentaVenta[]; onCobrar: (id: string) => void }) {
-  const { cargando, nombres } = useBase();
+  const { cargando, nombres, etiquetas } = useBase();
   const filas = aCobrar.toSorted((a, b) => porFechaDesc(a.venta, b.venta));
   return (
     <Paper>
@@ -191,21 +191,20 @@ function ListaACobrar({ aCobrar, onCobrar }: { aCobrar: M.CuentaVenta[]; onCobra
         <Table stickyHeader highlightOnHover fz="sm" aria-label="Ventas a cobrar" style={{ opacity: cargando ? 0.5 : 1, whiteSpace: 'nowrap' }}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Venta</Table.Th><Table.Th>Fecha</Table.Th><Table.Th>Cliente</Table.Th><Table.Th className="num">Importe</Table.Th>
+              <Table.Th>Fecha</Table.Th><Table.Th>Cliente</Table.Th><Table.Th className="num">Importe</Table.Th>
               <Table.Th className="num">Cobrado</Table.Th><Table.Th className="num">Falta</Table.Th><Table.Th />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {filas.map((c) => (
-              <Table.Tr key={c.venta.id}>
-                <Table.Td fw={500}>{c.venta.id}</Table.Td>
+              <Table.Tr key={c.venta.id} aria-label={`Venta a ${etiquetas.venta(c.venta.id)}`}>
                 <Table.Td c="dimmed">{fmtFecha(c.venta.fecha)}</Table.Td>
-                <Table.Td>{c.pedido && nombres.contacto(c.pedido.contactoId)}</Table.Td>
+                <Table.Td fw={500}>{c.pedido && nombres.contacto(c.pedido.contactoId)}</Table.Td>
                 <Table.Td className="num">{fmtMoney(c.importe)}</Table.Td>
                 <Table.Td className="num" c="dimmed">{c.cobrado > 0 ? fmtMoney(c.cobrado) : '–'}</Table.Td>
                 <Table.Td className="num" fw={600}>{fmtMoney(c.saldo)}</Table.Td>
                 <Table.Td>
-                  <Button size="compact-xs" variant="light" aria-label={`Cobrar ${c.venta.id}`} onClick={() => { onCobrar(c.venta.id); }}>Cobrar</Button>
+                  <Button size="compact-xs" variant="light" aria-label={`Cobrar venta a ${etiquetas.venta(c.venta.id)}`} onClick={() => { onCobrar(c.venta.id); }}>Cobrar</Button>
                 </Table.Td>
               </Table.Tr>
             ))}
@@ -217,14 +216,16 @@ function ListaACobrar({ aCobrar, onCobrar }: { aCobrar: M.CuentaVenta[]; onCobra
   );
 }
 
-const CONCEPTO: Record<M.TipoMovimiento, (m: M.MovimientoSocio) => string> = {
-  cobro: (m) => `Cobro ${m.ref} · ${m.detalle}`,
-  comision: (m) => `Comisión ${m.ref} · ${m.detalle}`,
+// En cobros y comisiones, `ref` es la venta.
+const CONCEPTO: Record<M.TipoMovimiento, (m: M.MovimientoSocio, e: Etiquetas) => string> = {
+  cobro: (m, e) => `Cobro de la venta a ${e.venta(m.ref)}`,
+  comision: (m, e) => `Comisión de la venta a ${e.venta(m.ref)}`,
   entrego: (m) => `Entregó a ${m.ref}${m.detalle ? ` · ${m.detalle}` : ''}`,
   recibio: (m) => `Recibió de ${m.ref}${m.detalle ? ` · ${m.detalle}` : ''}`,
 };
 
 function CuentaSocio({ cuenta, duenio }: { cuenta: M.CuentaSocio; duenio: M.Socio }) {
+  const { etiquetas } = useBase();
   const nombre = cuenta.socio.nombre;
   const filas = cuenta.movimientos;
   const medio = (m: string) => (M.MEDIOS as readonly string[]).includes(m) ? M.NOMBRE_MEDIO[m as M.Medio] : m;
@@ -254,7 +255,7 @@ function CuentaSocio({ cuenta, duenio }: { cuenta: M.CuentaSocio; duenio: M.Soci
               // eslint-disable-next-line @eslint-react/no-array-index-key
               <Table.Tr key={i}>
                 <Table.Td c="dimmed">{fmtFecha(m.fecha)}</Table.Td>
-                <Table.Td>{CONCEPTO[m.tipo](m)}</Table.Td>
+                <Table.Td>{CONCEPTO[m.tipo](m, etiquetas)}</Table.Td>
                 <Table.Td c="dimmed">{medio(m.medio)}</Table.Td>
                 <Table.Td className="num" c={m.importe < 0 ? 'red' : undefined}>{fmtMoney(m.importe)}</Table.Td>
                 <Table.Td className="num" fw={500}>{fmtMoney(m.saldo)}</Table.Td>

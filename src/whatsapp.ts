@@ -39,7 +39,7 @@ function bloque(r: M.ResumenPedido, n: Nombres) {
   const { pedido } = r;
   const lugar = n.lugar(pedido.contactoId);
   const res = [
-    `*${n.contacto(pedido.contactoId)}* · ${pedido.id} · ${fmtFecha(pedido.fecha)}`,
+    `*${n.contacto(pedido.contactoId)}* · ${fmtFecha(pedido.fecha)}`,
     [lugar, `desde ${n.deposito(pedido.depositoId)}`].filter(Boolean).join(' · '),
     `Estado: ${M.NOMBRE_ESTADO_PEDIDO[r.estado]}`,
   ];

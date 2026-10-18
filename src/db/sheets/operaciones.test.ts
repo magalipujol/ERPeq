@@ -8,7 +8,7 @@ const DIA = Math.floor(aSerie(dia));
 const MOMENTO = aSerie(dia);
 const pedido: M.Pedido = { id: 'PE0001', fecha: dia, contactoId: 'C0001', depositoId: 'BB', nota: '' };
 const item: M.PedidoItem = { pedidoId: 'PE0001', linea: 1, productoId: 'P001', cantidad: 2, precioLista: null, precio: 3000 };
-const leo: M.Vendedor = { id: 'VEN01', nombre: 'Leo', activo: true };
+const leo: M.Vendedor = { id: 'VEN01', nombre: 'Leo', activo: true, localidad: '' };
 const cobro: M.Cobro = { fecha: dia, ventaId: 'V0001', importe: 6000, medio: 'efectivo', socioId: 'SOC02', nota: '' };
 const entrega = (id = 'V0001') => M.armarEntrega({ id, fecha: dia, pedidoId: 'PE0001', depositoId: 'BB', nota: '' }, [{
   linea: { ...item, entregado: 0, pendiente: 2 }, cantidad: 2, costo: 1500,
@@ -16,19 +16,17 @@ const entrega = (id = 'V0001') => M.armarEntrega({ id, fecha: dia, pedidoId: 'PE
 }]);
 
 describe('operaciones sobre la planilla', () => {
-  it('un pedido con cliente nuevo y venta directa se guarda en una sola escritura', async () => {
+  it('un pedido con venta directa se guarda en una sola escritura', async () => {
     expect.hasAssertions();
 
     const db = crearPlanillaEnMemoria();
     await db.registrarPedido({
       pedido, items: [item], vendedores: ['VEN01'], momento: dia, entrega: entrega(), cobros: [cobro],
-      clienteNuevo: { id: 'C0001', rol: 'cliente', nombre: 'Ana', tipo: 'Minorista', localidad: 'Funes', provincia: 'Santa Fe' },
       preciosNuevos: [{ productoId: 'P001', precio: 3000, desde: dia }],
     });
 
     expect(db.escrituras).toHaveLength(1);
     expect(db.hojas).toMatchObject({
-      contactos: [['C0001', 'cliente', 'Ana', 'Minorista', '', '', '', 'Funes', 'Santa Fe', '']],
       pedidos: [['PE0001', DIA, 'C0001', 'BB', '']],
       pedidosItems: [['PE0001', 1, 'P001', 2, '', 3000]],
       pedidosEstados: [['PE0001', MOMENTO, 'abierto']],

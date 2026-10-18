@@ -83,6 +83,9 @@ Arquitectura hexagonal, con los límites controlados por ESLint (`no-restricted-
   guarda en la fila. Lo demás se calcula.
 - Las filas guardan IDs, nunca copias de nombres: el nombre de un producto, contacto, vendedor o socio está
   solo en su hoja, y la UI lo resuelve con `nombres(datos)` del dominio.
+- La UI nunca muestra IDs (ni en tablas, ni en mensajes, ni en el texto de WhatsApp): sirven para relacionar
+  filas. Un pedido, una venta o un flete se nombra por cliente (o transportista) y fecha con `etiquetas` de
+  `base.ts`: "Ana · 10/10/26".
 - Los valores por defecto (precio de lista, % de comisión) viven en *Precios* y *Reglas de comisión*. Cada
   operación guarda el valor por defecto que se propuso y el que se usó (`precio_lista`/`precio`,
   `porcentaje_regla`/`porcentaje`).
