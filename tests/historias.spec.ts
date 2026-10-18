@@ -7,7 +7,8 @@
 //   Reglas: Leo 10% general; Guada/Hernán 3% general y 7% en Almendras.
 //   Socios: Sampatti (la empresa de Leo, dueña de la mercadería) y Guada/Hernán. Sin cobros ni rendiciones.
 //   Sin recetas ni fabricaciones. Sin costo de envío.
-import { devices, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { galaxyA53 } from './dispositivos'
 import { AHORA, esperarDatosStock, expect, HOY_SERIE, ir, stockEn, test } from './google-falso'
 
 const filaCon = (page: Page, texto: string) =>
@@ -350,9 +351,8 @@ test('una compra hecha para un pedido cubre lo que faltaba', async ({ page }) =>
 })
 
 test.describe('desde el celular', () => {
-  // Corre en los dos proyectos, siempre con la pantalla de un Pixel 7.
-  const { defaultBrowserType: _navegador, ...pixel7 } = devices['Pixel 7']
-  test.use(pixel7)
+  // Corre en los dos proyectos, siempre con la pantalla del celular.
+  test.use(galaxyA53)
 
   test('Leo toma un pedido de un cliente de Bahía Blanca y lo entrega en el momento', async ({ page, google }) => {
     google.hojas.Contactos.push(['C0005', 'cliente', 'Bruno', 'Minorista', '', '', '', 'Bahía Blanca', 'Buenos Aires', ''])

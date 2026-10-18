@@ -100,7 +100,9 @@ git) es para las salidas temporales de scripts y herramientas: ahí quedan tambi
   de Sheets (lectura de filas, celdas y las filas que agrega cada operación, sobre una planilla en memoria).
   Tardan menos de un segundo.
 - **De punta a punta** (Playwright, `tests/`): la app entera contra el build. Google está simulado
-  (`tests/google-falso.ts`): no hace falta cuenta ni se toca la planilla real.
+  (`tests/google-falso.ts`): no hace falta cuenta ni se toca la planilla real. Corren en escritorio y en un celular
+  Samsung Galaxy A53 (360 px de ancho, `tests/dispositivos.ts`); `tests/legibilidad.spec.ts` revisa que ninguna
+  cifra quede partida en dos renglones.
 
 ```sh
 pnpm test:unit                          # unitarias
@@ -109,6 +111,7 @@ pnpm exec playwright install chromium   # la primera vez, para las de punta a pu
 pnpm test:e2e
 pnpm test:e2e tests/stock.spec.ts --project=chromium   # un solo archivo, solo escritorio
 pnpm test:e2e:ui                        # para verlas paso a paso
+CAPTURAS=1 pnpm test:e2e tests/legibilidad.spec.ts   # capturas de cada pantalla del celular en .tmp/capturas/
 pnpm test                               # todas
 ```
 
