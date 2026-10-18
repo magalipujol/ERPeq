@@ -4,7 +4,8 @@ test('ingresa con Google y abre Inicio', async ({ page, ingresar }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Ingresá con tu cuenta de Google' })).toBeVisible()
   await ingresar()
-  await expect(page.getByText('ERPeq - Pruebas').filter({ visible: true })).toBeVisible()
+  // El nombre de la planilla se ve en el header de la compu; en el celular queda oculto para ganar lugar.
+  await expect(page.getByText('ERPeq - Pruebas')).toBeAttached()
   await expect(page.getByRole('heading', { name: 'Inicio', exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Planilla' })).toHaveAttribute('href', 'https://docs.google.com/spreadsheets/d/prueba/edit')
 })

@@ -1,4 +1,4 @@
-import { Group, Paper, Select, SimpleGrid, Text, Title } from '@mantine/core';
+import { Group, Paper, type PaperProps, Select, SimpleGrid, Text, Title } from '@mantine/core';
 import { fmtMes } from '../formato';
 import { mesElegido, mesesDisponibles } from '../meses';
 
@@ -17,17 +17,23 @@ const estiloCifra = (valor: React.ReactNode): React.CSSProperties => {
 
 export function Kpis({ items, label }: { items: Kpi[]; label: string }) {
   return (
-    <SimpleGrid cols={{ base: 2, md: items.length }} spacing="sm" role="group" aria-label={label}>
+    <SimpleGrid cols={{ base: 2, md: items.length }} spacing={{ base: 'xs', sm: 'sm' }} role="group" aria-label={label}>
       {items.map((k) => (
-        <Paper key={k.label} p="sm" px="md" role="group" aria-label={k.label} style={{ containerType: 'inline-size' }}>
+        <Paper key={k.label} p={{ base: 'xs', sm: 'sm' }} px={{ base: 'sm', sm: 'md' }} role="group" aria-label={k.label} style={{ containerType: 'inline-size' }}>
           <Text size="xs" c="dimmed">{k.label}</Text>
-          <Title order={3} size="h2" c={k.alerta === true ? 'red' : undefined} style={estiloCifra(k.valor)}>
+          <Title order={3} size="h2" lh={1.3} c={k.alerta === true ? 'red' : undefined} style={estiloCifra(k.valor)}>
             {k.valor}
           </Title>
         </Paper>
       ))}
     </SimpleGrid>
   );
+}
+
+// Cada bloque de una pantalla (un formulario, una lista, un gráfico). En la compu es una tarjeta; en el celular
+// queda plano, sin borde ni relleno, para que las tarjetas de adentro (pedidos, productos) usen todo el ancho.
+export function Seccion({ className, ...props }: PaperProps & React.ComponentProps<'div'>) {
+  return <Paper p={{ base: 0, sm: 'md' }} className={className === undefined ? 'seccion' : `seccion ${className}`} {...props} />;
 }
 
 export function Mensaje({ msg }: { msg: { texto: string; error: boolean } | null }) {

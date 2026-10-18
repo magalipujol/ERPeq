@@ -1,9 +1,9 @@
 import {
-  Autocomplete, Button, Grid, Group, NativeSelect, Paper, ScrollArea, Stack, Table, Text, TextInput, Title,
+  Autocomplete, Button, Grid, Group, NativeSelect, ScrollArea, Stack, Table, Text, TextInput, Title,
 } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
-import { Encabezado, Kpis, Mensaje, Resumen, SelectorMes } from '../componentes/comunes';
+import { Encabezado, Kpis, Mensaje, Resumen, Seccion, SelectorMes } from '../componentes/comunes';
 import { Vinculo } from '../componentes/Fichas';
 import { useFila } from '../ficha';
 import { mesElegido } from '../meses';
@@ -22,7 +22,7 @@ export function Compras() {
   return (
     <Stack gap="md">
       <Group justify="space-between">
-        <Title order={2}>Compras</Title>
+        <Title order={2} className="titulo-pantalla">Compras</Title>
         <SelectorMes fechas={fechas} value={mesSel} onChange={setMesSel} />
       </Group>
       <Kpis label="Resumen de compras" items={[
@@ -102,7 +102,7 @@ function FormCompra() {
   const nuevos = validos.filter((it) => !buscarProducto(it.producto)).length;
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Registrar compra" />
       <form onSubmit={enviar} noValidate aria-label="Registrar compra">
         <Stack gap="sm">
@@ -133,7 +133,7 @@ function FormCompra() {
           <Mensaje msg={msg} />
         </Stack>
       </form>
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -147,7 +147,7 @@ function DetalleCompras({ compras }: { compras: M.Compra[] }) {
     .sort(porFechaDesc);
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Detalle del mes">
         <TextInput type="search" w={220} placeholder="Buscar…" aria-label="Buscar en compras"
           value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
@@ -181,6 +181,6 @@ function DetalleCompras({ compras }: { compras: M.Compra[] }) {
         </Table>
       </ScrollArea.Autosize>
       {filas.length === 0 && <Text c="dimmed" mt="xs">No hay compras en este mes.</Text>}
-    </Paper>
+    </Seccion>
   );
 }

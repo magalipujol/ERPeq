@@ -1,8 +1,8 @@
 import { BarChart } from '@mantine/charts';
-import { Grid, Group, Paper, ScrollArea, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { Grid, Group, ScrollArea, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useBase } from '../base';
-import { Encabezado, Kpis, SelectorMes } from '../componentes/comunes';
+import { Encabezado, Kpis, Seccion, SelectorMes } from '../componentes/comunes';
 import { Vinculo } from '../componentes/Fichas';
 import { useFila } from '../ficha';
 import { fmtFecha, fmtMes, fmtMoney, fmtNum, porFechaDesc } from '../formato';
@@ -24,7 +24,7 @@ export function Ventas({ visible }: { visible: boolean }) {
   return (
     <Stack gap="md">
       <Group justify="space-between">
-        <Title order={2}>Ventas</Title>
+        <Title order={2} className="titulo-pantalla">Ventas</Title>
         <SelectorMes fechas={fechas} value={mesSel} onChange={setMesSel} />
       </Group>
       <Kpis label="Resumen de ventas" items={[
@@ -50,7 +50,7 @@ function GraficoVentas({ lineas }: { lineas: M.LineaVendida[] }) {
     mes: fmtMes(m.mes).replace(/ de /, ' '), Vendido: Math.round(m.importe), Ganancia: Math.round(m.ganancia),
   }));
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Ventas por mes" />
       <BarChart
         h={300}
@@ -64,7 +64,7 @@ function GraficoVentas({ lineas }: { lineas: M.LineaVendida[] }) {
         gridAxis="y"
         aria-label="Vendido y ganancia por mes"
       />
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -85,7 +85,7 @@ function ComisionesMes({ mes }: { mes: string }) {
   const filas = [...porVendedor.entries()].sort((a, b) => b[1].monto - a[1].monto);
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Comisiones del mes" />
       <Table fz="sm" aria-label="Comisiones por vendedor">
         <Table.Thead>
@@ -107,7 +107,7 @@ function ComisionesMes({ mes }: { mes: string }) {
         </Table.Tbody>
       </Table>
       {filas.length === 0 && <Text c="dimmed" mt="xs" size="sm">No hay comisiones en este mes.</Text>}
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -121,7 +121,7 @@ function DetalleVentas({ lineas }: { lineas: M.LineaVendida[] }) {
     .sort((a, b) => porFechaDesc(a.venta, b.venta));
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Detalle del mes">
         <TextInput type="search" w={220} placeholder="Buscar cliente o producto…" aria-label="Buscar en ventas"
           value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
@@ -159,6 +159,6 @@ function DetalleVentas({ lineas }: { lineas: M.LineaVendida[] }) {
         </Table>
       </ScrollArea.Autosize>
       {filas.length === 0 && <Text c="dimmed" mt="xs">No hay ventas en este mes.</Text>}
-    </Paper>
+    </Seccion>
   );
 }

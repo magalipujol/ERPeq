@@ -1,8 +1,8 @@
-import { Badge, Button, Checkbox, Grid, Group, Loader, Paper, Stack, Text, Title } from '@mantine/core';
+import { Button, Checkbox, Grid, Group, Loader, Paper, Stack, Text, Title } from '@mantine/core';
 import { IconPlus, IconTruck } from '@tabler/icons-react';
 import { lazy, Suspense, useState } from 'react';
 import { useBase } from '../base';
-import { Encabezado, Kpis } from '../componentes/comunes';
+import { Encabezado, Kpis, Seccion } from '../componentes/comunes';
 import { fmtFecha, fmtMoney, fmtNum } from '../formato';
 import * as M from '../dominio/modelo';
 import { EstadoFlete, EstadoPedido, Recorrido } from '../componentes/estados';
@@ -53,9 +53,9 @@ export function Inicio({ onNuevoPedido, onIr, onPedido, onFlete, onDeposito, onA
 
   return (
     <Stack gap="md">
-      <Title order={2}>Inicio</Title>
+      <Title order={2} className="titulo-pantalla">Inicio</Title>
 
-      <Button size="lg" leftSection={<IconPlus size={20} />} onClick={onNuevoPedido} style={{ alignSelf: 'flex-start' }}>
+      <Button size="md" leftSection={<IconPlus size={20} />} onClick={onNuevoPedido} w={{ base: '100%', sm: 'auto' }} style={{ alignSelf: 'flex-start' }}>
         Tomar pedido nuevo
       </Button>
 
@@ -68,17 +68,16 @@ export function Inicio({ onNuevoPedido, onIr, onPedido, onFlete, onDeposito, onA
 
       <Grid gap="md" align="flex-start" style={{ opacity: cargando ? 0.5 : 1 }}>
         <Grid.Col span={{ base: 12, md: 5 }}>
-          <Paper role="region" aria-label="Mapa">
-            <Encabezado titulo="Mapa" />
+          <Seccion role="region" aria-label="Mapa">
             <Suspense fallback={<Group justify="center" py="xl"><Loader aria-label="Cargando el mapa" /></Group>}>
               <Mapa onPedido={onPedido} onFlete={onFlete} onDeposito={onDeposito} />
             </Suspense>
-          </Paper>
+          </Seccion>
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, md: 7 }}>
           <Stack gap="md">
-            <Paper role="region" aria-label="Pedidos pendientes">
+            <Seccion role="region" aria-label="Pedidos pendientes">
               <Encabezado titulo="Pedidos pendientes">
                 <Button size="xs" variant="default" onClick={() => { onIr('pedidos'); }}>Ver pedidos</Button>
               </Encabezado>
@@ -122,18 +121,15 @@ export function Inicio({ onNuevoPedido, onIr, onPedido, onFlete, onDeposito, onA
                           <Text size="xs" c="red" fw={500}>Falta stock de {faltan.map((l) => nombres.producto(l.productoId)).join(', ')}</Text>
                         )}
                       </div>
-                      <Stack gap={4} align="flex-end">
-                        <EstadoPedido estado={r.estado} />
-                        {faltan.length > 0 && <Badge variant="filled" size="sm" color="red">Falta stock</Badge>}
-                      </Stack>
+                      <EstadoPedido estado={r.estado} />
                     </Group>
                   </Paper>
                 ))}
               </Stack>
               {abiertos.length === 0 && <Text c="dimmed">No hay pedidos pendientes.</Text>}
-            </Paper>
+            </Seccion>
 
-            <Paper role="region" aria-label="Fletes en curso">
+            <Seccion role="region" aria-label="Fletes en curso">
               <Encabezado titulo="Fletes en curso">
                 <Button size="xs" variant="default" onClick={() => { onIr('fletes'); }}>Ver fletes</Button>
               </Encabezado>
@@ -154,7 +150,7 @@ export function Inicio({ onNuevoPedido, onIr, onPedido, onFlete, onDeposito, onA
                 ))}
               </Stack>
               {fletes.length === 0 && <Text c="dimmed">No hay fletes en curso.</Text>}
-            </Paper>
+            </Seccion>
           </Stack>
         </Grid.Col>
       </Grid>

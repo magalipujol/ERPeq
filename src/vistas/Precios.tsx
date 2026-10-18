@@ -1,8 +1,8 @@
-import { Alert, Autocomplete, Button, Code, Grid, Group, NativeSelect, NumberInput, Paper, ScrollArea, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Autocomplete, Button, Code, Grid, Group, NativeSelect, NumberInput, ScrollArea, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import { faltantesDe } from '../db/puerto';
-import { Encabezado, Mensaje } from '../componentes/comunes';
+import { Encabezado, Mensaje, Seccion } from '../componentes/comunes';
 import { Vinculo } from '../componentes/Fichas';
 import { useFila } from '../ficha';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, unicos } from '../formato';
@@ -13,7 +13,7 @@ import * as M from '../dominio/modelo';
 export function Precios() {
   return (
     <Stack gap="md">
-      <Title order={2}>Precios, comisiones y envíos</Title>
+      <Title order={2} className="titulo-pantalla">Precios, comisiones y envíos</Title>
       <Text c="dimmed" maw="70ch">
         Se proponen al cargar pedidos y entregas. Cambiarlos no modifica lo ya cargado.
       </Text>
@@ -65,7 +65,7 @@ function ListaPrecios() {
   }
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Lista de precios">
         <TextInput type="search" w={200} placeholder="Buscar producto…" aria-label="Buscar precio"
           value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
@@ -98,7 +98,7 @@ function ListaPrecios() {
           </Table.Tbody>
         </Table>
       </ScrollArea.Autosize>
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -142,7 +142,7 @@ function ReglasComision() {
   }
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Reglas de comisión" />
       <form onSubmit={enviar} noValidate aria-label="Nueva regla de comisión">
         <Stack gap="xs" mb="sm">
@@ -178,7 +178,7 @@ function ReglasComision() {
         </Table>
       </ScrollArea>
       {filas.length === 0 && <Text c="dimmed" mt="xs" size="sm">No hay reglas: las comisiones se proponen en 0%.</Text>}
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -213,7 +213,7 @@ function ReglasEnvio() {
   }
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Costo de envío" />
       {faltan.length > 0 ? (
         <Alert color="yellow" title="Faltan hojas en la planilla">
@@ -262,6 +262,6 @@ function ReglasEnvio() {
           )}
         </>
       )}
-    </Paper>
+    </Seccion>
   );
 }

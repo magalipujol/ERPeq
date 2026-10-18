@@ -1,10 +1,10 @@
 import {
-  Autocomplete, Button, Grid, Group, NativeSelect, NumberInput, Paper, ScrollArea, SegmentedControl, Stack,
+  Autocomplete, Button, Grid, Group, NativeSelect, NumberInput, ScrollArea, SegmentedControl, Stack,
   Table, Text, TextInput, Title, useMatches,
 } from '@mantine/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBase, useGuardar } from '../base';
-import { Encabezado, Kpis, Mensaje } from '../componentes/comunes';
+import { Encabezado, Kpis, Mensaje, Seccion } from '../componentes/comunes';
 import { EstadoFlete, Recorrido } from '../componentes/estados';
 import { Vinculo } from '../componentes/Fichas';
 import { useFila } from '../ficha';
@@ -31,7 +31,7 @@ export function Fletes({ resaltar = null, borrador = null }: { resaltar?: FleteR
 
   return (
     <Stack gap="md">
-      <Title order={2}>Fletes</Title>
+      <Title order={2} className="titulo-pantalla">Fletes</Title>
       <Kpis label="Resumen de fletes" items={[
         { label: 'En preparación', valor: activos.filter((f) => estado(f.id) === 'preparacion').length },
         { label: 'En camino', valor: activos.filter((f) => estado(f.id) === 'camino').length },
@@ -134,7 +134,7 @@ function FormFlete({ borrador }: { borrador: BorradorFlete | null }) {
   }
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Nuevo flete" />
       <form ref={formRef} onSubmit={enviar} noValidate aria-label="Nuevo flete">
         <Stack gap="sm">
@@ -176,7 +176,7 @@ function FormFlete({ borrador }: { borrador: BorradorFlete | null }) {
           <Mensaje msg={msg} />
         </Stack>
       </form>
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -206,7 +206,7 @@ function ListaFletes({ resaltar }: { resaltar: FleteResaltado | null }) {
   }
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Fletes">
         <SegmentedControl size="xs" value={filtro} onChange={setFiltro} aria-label="Mostrar fletes"
           data={[{ value: 'activos', label: 'Activos' }, { value: 'todos', label: 'Todos' }]} />
@@ -253,6 +253,6 @@ function ListaFletes({ resaltar }: { resaltar: FleteResaltado | null }) {
         </Table>
       </ScrollArea.Autosize>
       {filas.length === 0 && <Text c="dimmed" mt="xs">No hay fletes {filtro === 'activos' ? 'activos' : ''}.</Text>}
-    </Paper>
+    </Seccion>
   );
 }
