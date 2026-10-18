@@ -1,0 +1,22 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-10-17T12:00:00Z"},
+  "title": "ERPeq móvil",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 390, "h": 844, "title": "Inicio", "radius": 28, "is_interactive": true},
+    "Pedido.dc.html": {"x": 470, "y": 0, "w": 390, "h": 844, "title": "Pedido nuevo", "radius": 28, "is_interactive": true},
+    "Entregar.dc.html": {"x": 940, "y": 0, "w": 390, "h": 844, "title": "Entregar", "radius": 28, "is_interactive": true},
+    "Cobrar.dc.html": {"x": 1410, "y": 0, "w": 390, "h": 844, "title": "Cobrar", "radius": 28, "is_interactive": true},
+    "Stock.dc.html": {"x": 0, "y": 1290, "w": 390, "h": 844, "title": "Stock", "radius": 28, "is_interactive": true},
+    "Fletes.dc.html": {"x": 470, "y": 1290, "w": 390, "h": 844, "title": "Fletes", "radius": 28, "is_interactive": true},
+    "Sistema.dc.html": {"x": 940, "y": 1290, "w": 860, "h": 844, "title": "Sistema visual"}
+  },
+  "order": ["Main.dc.html", "Pedido.dc.html", "Entregar.dc.html", "Cobrar.dc.html", "Stock.dc.html", "Fletes.dc.html", "Sistema.dc.html"],
+  "notes": {
+    "fila1": {"x": 0, "y": -300, "text": "Pedido → entrega → cobro", "kind": "title1", "maxW": 1800},
+    "fila2": {"x": 0, "y": 990, "text": "Stock, fletes y sistema", "kind": "title1", "maxW": 1800}
+  },
+  "designSystems": []
+}
