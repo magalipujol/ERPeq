@@ -41,3 +41,33 @@ test('los botones de una fila hacen lo suyo sin abrir la ficha, y el vínculo la
   await page.keyboard.press('Escape')
   await expect(compra).toBeHidden()
 })
+
+test('"atrás" del navegador cierra las fichas de a una y vuelve a la pantalla anterior, sin salir de la app', async ({ page }) => {
+  await ir(page, 'Compras')
+  await expect(page).toHaveURL(/#compras$/)
+
+  // Ficha del flete y, encima, la del transporte: "atrás" vuelve al flete y después cierra el modal.
+  await ir(page, 'Fletes')
+  await page.getByRole('row', { name: 'Flete Interprovincial · 08/10/26' }).getByRole('cell').first().click()
+  await page.getByRole('dialog', { name: 'Flete de Interprovincial · 08/10/26' }).getByRole('button', { name: 'Interprovincial' }).click()
+  await expect(page.getByRole('dialog', { name: 'Transporte: Interprovincial' })).toBeVisible()
+  await page.goBack()
+  await expect(page.getByRole('dialog', { name: 'Flete de Interprovincial · 08/10/26' })).toBeVisible()
+  await page.goBack()
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(page).toHaveURL(/#fletes$/)
+
+  // Cerrar el modal con la X también deja el historial donde estaba.
+  await page.getByRole('row', { name: 'Flete Interprovincial · 08/10/26' }).getByRole('cell').first().click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Interprovincial' }).click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toBeHidden()
+
+  // Atrás vuelve a Compras y después a Fletes, la pantalla con la que se entró.
+  await page.goBack()
+  await expect(page).toHaveURL(/#compras$/)
+  await expect(page.getByRole('row').filter({ hasText: 'Prov B' }).first()).toBeVisible()
+  await page.goBack()
+  await expect(page).toHaveURL(/#fletes$/)
+  await expect(page.getByRole('row', { name: 'Flete Interprovincial · 08/10/26' })).toBeVisible()
+})

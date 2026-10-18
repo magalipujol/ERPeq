@@ -150,10 +150,16 @@ export function App({ db }: { db: BaseDeDatos }) {
     setPantalla('login');
   }
 
+  // Cada cambio de pantalla es una entrada del historial: "atrás" vuelve a la pantalla anterior en vez de salir de la app.
   function irA(v: Vista) {
     setVista(v);
-    history.replaceState(null, '', `#${v}`);
+    if (location.hash !== `#${v}`) history.pushState(null, '', `#${v}`);
   }
+  useEffect(() => {
+    const alVolver = () => { setVista(vistaDelHash()); };
+    addEventListener('popstate', alVolver);
+    return () => { removeEventListener('popstate', alVolver); };
+  }, []);
   const verPedido = (id: string) => { irA('pedidos'); setPedidoElegido((p) => ({ id, vez: (p?.vez ?? 0) + 1 })); };
   const verFlete = (id: string) => { irA('fletes'); setFleteResaltado((f) => ({ id, vez: (f?.vez ?? 0) + 1 })); };
 

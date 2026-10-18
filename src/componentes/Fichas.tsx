@@ -1,6 +1,6 @@
 import { Anchor, Button, Group, Modal, SimpleGrid, Stack, Table, Text, Title, useMatches } from '@mantine/core';
 import { IconArrowLeft } from '@tabler/icons-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBase } from '../base';
 import * as F from '../dominio/fichas';
 import * as M from '../dominio/modelo';
@@ -15,28 +15,65 @@ interface Acciones {
   verFlete: (fleteId: string) => void;
 }
 
+// Cuántas fichas hay abiertas según la entrada actual del historial del navegador.
+const fichasEnHistorial = (): number => {
+  const estado: unknown = history.state;
+  return typeof estado === 'object' && estado !== null && 'fichas' in estado && typeof estado.fichas === 'number' ? estado.fichas : 0;
+};
+
 // Modal con la ficha de lo que se tocó. Cada vínculo de la ficha abre otra encima; "Volver" regresa.
+// Cada ficha abierta es una entrada del historial, así "atrás" del navegador (o del celular) vuelve a la anterior
+// o cierra el modal en vez de salir de la pantalla.
 export function FichaProvider({ children, onEntregar, onVerFlete }:
   { children: React.ReactNode; onEntregar: (pedidoId: string) => void; onVerFlete: (fleteId: string) => void }) {
   const [pila, setPila] = useState<F.RefFicha[]>([]);
-  const abrir = useCallback((ref: F.RefFicha) => { setPila((p) => [...p, ref]); }, []);
+  // Lo que se hace después de cerrar todas las fichas (ir a otra pantalla), cuando el historial ya volvió atrás.
+  const despuesRef = useRef<(() => void) | null>(null);
+  const abrir = useCallback((ref: F.RefFicha) => {
+    history.pushState({ fichas: fichasEnHistorial() + 1 }, '');
+    setPila((p) => [...p, ref]);
+  }, []);
   const valor = useMemo(() => ({ abrir }), [abrir]);
   const enCelular = useMatches({ base: true, sm: false });
   const titulo = useTitulo();
   const actual = pila.at(-1);
-  const cerrar = () => { setPila([]); };
+
+  useEffect(() => {
+    const alVolver = () => {
+      const n = fichasEnHistorial();
+      setPila((p) => p.slice(0, n));
+      if (n === 0 && despuesRef.current) {
+        const fn = despuesRef.current;
+        despuesRef.current = null;
+        fn();
+      }
+    };
+    addEventListener('popstate', alVolver);
+    return () => { removeEventListener('popstate', alVolver); };
+  }, []);
+
+  const cerrar = (luego?: () => void) => {
+    const n = fichasEnHistorial();
+    if (n > 0) {
+      despuesRef.current = luego ?? null;
+      history.go(-n);
+    } else {
+      setPila([]);
+      luego?.();
+    }
+  };
   const acciones: Acciones = {
-    entregar: (id) => { cerrar(); onEntregar(id); },
-    verFlete: (id) => { cerrar(); onVerFlete(id); },
+    entregar: (id) => { cerrar(() => { onEntregar(id); }); },
+    verFlete: (id) => { cerrar(() => { onVerFlete(id); }); },
   };
 
   return (
     <FichaContext value={valor}>
       {children}
-      <Modal opened={actual !== undefined} onClose={cerrar} title={actual ? titulo(actual) : ''} size="xl" fullScreen={enCelular}>
+      <Modal opened={actual !== undefined} onClose={() => { cerrar(); }} title={actual ? titulo(actual) : ''} size="xl" fullScreen={enCelular}>
         {pila.length > 1 && (
           <Button variant="subtle" size="compact-sm" mb="sm" leftSection={<IconArrowLeft size={16} />}
-            onClick={() => { setPila((p) => p.slice(0, -1)); }}>
+            onClick={() => { history.back(); }}>
             Volver a {titulo(pila[pila.length - 2])}
           </Button>
         )}

@@ -4,6 +4,11 @@ Tocar una fila de una tabla abre la **ficha** de lo que representa: un modal con
 relacionado. Tocar un vínculo abre esa otra ficha encima; **Volver a …** regresa a la anterior y cerrar el modal
 (✕, Escape o tocar afuera) las cierra todas. En celular el modal ocupa toda la pantalla.
 
+Cada ficha abierta es una entrada del historial del navegador, igual que cada cambio de pantalla (`#stock`,
+`#pedidos`, …): el botón "atrás" del navegador o del celular hace lo mismo que **Volver a …** y, con la primera
+ficha, cierra el modal; sin fichas abiertas vuelve a la pantalla anterior. Cerrar el modal o ir a otra pantalla desde
+una ficha (*Registrar entrega*, *Ver en Fletes*) saca del historial las fichas que estaban abiertas.
+
 Los cálculos están en `src/dominio/fichas.ts` (puro, con pruebas en `fichas.test.ts`); el modal y el contenido de
 cada ficha, en `src/componentes/Fichas.tsx`.
 
