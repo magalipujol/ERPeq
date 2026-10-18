@@ -4,6 +4,8 @@ import { type Etiquetas, useBase, useGuardar } from '../base';
 import { faltantesDe } from '../db/puerto';
 import { CamposCobro, type DatosCobro } from '../componentes/Cobro';
 import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
+import { Vinculo } from '../componentes/Fichas';
+import { useFila } from '../ficha';
 import { aNumero, deISO, fmtFecha, fmtMoney, hoyISO, porFechaDesc } from '../formato';
 import * as M from '../dominio/modelo';
 
@@ -183,6 +185,7 @@ function FormRendicion({ cuentas, duenio, deshabilitado }: { cuentas: M.CuentaSo
 
 function ListaACobrar({ aCobrar, onCobrar }: { aCobrar: M.CuentaVenta[]; onCobrar: (id: string) => void }) {
   const { cargando, nombres, etiquetas } = useBase();
+  const fila = useFila();
   const filas = aCobrar.toSorted((a, b) => porFechaDesc(a.venta, b.venta));
   return (
     <Paper>
@@ -197,9 +200,11 @@ function ListaACobrar({ aCobrar, onCobrar }: { aCobrar: M.CuentaVenta[]; onCobra
           </Table.Thead>
           <Table.Tbody>
             {filas.map((c) => (
-              <Table.Tr key={c.venta.id} aria-label={`Venta a ${etiquetas.venta(c.venta.id)}`}>
+              <Table.Tr key={c.venta.id} aria-label={`Venta a ${etiquetas.venta(c.venta.id)}`} {...fila({ tipo: 'venta', id: c.venta.id })}>
                 <Table.Td c="dimmed">{fmtFecha(c.venta.fecha)}</Table.Td>
-                <Table.Td fw={500}>{c.pedido && nombres.contacto(c.pedido.contactoId)}</Table.Td>
+                <Table.Td fw={500}>
+                  {c.pedido && <Vinculo a={{ tipo: 'venta', id: c.venta.id }}>{nombres.contacto(c.pedido.contactoId)}</Vinculo>}
+                </Table.Td>
                 <Table.Td className="num">{fmtMoney(c.importe)}</Table.Td>
                 <Table.Td className="num" c="dimmed">{c.cobrado > 0 ? fmtMoney(c.cobrado) : '–'}</Table.Td>
                 <Table.Td className="num" fw={600}>{fmtMoney(c.saldo)}</Table.Td>

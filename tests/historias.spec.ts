@@ -612,3 +612,43 @@ test('llegan las almendras a Rosario, se arma la receta del mix europeo y se fab
   await esperarStock(page, 'Avena', { general: '0', rosario: '24,2', camino: '–', comprometido: '10' })
   await esperarStock(page, 'Mix europeo', { general: '0', rosario: '1,85', camino: '–', comprometido: '–' })
 })
+
+test('desde una venta se recorre lo relacionado en fichas y se termina entregando otro pedido del cliente', async ({ page }) => {
+  // 1. En Ventas, tocar la venta de Ana del 05/10 abre su ficha: 4 kg de almendras a $ 3.000 = $ 12.000, sin cobrar.
+  //    Ganancia: 12.000 − 1.200 de comisión de Leo − 4 × 1.500 de costo = 4.800.
+  await ir(page, 'Ventas')
+  await filaCon(page, 'Ana').getByRole('cell', { name: 'Almendras' }).click()
+  const venta = page.getByRole('dialog', { name: 'Venta a Ana · 05/10/26' })
+  await expect(venta.getByRole('group', { name: 'Comisiones' })).toContainText(/Leo \$\s1\.200/)
+  await expect(venta.getByRole('group', { name: 'A cobrar' })).toContainText(/12\.000/)
+  await expect(venta.getByRole('group', { name: 'Ganancia' })).toContainText(/4\.800/)
+
+  // 2. Su pedido ya está entregado: no ofrece registrar otra entrega.
+  await venta.getByRole('button', { name: 'Ana · 05/10/26' }).click()
+  const pedido = page.getByRole('dialog', { name: 'Pedido de Ana · 05/10/26' })
+  await expect(pedido.getByRole('group', { name: 'Estado' })).toHaveText(/Entregado/)
+  await expect(pedido.getByRole('button', { name: 'Registrar entrega' })).toBeHidden()
+
+  // 3. La ficha de Ana muestra sus dos pedidos y lo que debe.
+  await pedido.getByRole('group', { name: 'Cliente' }).getByRole('button', { name: 'Ana' }).click()
+  const cliente = page.getByRole('dialog', { name: 'Cliente: Ana' })
+  await expect(cliente.getByRole('group', { name: 'Localidad' })).toContainText('Funes, Santa Fe')
+  await expect(cliente.getByRole('group', { name: 'A cobrar' })).toContainText(/12\.000/)
+  await expect(cliente.getByRole('table', { name: 'Pedidos del cliente' }).getByRole('row')).toHaveCount(3)
+
+  // 4. El pedido del 10/10 sigue pendiente; la avena tiene 25 kg en Rosario y esos 10 comprometidos.
+  await cliente.getByRole('button', { name: '10/10/26' }).click()
+  const abierto = page.getByRole('dialog', { name: 'Pedido de Ana · 10/10/26' })
+  await abierto.getByRole('button', { name: 'Avena' }).click()
+  const avena = page.getByRole('dialog', { name: 'Producto: Avena' })
+  await expect(avena.getByRole('group', { name: 'Costo promedio' })).toContainText(/500/)
+  const rosario = avena.getByRole('table', { name: 'Stock por depósito' }).getByRole('row').filter({ hasText: 'Rosario' })
+  await expect(rosario.getByRole('cell').nth(1)).toHaveText('25')
+  await expect(rosario.getByRole('cell').nth(4)).toHaveText('10')
+
+  // 5. Volver regresa al pedido, y "Registrar entrega" lo abre en Pedidos.
+  await avena.getByRole('button', { name: 'Volver a Pedido de Ana · 10/10/26' }).click()
+  await page.getByRole('dialog', { name: 'Pedido de Ana · 10/10/26' }).getByRole('button', { name: 'Registrar entrega' }).click()
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(page.getByRole('heading', { name: 'Entregar pedido de Ana · 10/10/26' })).toBeVisible()
+})

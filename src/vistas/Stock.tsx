@@ -7,6 +7,8 @@ import { IconArrowDown, IconArrowUp } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import { Encabezado, Kpis, Mensaje } from '../componentes/comunes';
+import { Vinculo } from '../componentes/Fichas';
+import { useFila } from '../ficha';
 import { aNumero, fmtMoney, fmtNum, unicos } from '../formato';
 import * as M from '../dominio/modelo';
 
@@ -79,6 +81,7 @@ interface Columna { key: string; titulo: string; num?: boolean }
 
 function Inventario({ filas, deposito, onDeposito }: { filas: FilaStock[]; deposito: string; onDeposito: (id: string) => void }) {
   const { datos, cargando } = useBase();
+  const fila = useFila();
   const deps = datos.depositos.filter((d) => !deposito || d.id === deposito);
   const [buscar, setBuscar] = useState('');
   const [filtro, setFiltro] = useState('');
@@ -149,8 +152,8 @@ function Inventario({ filas, deposito, onDeposito }: { filas: FilaStock[]; depos
           </Table.Thead>
           <Table.Tbody>
             {visibles.map((f) => (
-              <Table.Tr key={f.id}>
-                <Table.Td fw={500} miw={180} style={{ whiteSpace: 'normal' }}>{f.producto}</Table.Td>
+              <Table.Tr key={f.id} {...fila({ tipo: 'producto', id: f.id })}>
+                <Table.Td fw={500} miw={180} style={{ whiteSpace: 'normal' }}><Vinculo a={{ tipo: 'producto', id: f.id }}>{f.producto}</Vinculo></Table.Td>
                 <Table.Td c="dimmed">{f.unidad}</Table.Td>
                 {deps.map((d) => {
                   const v = f.s[d.id] ?? 0;

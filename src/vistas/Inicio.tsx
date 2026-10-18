@@ -5,8 +5,7 @@ import { useBase } from '../base';
 import { Encabezado, Kpis } from '../componentes/comunes';
 import { fmtFecha, fmtMoney, fmtNum } from '../formato';
 import * as M from '../dominio/modelo';
-import { EstadoFlete, Recorrido } from './Fletes';
-import { EstadoPedido } from './Pedidos';
+import { EstadoFlete, EstadoPedido, Recorrido } from '../componentes/estados';
 
 // El mapa trae las localidades de todo el país (≈ 150 KB): se carga aparte para no demorar el resto de la app.
 const Mapa = lazy(async () => import('../componentes/Mapa').then((m) => ({ default: m.Mapa })));

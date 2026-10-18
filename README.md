@@ -50,6 +50,7 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
   - `dominio/modelo.ts`: tipos y cálculos del negocio (sin base de datos ni navegador).
   - `dominio/analisis.ts`: cálculos de la pantalla Análisis (sin base de datos ni navegador).
   - `dominio/mapa.ts`: qué va en el mapa de Inicio y en qué localidad (sin base de datos ni navegador).
+  - `dominio/fichas.ts`: qué muestra la ficha de cada cosa al tocarla en una tabla (sin base de datos ni navegador).
   - `mapa/`: el mapa de Argentina (`argentina.json`: provincias y localidades ya proyectadas) y `ubicar.ts`,
     que ubica localidades y arma las marcas.
   - `db/puerto.ts`: lo que la app necesita de la base (leer y una operación por caso de uso).
@@ -58,13 +59,14 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
   - `main.tsx`: arranca la app con la base de Google Sheets; `App.tsx`: pantallas de acceso y navegación;
     `vistas/`: Inicio (pantalla por defecto: acceso directo a un pedido nuevo, mapa con depósitos, pedidos
     pendientes y fletes en curso, y sus listas), Stock, Pedidos, Ventas, Compras, Recetas, Fletes, Precios, Caja y Análisis.
-  - `componentes/`: piezas compartidas (carga de ítems, navegación entre pantallas, KPIs, el mapa de Inicio).
+  - `componentes/`: piezas compartidas (carga de ítems, navegación entre pantallas, KPIs, el mapa de Inicio y
+    `Fichas.tsx`, el modal que muestra lo que se toca en una tabla con sus vínculos); `ficha.ts`: el contexto para abrirlas.
   - `celular.css`: ajustes para pantallas de menos de 768 px (barra inferior con menú *Más*, campos de 44 px).
   - `fuentes/`: la tipografía OpenDyslexic (regular y negrita) y su licencia (SIL Open Font License).
   - `whatsapp.ts`: arma el mensaje con los pedidos para mandar a un grupo de WhatsApp (botón *Exportar a WhatsApp* en Pedidos).
 - `public/`: lo que se publica tal cual: el manifiesto de la app instalable y sus íconos (`icono.svg` es el
   original; los PNG los genera `herramientas/iconos.mjs`).
-- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`, `legibilidad.md`, `analisis.md`, `mapa.md` y `recetas.md`).
+- `spec/`: especificaciones (`modelo-de-datos.md`, `arquitectura.md`, `legibilidad.md`, `analisis.md`, `mapa.md`, `fichas.md` y `recetas.md`).
 - `diseño/experimental/`: propuesta de rediseño para celular, una pantalla por archivo `.dc.html` y una hoja
   con colores, íconos y letra (`Sistema.dc.html`). Es referencia: no se abre sola en el navegador.
 - `.github/workflows/ci.yml`: lint, tipos y pruebas en cada pull request y push.
@@ -90,7 +92,7 @@ y abrir http://localhost:5500 (tiene que estar autorizado como origen en el proy
 
 ## Pruebas
 
-- **Unitarias** (Vitest, `src/**/*.test.ts`): los cálculos del dominio (`modelo.ts` y `analisis.ts`), `formato.ts`, `meses.ts`, `whatsapp.ts` y el adaptador
+- **Unitarias** (Vitest, `src/**/*.test.ts`): los cálculos del dominio (`modelo.ts`, `analisis.ts`, `mapa.ts` y `fichas.ts`), `formato.ts`, `meses.ts`, `whatsapp.ts` y el adaptador
   de Sheets (lectura de filas, celdas y las filas que agrega cada operación, sobre una planilla en memoria).
   Tardan menos de un segundo.
 - **De punta a punta** (Playwright, `tests/`): la app entera contra el build. Google está simulado

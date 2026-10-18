@@ -1,19 +1,17 @@
 import {
-  Autocomplete, Badge, Button, Grid, Group, MultiSelect, NativeSelect, NumberInput, Paper, ScrollArea, SegmentedControl, Stack,
+  Autocomplete, Button, Grid, Group, MultiSelect, NativeSelect, NumberInput, Paper, ScrollArea, SegmentedControl, Stack,
   Table, Text, TextInput, Title, useMatches,
 } from '@mantine/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
+import { EstadoFlete, Recorrido } from '../componentes/estados';
+import { Vinculo } from '../componentes/Fichas';
+import { useFila } from '../ficha';
 import { type Item, itemVacio } from '../componentes/item';
 import { Items } from '../componentes/Items';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, numeroOCero, porFechaDesc, unicos } from '../formato';
 import * as M from '../dominio/modelo';
-
-const COLOR_ESTADO: Record<M.EstadoFlete, string> = { preparacion: 'yellow', camino: 'blue', finalizado: 'green', cancelado: 'gray' };
-export function EstadoFlete({ estado }: { estado: M.EstadoFlete }) {
-  return <Badge variant="light" size="sm" color={COLOR_ESTADO[estado]}>{M.NOMBRE_ESTADO_FLETE[estado]}</Badge>;
-}
 
 const ACCION: Record<M.EstadoFlete, string> = {
   preparacion: 'Volvió sin entregar', camino: 'Despachar', finalizado: 'Recibido', cancelado: 'Cancelar',
@@ -43,13 +41,6 @@ export function Fletes({ resaltar = null }: { resaltar?: FleteResaltado | null }
       </Grid>
     </Stack>
   );
-}
-
-const nombreLugar = (deposito: (id: string) => string, id: string, afuera: string) => (id ? deposito(id) : afuera);
-
-export function Recorrido({ flete }: { flete: M.Flete }) {
-  const { nombres } = useBase();
-  return <>{nombreLugar(nombres.deposito, flete.origenId, 'Proveedor')} → {nombreLugar(nombres.deposito, flete.destinoId, 'Cliente')}</>;
 }
 
 function FormFlete() {
@@ -187,6 +178,7 @@ function FormFlete() {
 function ListaFletes({ resaltar }: { resaltar: FleteResaltado | null }) {
   const { datos, estadosFletes, cargando, nombres, etiquetas, db } = useBase();
   const { guardando, msg, guardar } = useGuardar();
+  const fila = useFila();
   const [filtro, setFiltro] = useState('activos');
   const tablaRef = useRef<HTMLTableElement>(null);
   useEffect(() => {
@@ -227,10 +219,10 @@ function ListaFletes({ resaltar }: { resaltar: FleteResaltado | null }) {
           <Table.Tbody>
             {filas.map(({ f, estado }) => (
               <Table.Tr key={f.id} data-flete={f.id} aria-label={`Flete ${etiquetas.flete(f.id)}`} bg={f.id === resaltar?.id ? 'var(--erp-soft)' : undefined}
-                aria-current={f.id === resaltar?.id ? 'true' : undefined}>
+                aria-current={f.id === resaltar?.id ? 'true' : undefined} {...fila({ tipo: 'flete', id: f.id })}>
                 <Table.Td c="dimmed">{fmtFecha(f.fecha)}</Table.Td>
                 <Table.Td>
-                  <Text size="sm" fw={500}>{nombres.contacto(f.contactoId)}</Text>
+                  <Text size="sm" fw={500}><Vinculo a={{ tipo: 'flete', id: f.id }}>{nombres.contacto(f.contactoId)}</Vinculo></Text>
                   <Text size="xs" c="dimmed"><Recorrido flete={f} /></Text>
                   {(items.get(f.id) ?? []).map((it) => <Text key={it.productoId} size="xs">{fmtNum(it.cantidad)} {nombres.producto(it.productoId)}</Text>)}
                   {pedidos.has(f.id) && <Text size="xs" c="dimmed">Pedidos: {(pedidos.get(f.id) ?? []).map(etiquetas.pedido).join(', ')}</Text>}

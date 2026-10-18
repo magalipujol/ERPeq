@@ -4,6 +4,8 @@ import {
 import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import { Encabezado, Kpis, Mensaje, Resumen, SelectorMes } from '../componentes/comunes';
+import { Vinculo } from '../componentes/Fichas';
+import { useFila } from '../ficha';
 import { mesElegido } from '../meses';
 import { type Item, itemVacio } from '../componentes/item';
 import { Items } from '../componentes/Items';
@@ -137,6 +139,7 @@ function FormCompra() {
 
 function DetalleCompras({ compras }: { compras: M.Compra[] }) {
   const { cargando, nombres, etiquetas } = useBase();
+  const fila = useFila();
   const [buscar, setBuscar] = useState('');
   const q = buscar.trim().toLowerCase();
   const filas = compras
@@ -160,10 +163,10 @@ function DetalleCompras({ compras }: { compras: M.Compra[] }) {
           </Table.Thead>
           <Table.Tbody>
             {filas.map((c) => (
-              <Table.Tr key={c.fila}>
+              <Table.Tr key={c.fila} {...fila({ tipo: 'compra', id: String(c.fila) })}>
                 <Table.Td c="dimmed">{fmtFecha(c.fecha)}</Table.Td>
                 <Table.Td>
-                  {nombres.contacto(c.contactoId)}
+                  <Vinculo a={{ tipo: 'compra', id: String(c.fila) }}>{nombres.contacto(c.contactoId)}</Vinculo>
                   {c.remito && <Text size="xs" c="dimmed">Remito {c.remito}</Text>}
                   {c.pedidoId && <Text size="xs" c="dimmed">Para el pedido de {etiquetas.pedido(c.pedidoId)}</Text>}
                 </Table.Td>

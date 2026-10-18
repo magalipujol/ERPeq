@@ -5,6 +5,8 @@ import {
 import { useMemo, useRef, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import { Encabezado, Kpis, Mensaje } from '../componentes/comunes';
+import { Vinculo } from '../componentes/Fichas';
+import { useFila } from '../ficha';
 import { type Item, itemVacio } from '../componentes/item';
 import { Items } from '../componentes/Items';
 import { faltantesDe } from '../db/puerto';
@@ -277,6 +279,7 @@ function ListaRecetas({ vigentes, onEditar, deshabilitado }:
   { vigentes: M.VersionReceta[]; onEditar: (id: string) => void; deshabilitado: boolean }) {
   const { datos, costos, nombres, cargando, db } = useBase();
   const { guardando, msg, guardar } = useGuardar();
+  const fila = useFila();
   const [filtro, setFiltro] = useState('activas');
   const filas = vigentes
     .filter((v) => filtro === 'todas' || v.receta.activa)
@@ -322,9 +325,9 @@ function ListaRecetas({ vigentes, onEditar, deshabilitado }:
               const precio = M.precioVigente(datos.precios, v.receta.productoId, hoy);
               const nombre = nombres.producto(v.receta.productoId);
               return (
-                <Table.Tr key={v.receta.id} aria-label={`Receta de ${nombre}`}>
+                <Table.Tr key={v.receta.id} aria-label={`Receta de ${nombre}`} {...fila({ tipo: 'producto', id: v.receta.productoId })}>
                   <Table.Td fw={500}>
-                    {nombre}
+                    <Vinculo a={{ tipo: 'producto', id: v.receta.productoId }}>{nombre}</Vinculo>
                     {!v.receta.activa && <Badge ml={6} size="sm" variant="light" color="gray">De baja</Badge>}
                   </Table.Td>
                   <Table.Td>

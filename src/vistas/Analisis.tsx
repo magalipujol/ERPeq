@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react';
 import * as A from '../dominio/analisis';
 import { useBase } from '../base';
 import { Encabezado, Kpis } from '../componentes/comunes';
+import { Vinculo } from '../componentes/Fichas';
+import { useFila } from '../ficha';
 import { fmtFecha, fmtMoney, fmtNum } from '../formato';
 
 const fmtPct = (n: number | null) =>
@@ -131,6 +133,7 @@ function MayorGanancia({ productos }: { productos: A.AnalisisProducto[] }) {
 }
 
 function GananciaPorProducto({ productos, fletes }: { productos: A.AnalisisProducto[]; fletes: A.FletesPeriodo }) {
+  const fila = useFila();
   const filas = [...productos].sort((a, b) => b.ganancia - a.ganancia);
   const sinCosto = productos.filter((p) => p.lineasSinCosto > 0).length;
   return (
@@ -147,9 +150,9 @@ function GananciaPorProducto({ productos, fletes }: { productos: A.AnalisisProdu
           </Table.Thead>
           <Table.Tbody>
             {filas.map((p) => (
-              <Table.Tr key={p.productoId}>
+              <Table.Tr key={p.productoId} {...fila({ tipo: 'producto', id: p.productoId })}>
                 <Table.Td>
-                  {p.producto}
+                  <Vinculo a={{ tipo: 'producto', id: p.productoId }}>{p.producto}</Vinculo>
                   {p.lineasSinCosto > 0 && <Text size="xs" c="dimmed">{p.lineasSinCosto} {p.lineasSinCosto === 1 ? 'venta' : 'ventas'} sin costo</Text>}
                 </Table.Td>
                 <Table.Td className="num">{fmtNum(p.cantidad)} {p.unidad}</Table.Td>
@@ -174,11 +177,12 @@ function GananciaPorProducto({ productos, fletes }: { productos: A.AnalisisProdu
 }
 
 function ClientesActivos({ clientes }: { clientes: A.AnalisisCliente[] }) {
+  const fila = useFila();
   return (
     <Paper>
       <Encabezado titulo="Clientes más activos" />
       <ScrollArea.Autosize mah={420} type="auto">
-        <Table stickyHeader fz="sm" style={{ whiteSpace: 'nowrap' }} aria-label="Clientes más activos">
+        <Table stickyHeader highlightOnHover fz="sm" style={{ whiteSpace: 'nowrap' }} aria-label="Clientes más activos">
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Cliente</Table.Th><Table.Th className="num">Pedidos</Table.Th>
@@ -187,8 +191,8 @@ function ClientesActivos({ clientes }: { clientes: A.AnalisisCliente[] }) {
           </Table.Thead>
           <Table.Tbody>
             {clientes.slice(0, 20).map((c) => (
-              <Table.Tr key={c.clave}>
-                <Table.Td>{c.cliente}</Table.Td>
+              <Table.Tr key={c.clave} {...fila({ tipo: 'contacto', id: c.clave })}>
+                <Table.Td><Vinculo a={{ tipo: 'contacto', id: c.clave }}>{c.cliente}</Vinculo></Table.Td>
                 <Table.Td className="num">{c.pedidos}</Table.Td>
                 <Table.Td className="num" fw={600}>{fmtMoney(c.importe)}</Table.Td>
                 <Table.Td className="num" c="dimmed">{fmtFecha(c.ultimoPedido)}</Table.Td>
@@ -203,6 +207,7 @@ function ClientesActivos({ clientes }: { clientes: A.AnalisisCliente[] }) {
 }
 
 function ClientesInactivos({ clientes }: { clientes: A.ClienteInactivo[] }) {
+  const fila = useFila();
   const { minimoPedidos, factor, minimoDias } = A.INACTIVO;
   return (
     <Paper>
@@ -212,7 +217,7 @@ function ClientesInactivos({ clientes }: { clientes: A.ClienteInactivo[] }) {
         de {minimoDias} días). Toma toda la historia, no el período elegido.
       </Text>
       <ScrollArea.Autosize mah={420} type="auto">
-        <Table stickyHeader fz="sm" style={{ whiteSpace: 'nowrap' }} aria-label="Clientes que dejaron de comprar">
+        <Table stickyHeader highlightOnHover fz="sm" style={{ whiteSpace: 'nowrap' }} aria-label="Clientes que dejaron de comprar">
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Cliente</Table.Th><Table.Th className="num">Compras</Table.Th><Table.Th className="num">Cada</Table.Th>
@@ -222,8 +227,8 @@ function ClientesInactivos({ clientes }: { clientes: A.ClienteInactivo[] }) {
           </Table.Thead>
           <Table.Tbody>
             {clientes.map((c) => (
-              <Table.Tr key={c.clave}>
-                <Table.Td>{c.cliente}</Table.Td>
+              <Table.Tr key={c.clave} {...fila({ tipo: 'contacto', id: c.clave })}>
+                <Table.Td><Vinculo a={{ tipo: 'contacto', id: c.clave }}>{c.cliente}</Vinculo></Table.Td>
                 <Table.Td className="num">{c.pedidos}</Table.Td>
                 <Table.Td className="num" c="dimmed">{c.intervalo} días</Table.Td>
                 <Table.Td className="num">{fmtFecha(c.ultimoPedido)}</Table.Td>

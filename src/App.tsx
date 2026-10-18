@@ -4,6 +4,7 @@ import {
 import { IconBrandGoogleFilled, IconExternalLink, IconRefresh } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { BaseProvider } from './BaseProvider';
+import { FichaProvider } from './componentes/Fichas';
 import { BarraInferior, NavSuperior } from './componentes/Navegacion';
 import { type BaseDeDatos, type InfoBase, SesionVencida, SinAcceso } from './db/puerto';
 import type * as M from './dominio/modelo';
@@ -153,6 +154,8 @@ export function App({ db }: { db: BaseDeDatos }) {
     setVista(v);
     history.replaceState(null, '', `#${v}`);
   }
+  const verPedido = (id: string) => { irA('pedidos'); setPedidoElegido((p) => ({ id, vez: (p?.vez ?? 0) + 1 })); };
+  const verFlete = (id: string) => { irA('fletes'); setFleteResaltado((f) => ({ id, vez: (f?.vez ?? 0) + 1 })); };
 
   const enApp = pantalla === 'app' && info !== null && datos !== null;
 
@@ -249,21 +252,22 @@ export function App({ db }: { db: BaseDeDatos }) {
 
           {enApp && (
             <BaseProvider db={db} info={info} datos={datos} cargando={cargando} recargar={cargar}>
-              <Box display={vista === 'inicio' ? undefined : 'none'}>
-                <Inicio onIr={irA} onNuevoPedido={() => { irA('pedidos'); setNuevoPedido((n) => n + 1); }}
-                  onPedido={(id) => { irA('pedidos'); setPedidoElegido((p) => ({ id, vez: (p?.vez ?? 0) + 1 })); }}
-                  onFlete={(id) => { irA('fletes'); setFleteResaltado((f) => ({ id, vez: (f?.vez ?? 0) + 1 })); }}
-                  onDeposito={(id) => { irA('stock'); setDepositoStock(id); }} />
-              </Box>
-              <Box display={vista === 'stock' ? undefined : 'none'}><Stock visible={vista === 'stock'} deposito={depositoStock} onDeposito={setDepositoStock} /></Box>
-              <Box display={vista === 'pedidos' ? undefined : 'none'}><Pedidos nuevo={nuevoPedido} abrir={pedidoElegido} /></Box>
-              <Box display={vista === 'ventas' ? undefined : 'none'}><Ventas visible={vista === 'ventas'} /></Box>
-              <Box display={vista === 'compras' ? undefined : 'none'}><Compras /></Box>
-              <Box display={vista === 'recetas' ? undefined : 'none'}><Recetas /></Box>
-              <Box display={vista === 'fletes' ? undefined : 'none'}><Fletes resaltar={fleteResaltado} /></Box>
-              <Box display={vista === 'precios' ? undefined : 'none'}><Precios /></Box>
-              <Box display={vista === 'caja' ? undefined : 'none'}><Caja /></Box>
-              <Box display={vista === 'analisis' ? undefined : 'none'}><Analisis visible={vista === 'analisis'} /></Box>
+              <FichaProvider onEntregar={verPedido} onVerFlete={verFlete}>
+                <Box display={vista === 'inicio' ? undefined : 'none'}>
+                  <Inicio onIr={irA} onNuevoPedido={() => { irA('pedidos'); setNuevoPedido((n) => n + 1); }}
+                    onPedido={verPedido} onFlete={verFlete}
+                    onDeposito={(id) => { irA('stock'); setDepositoStock(id); }} />
+                </Box>
+                <Box display={vista === 'stock' ? undefined : 'none'}><Stock visible={vista === 'stock'} deposito={depositoStock} onDeposito={setDepositoStock} /></Box>
+                <Box display={vista === 'pedidos' ? undefined : 'none'}><Pedidos nuevo={nuevoPedido} abrir={pedidoElegido} /></Box>
+                <Box display={vista === 'ventas' ? undefined : 'none'}><Ventas visible={vista === 'ventas'} /></Box>
+                <Box display={vista === 'compras' ? undefined : 'none'}><Compras /></Box>
+                <Box display={vista === 'recetas' ? undefined : 'none'}><Recetas /></Box>
+                <Box display={vista === 'fletes' ? undefined : 'none'}><Fletes resaltar={fleteResaltado} /></Box>
+                <Box display={vista === 'precios' ? undefined : 'none'}><Precios /></Box>
+                <Box display={vista === 'caja' ? undefined : 'none'}><Caja /></Box>
+                <Box display={vista === 'analisis' ? undefined : 'none'}><Analisis visible={vista === 'analisis'} /></Box>
+              </FichaProvider>
             </BaseProvider>
           )}
         </Container>

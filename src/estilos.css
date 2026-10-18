@@ -56,6 +56,9 @@ body {
 /* Números tabulares en tablas para que las cifras queden alineadas en columna. */
 table { font-variant-numeric: tabular-nums; }
 
+/* Filas que abren una ficha al tocarlas. */
+.fila-ficha { cursor: pointer; }
+
 /* Sin itálicas: el énfasis va en negrita. */
 em, i, cite { font-style: normal; font-weight: 600; }
 

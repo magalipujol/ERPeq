@@ -6,7 +6,7 @@ import { marcasDelMapa } from '../dominio/mapa';
 import * as M from '../dominio/modelo';
 import { fmtFecha, fmtMoney } from '../formato';
 import { armarMapa, curva, MAPA, type Sitio, type SinUbicar, type Tramo } from '../mapa/ubicar';
-import { EstadoFlete, Recorrido } from '../vistas/Fletes';
+import { EstadoFlete, Recorrido } from './estados';
 
 // Unidades del mapa (1 unidad ≈ 5,5 km): lugares más cerca que esto comparten marca.
 const RADIO = 12;

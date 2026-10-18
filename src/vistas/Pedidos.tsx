@@ -1,5 +1,5 @@
 import {
-  Autocomplete, Badge, Box, Button, Checkbox, Grid, Group, MultiSelect, NativeSelect, NumberInput, Paper, ScrollArea,
+  Autocomplete, Box, Button, Checkbox, Grid, Group, MultiSelect, NativeSelect, NumberInput, Paper, ScrollArea,
   SegmentedControl, Stack, Table, Text, TextInput, Title,
 } from '@mantine/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -7,19 +7,14 @@ import { useBase, useGuardar } from '../base';
 import { faltantesDe } from '../db/puerto';
 import { CamposCobro, type DatosCobro } from '../componentes/Cobro';
 import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
+import { EstadoPedido } from '../componentes/estados';
+import { Vinculo } from '../componentes/Fichas';
+import { useFila } from '../ficha';
 import { ExportarWhatsApp } from '../componentes/ExportarWhatsApp';
 import { type Item, itemVacio } from '../componentes/item';
 import { Items } from '../componentes/Items';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, lugar, numeroOCero, porFechaDesc, sumable, unicos } from '../formato';
 import * as M from '../dominio/modelo';
-
-const COLOR_ESTADO: Record<M.EstadoPedido, string> = {
-  pendiente: 'yellow', parcial: 'blue', entregado: 'green', cancelado: 'gray', cerrado: 'gray',
-};
-
-export function EstadoPedido({ estado }: { estado: M.EstadoPedido }) {
-  return <Badge variant="light" size="sm" color={COLOR_ESTADO[estado]}>{M.NOMBRE_ESTADO_PEDIDO[estado]}</Badge>;
-}
 
 // `nuevo` cambia cada vez que se pide tomar un pedido nuevo desde otra pantalla: lleva el foco al formulario.
 // `abrir` cambia cada vez que otra pantalla (el mapa de Inicio) pide ver un pedido: lo elige para entregarlo.
@@ -349,6 +344,7 @@ export interface PedidoElegido { id: string; vez: number }
 
 function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir: (id: string) => void }) {
   const { pedidos, cargando, nombres, etiquetas } = useBase();
+  const fila = useFila();
   const [filtro, setFiltro] = useState('abiertos');
   const [buscar, setBuscar] = useState('');
   const q = buscar.trim().toLowerCase();
@@ -381,10 +377,10 @@ function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir:
           <Table.Tbody>
             {filas.map((r) => (
               <Table.Tr key={r.pedido.id} aria-label={`Pedido ${etiquetas.pedido(r.pedido.id)}`}
-                bg={r.pedido.id === elegido ? 'var(--erp-soft)' : undefined}>
+                bg={r.pedido.id === elegido ? 'var(--erp-soft)' : undefined} {...fila({ tipo: 'pedido', id: r.pedido.id })}>
                 <Table.Td c="dimmed" visibleFrom="sm">{fmtFecha(r.pedido.fecha)}</Table.Td>
                 <Table.Td style={{ whiteSpace: 'normal' }} fw={500}>
-                  {nombres.contacto(r.pedido.contactoId)}
+                  <Vinculo a={{ tipo: 'pedido', id: r.pedido.id }}>{nombres.contacto(r.pedido.contactoId)}</Vinculo>
                   {r.vendedores.length > 0 && <Text size="xs" c="dimmed">{r.vendedores.map(nombres.vendedor).join(', ')}</Text>}
                   {/* En celular, los datos de las columnas ocultas van debajo del cliente. */}
                   <Box hiddenFrom="sm" mt={4}>

@@ -3,6 +3,8 @@ import { Grid, Group, Paper, ScrollArea, Stack, Table, Text, TextInput, Title } 
 import { useMemo, useState } from 'react';
 import { useBase } from '../base';
 import { Encabezado, Kpis, SelectorMes } from '../componentes/comunes';
+import { Vinculo } from '../componentes/Fichas';
+import { useFila } from '../ficha';
 import { fmtFecha, fmtMes, fmtMoney, fmtNum, porFechaDesc } from '../formato';
 import { mesElegido } from '../meses';
 import * as M from '../dominio/modelo';
@@ -111,6 +113,7 @@ function ComisionesMes({ mes }: { mes: string }) {
 
 function DetalleVentas({ lineas }: { lineas: M.LineaVendida[] }) {
   const { cargando, nombres } = useBase();
+  const fila = useFila();
   const [buscar, setBuscar] = useState('');
   const q = buscar.trim().toLowerCase();
   const filas = lineas
@@ -135,10 +138,10 @@ function DetalleVentas({ lineas }: { lineas: M.LineaVendida[] }) {
           </Table.Thead>
           <Table.Tbody>
             {filas.map((l) => (
-              <Table.Tr key={`${l.ventaId}#${l.linea}`}>
+              <Table.Tr key={`${l.ventaId}#${l.linea}`} {...fila({ tipo: 'venta', id: l.ventaId })}>
                 <Table.Td c="dimmed">{fmtFecha(l.venta.fecha)}</Table.Td>
                 <Table.Td>
-                  {l.pedido && nombres.contacto(l.pedido.contactoId)}
+                  {l.pedido && <Vinculo a={{ tipo: 'venta', id: l.ventaId }}>{nombres.contacto(l.pedido.contactoId)}</Vinculo>}
                   {l.venta.nota && <Text size="xs" c="dimmed" style={{ whiteSpace: 'normal' }}>{l.venta.nota}</Text>}
                 </Table.Td>
                 <Table.Td>{nombres.producto(l.productoId)}</Table.Td>

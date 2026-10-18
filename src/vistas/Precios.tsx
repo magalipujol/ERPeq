@@ -2,6 +2,8 @@ import { Autocomplete, Button, Grid, Group, NativeSelect, NumberInput, Paper, Sc
 import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import { Encabezado, Mensaje } from '../componentes/comunes';
+import { Vinculo } from '../componentes/Fichas';
+import { useFila } from '../ficha';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, unicos } from '../formato';
 import type * as M from '../dominio/modelo';
 
@@ -25,6 +27,7 @@ export function Precios() {
 function ListaPrecios() {
   const { datos, buscarProducto, db, cargando } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
+  const fila = useFila();
   const [producto, setProducto] = useState('');
   const [precioTxt, setPrecioTxt] = useState<number | string>('');
   const [desde, setDesde] = useState(hoyISO);
@@ -80,8 +83,8 @@ function ListaPrecios() {
           </Table.Thead>
           <Table.Tbody>
             {filas.map(({ p, actual }) => (
-              <Table.Tr key={p.id}>
-                <Table.Td>{p.producto}</Table.Td>
+              <Table.Tr key={p.id} {...fila({ tipo: 'producto', id: p.id })}>
+                <Table.Td><Vinculo a={{ tipo: 'producto', id: p.id }}>{p.producto}</Vinculo></Table.Td>
                 <Table.Td className="num" c={actual ? undefined : 'dimmed'}>{actual ? fmtMoney(actual.precio) : 'Sin precio'}</Table.Td>
                 <Table.Td c="dimmed">{actual ? fmtFecha(actual.desde) : ''}</Table.Td>
               </Table.Tr>
