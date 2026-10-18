@@ -661,6 +661,24 @@ El **costo promedio** se sigue calculando con todas las compras con precio, suma
 que solo se fabrica no tiene costo promedio (ver [recetas.md](recetas.md#costo)). Una
 transferencia no cambia el costo de la mercadería: su costo es un gasto de logística (ver abajo).
 
+### Flete para cubrir faltantes
+
+En Inicio, cada depósito con pedidos en falta tiene un botón **Crear flete a <depósito>**. Al tocarlo se eligen
+cuáles de esos pedidos cubre el flete (todos, al principio) y `fleteParaFaltantes` propone el flete, que se carga
+en el formulario de Fletes para completar el transporte y registrarlo (nada se guarda hasta entonces):
+
+- **Destino**: el depósito de los pedidos.
+- **Productos**: cada producto con faltante en alguna línea pendiente de los pedidos elegidos, en el orden de los
+  pedidos (más viejo primero), con `min(Σ pendiente en los pedidos elegidos, faltante(p, destino))`: lo que hay en
+  el depósito o viene en camino cubre primero.
+- **Origen**: el otro depósito que más cubre de esos productos con su stock libre,
+  `max(0, disponible(p, d))`; con empate, el primero de la hoja.
+- **Pedidos que lleva**: los elegidos, con el costo repartido como en cualquier flete.
+
+Por ejemplo, con 25 kg de avena en Rosario, el pedido de Ana del 10/10 (10 kg de avena) y uno nuevo (12 kg de
+almendras y 30 de avena), faltan 15 kg de avena y 6 de almendras (hay 6 en camino). Con los dos pedidos, el flete
+lleva 15 kg de avena (de 40 pendientes, solo faltan 15) y 6 de almendras; con solo el del 10/10, 10 kg de avena.
+
 ## Cobros y cuentas entre socios
 
 La mercadería es del **dueño** (Sampatti, la empresa de Leo). Los otros socios (Guada/Hernán) venden,

@@ -12,7 +12,7 @@ import { hora, mensajeDeError } from './formato';
 import { Analisis } from './vistas/Analisis';
 import { Caja } from './vistas/Caja';
 import { Compras } from './vistas/Compras';
-import { type FleteResaltado, Fletes } from './vistas/Fletes';
+import { type BorradorFlete, type FleteResaltado, Fletes } from './vistas/Fletes';
 import { Inicio } from './vistas/Inicio';
 import { type PedidoElegido, Pedidos } from './vistas/Pedidos';
 import { Precios } from './vistas/Precios';
@@ -53,6 +53,7 @@ export function App({ db }: { db: BaseDeDatos }) {
   // Lo que el mapa de Inicio pide ver en otra pantalla.
   const [pedidoElegido, setPedidoElegido] = useState<PedidoElegido | null>(null);
   const [fleteResaltado, setFleteResaltado] = useState<FleteResaltado | null>(null);
+  const [borradorFlete, setBorradorFlete] = useState<BorradorFlete | null>(null);
   const [depositoStock, setDepositoStock] = useState('');
 
   const cargar = useCallback(async () => {
@@ -262,14 +263,15 @@ export function App({ db }: { db: BaseDeDatos }) {
                 <Box display={vista === 'inicio' ? undefined : 'none'}>
                   <Inicio onIr={irA} onNuevoPedido={() => { irA('pedidos'); setNuevoPedido((n) => n + 1); }}
                     onPedido={verPedido} onFlete={verFlete}
-                    onDeposito={(id) => { irA('stock'); setDepositoStock(id); }} />
+                    onDeposito={(id) => { irA('stock'); setDepositoStock(id); }}
+                    onArmarFlete={(f) => { irA('fletes'); setBorradorFlete((b) => ({ ...f, vez: (b?.vez ?? 0) + 1 })); }} />
                 </Box>
                 <Box display={vista === 'stock' ? undefined : 'none'}><Stock visible={vista === 'stock'} deposito={depositoStock} onDeposito={setDepositoStock} /></Box>
                 <Box display={vista === 'pedidos' ? undefined : 'none'}><Pedidos nuevo={nuevoPedido} abrir={pedidoElegido} /></Box>
                 <Box display={vista === 'ventas' ? undefined : 'none'}><Ventas visible={vista === 'ventas'} /></Box>
                 <Box display={vista === 'compras' ? undefined : 'none'}><Compras /></Box>
                 <Box display={vista === 'recetas' ? undefined : 'none'}><Recetas /></Box>
-                <Box display={vista === 'fletes' ? undefined : 'none'}><Fletes resaltar={fleteResaltado} /></Box>
+                <Box display={vista === 'fletes' ? undefined : 'none'}><Fletes resaltar={fleteResaltado} borrador={borradorFlete} /></Box>
                 <Box display={vista === 'precios' ? undefined : 'none'}><Precios /></Box>
                 <Box display={vista === 'caja' ? undefined : 'none'}><Caja /></Box>
                 <Box display={vista === 'analisis' ? undefined : 'none'}><Analisis visible={vista === 'analisis'} /></Box>

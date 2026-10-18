@@ -218,6 +218,55 @@ describe('calcularStock', () => {
   });
 });
 
+describe('fleteParaFaltantes', () => {
+  const depositos: M.Deposito[] = [...vacios().depositos, { id: 'CBA', nombre: 'Córdoba', localidad: '' }];
+  const base = (extra: Partial<M.Datos> = {}) => {
+    const d = datos({
+      depositos,
+      productos: [producto('P001'), producto('P002'), producto('P003')],
+      compras: [
+        compra({ cantidad: 100, depositoId: 'ROS' }), compra({ productoId: 'P002', cantidad: 100, depositoId: 'ROS' }),
+        compra({ cantidad: 500, depositoId: 'BB' }), compra({ cantidad: 1000, depositoId: 'CBA' }),
+      ],
+      pedidos: [pedido('PE1'), pedido('PE2'), pedido('PE3'), pedido('PE4', 'CBA')],
+      pedidosItems: [
+        item('PE1', 1, 'P001', 300), item('PE1', 2, 'P002', 50), item('PE2', 1, 'P001', 80),
+        item('PE3', 1, 'P003', 20), item('PE4', 1, 'P001', 900),
+      ],
+      fletes: [flete('F1', 'BB', 'ROS')],
+      fletesItems: [{ fleteId: 'F1', productoId: 'P001', cantidad: 120 }],
+      fletesEstados: [estado('F1', 'camino')],
+      ...extra,
+    });
+    const resumenes = M.resumirPedidos(d);
+    return { s: M.calcularStock(d, resumenes), r: (...ids: string[]) => resumenes.filter((x) => ids.includes(x.pedido.id)) };
+  };
+
+  it('lleva lo pendiente de los pedidos elegidos sin pasar el faltante del depósito', () => {
+    const { s, r } = base();
+
+    // Almendras en Rosario: 380 comprometidos − 100 en depósito − 120 en camino = 160 faltan. P002 alcanza: no va.
+    expect(M.fleteParaFaltantes(s, depositos, 'ROS', r('PE1', 'PE2'))).toStrictEqual({
+      origenId: 'BB', destinoId: 'ROS', pedidos: ['PE1', 'PE2'], items: [{ productoId: 'P001', cantidad: 160 }],
+    });
+    // Solo PE2: sus 80 kg entran en el faltante.
+    expect(M.fleteParaFaltantes(s, depositos, 'ROS', r('PE2')).items).toStrictEqual([{ productoId: 'P001', cantidad: 80 }]);
+    // P003 no tiene stock en ningún lado: va igual, y el origen es el primer depósito que no es el destino.
+    expect(M.fleteParaFaltantes(s, depositos, 'ROS', r('PE3'))).toMatchObject({ origenId: 'BB', items: [{ productoId: 'P003', cantidad: 20 }] });
+  });
+
+  it('elige como origen el depósito con más stock libre para lo que hay que llevar', () => {
+    // General: 380 en depósito − 300 reservados para otro flete = 80 libres. Córdoba: 1000 − 900 comprometidos = 100.
+    const { s, r } = base({
+      fletes: [flete('F1', 'BB', 'ROS'), flete('F2', 'BB', 'CBA')],
+      fletesItems: [{ fleteId: 'F1', productoId: 'P001', cantidad: 120 }, { fleteId: 'F2', productoId: 'P001', cantidad: 300 }],
+      fletesEstados: [estado('F1', 'camino'), estado('F2', 'preparacion')],
+    });
+
+    expect(M.fleteParaFaltantes(s, depositos, 'ROS', r('PE1', 'PE2')).origenId).toBe('CBA');
+  });
+});
+
 describe('armarEntrega', () => {
   it('numera los ítems entregados, calcula importes y una comisión por vendedor', () => {
     const vend: M.Vendedor = { id: 'VEN01', nombre: 'Guada/Hernán', activo: true, localidad: '' };

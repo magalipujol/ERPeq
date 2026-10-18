@@ -58,7 +58,7 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
     planilla en memoria para las pruebas.
   - `main.tsx`: arranca la app con la base de Google Sheets; `App.tsx`: pantallas de acceso y navegación;
     `vistas/`: Inicio (pantalla por defecto: acceso directo a un pedido nuevo, mapa con depósitos, pedidos
-    pendientes y fletes en curso, y sus listas), Stock, Pedidos, Ventas, Compras, Recetas, Fletes, Precios, Caja y Análisis.
+    pendientes —con el flete para cubrir lo que les falta— y fletes en curso, y sus listas), Stock, Pedidos, Ventas, Compras, Recetas, Fletes, Precios, Caja y Análisis.
   - `componentes/`: piezas compartidas (carga de ítems, navegación entre pantallas, KPIs, el mapa de Inicio y
     `Fichas.tsx`, el modal que muestra lo que se toca en una tabla con sus vínculos); `ficha.ts`: el contexto para abrirlas.
   - `celular.css`: ajustes para pantallas de menos de 768 px (barra inferior con menú *Más*, campos de 44 px).

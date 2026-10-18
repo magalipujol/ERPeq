@@ -326,6 +326,36 @@ export const faltante = (s: Stock, productoId: string, depositoId: string) => {
 export const lineasConFaltante = (s: Stock, r: ResumenPedido) =>
   r.lineas.filter((l) => l.pendiente > 0 && faltante(s, l.productoId, r.pedido.depositoId) > 0);
 
+// Flete que propone Inicio para cubrir el faltante de algunos pedidos de un mismo depósito.
+export interface FleteSugerido {
+  origenId: string; destinoId: string; pedidos: string[]; items: { productoId: string; cantidad: number }[];
+}
+
+// Por producto con faltante, lo pendiente de los pedidos elegidos, sin pasar el faltante del depósito: lo que ya
+// hay o viene en camino cubre primero. El origen es el otro depósito con más stock libre (en depósito, menos lo
+// reservado para fletes y lo comprometido con sus pedidos) para lo que hay que llevar; '' si no hay otro depósito.
+export function fleteParaFaltantes(s: Stock, depositos: Deposito[], destinoId: string, pedidos: ResumenPedido[]): FleteSugerido {
+  const pendiente = new Map<string, number>();
+  for (const r of pedidos) {
+    for (const l of lineasConFaltante(s, r)) pendiente.set(l.productoId, (pendiente.get(l.productoId) ?? 0) + l.pendiente);
+  }
+  const items = [...pendiente].map(([productoId, cant]) => ({
+    productoId, cantidad: redondear(Math.min(cant, faltante(s, productoId, destinoId)), 3),
+  }));
+  const libre = (productoId: string, d: string) => {
+    const v = (m: Map<string, PorDeposito>) => m.get(productoId)?.[d] ?? 0;
+    return Math.max(0, v(s.enDeposito) - v(s.reservado) - v(s.comprometido));
+  };
+  let origenId = '';
+  let mejor = -1;
+  for (const d of depositos) {
+    if (d.id === destinoId) continue;
+    const cubre = items.reduce((t, it) => t + Math.min(it.cantidad, libre(it.productoId, d.id)), 0);
+    if (cubre > mejor) { origenId = d.id; mejor = cubre; }
+  }
+  return { origenId, destinoId, pedidos: pedidos.map((r) => r.pedido.id), items };
+}
+
 // ---------- Ventas por mes ----------
 
 export const claveMes = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;

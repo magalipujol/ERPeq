@@ -450,6 +450,67 @@ test('desde Inicio se toma un pedido sin stock y queda destacado entre los pendi
   await expect(nuevo).not.toContainText('Falta stock')
 })
 
+test('desde Inicio se arma el flete que cubre lo que les falta a los pedidos de Rosario, eligiendo cuáles', async ({ page }) => {
+  // 1. Ana pide 12 kg de almendras y 30 de avena en Rosario. Faltan almendras: 12 − 0 en Rosario − 6 en camino = 6.
+  //    Y avena: entre este pedido y el del 10/10 se comprometen 40 kg y en Rosario hay 25, faltan 15. Así los dos
+  //    pedidos de Rosario quedan con faltante.
+  await elegirCliente(page, 'Ana')
+  const pedido = formPedido(page)
+  await pedido.getByLabel('Producto', { exact: true }).fill('Almendras')
+  await pedido.getByLabel('Cantidad', { exact: true }).fill('12')
+  await pedido.getByLabel('Precio unitario', { exact: true }).fill('3000')
+  await pedido.getByRole('button', { name: '+ Agregar producto' }).click()
+  await pedido.getByLabel('Producto', { exact: true }).nth(1).fill('Avena')
+  await pedido.getByLabel('Cantidad', { exact: true }).nth(1).fill('30')
+  await pedido.getByLabel('Precio unitario', { exact: true }).nth(1).fill('800')
+  await pedido.getByRole('button', { name: 'Registrar pedido' }).click()
+  await expect(pedido.getByText(/✓ Pedido de Ana registrado/)).toBeVisible()
+
+  // 2. Inicio ofrece un flete a Rosario, el depósito de los pedidos en falta. Al tocarlo, los dos quedan elegidos.
+  await ir(page, 'Inicio')
+  await expect(kpi(page, 'Con faltante de stock')).toContainText('2')
+  const pendientes = page.getByRole('region', { name: 'Pedidos pendientes' })
+  await pendientes.getByRole('button', { name: 'Crear flete a Rosario' }).click()
+  const viejo = pendientes.getByRole('checkbox', { name: 'Incluir Ana · 10/10/26 en el flete' })
+  const nuevo = pendientes.getByRole('checkbox', { name: 'Incluir Ana · 16/10/26 en el flete' })
+  await expect(viejo).toBeChecked()
+  await expect(nuevo).toBeChecked()
+
+  // 3. Se saca el pedido nuevo: el flete lleva solo los 10 kg de avena del pedido del 10/10, desde General
+  //    (el único otro depósito).
+  await nuevo.uncheck()
+  await pendientes.getByRole('button', { name: 'Armar flete (1 pedido)' }).click()
+  await expect(page).toHaveURL(/#fletes$/)
+  const flete = formFlete(page)
+  await expect(flete.getByLabel('Origen', { exact: true })).toHaveValue('BB')
+  await expect(flete.getByLabel('Destino', { exact: true })).toHaveValue('ROS')
+  await expect(flete.getByLabel('Producto', { exact: true })).toHaveValue('Avena')
+  await expect(flete.getByLabel('Cantidad', { exact: true })).toHaveValue('10')
+  await expect(flete.getByLabel('Costo asignado a Ana · 10/10/26')).toBeVisible()
+  await expect(flete.getByLabel('Costo asignado a Ana · 16/10/26')).toBeHidden()
+
+  // 4. Mejor con los dos: avena 15 (los 40 kg de los dos pedidos, sin pasar el faltante de Rosario) y almendras 6,
+  //    en el orden de los pedidos, del más viejo al más nuevo.
+  await ir(page, 'Inicio')
+  await pendientes.getByRole('button', { name: 'Crear flete a Rosario' }).click()
+  await pendientes.getByRole('button', { name: 'Armar flete (2 pedidos)' }).click()
+  await expect(flete.getByLabel('Producto', { exact: true })).toHaveCount(2)
+  await expect(flete.getByLabel('Producto', { exact: true }).nth(0)).toHaveValue('Avena')
+  await expect(flete.getByLabel('Cantidad', { exact: true }).nth(0)).toHaveValue('15')
+  await expect(flete.getByLabel('Producto', { exact: true }).nth(1)).toHaveValue('Almendras')
+  await expect(flete.getByLabel('Cantidad', { exact: true }).nth(1)).toHaveValue('6')
+  await expect(flete.getByLabel('Costo asignado a Ana · 16/10/26')).toBeVisible()
+
+  // 5. Se completa el transporte y se despacha: ya no falta nada en Rosario y el botón desaparece.
+  await flete.getByLabel('Transporte', { exact: true }).fill('Interprovincial')
+  await flete.getByRole('radiogroup', { name: 'Estado inicial' }).getByText('En camino').click()
+  await flete.getByRole('button', { name: 'Registrar flete' }).click()
+  await expect(flete.getByText('✓ Flete de Interprovincial registrado (en camino).')).toBeVisible()
+  await ir(page, 'Inicio')
+  await expect(kpi(page, 'Con faltante de stock')).toContainText('0')
+  await expect(pendientes.getByRole('button', { name: /^Crear flete a / })).toHaveCount(0)
+})
+
 test('Guada/Hernán cobra en efectivo, rinde una parte y Sampatti le paga la comisión de una venta que cobró por transferencia', async ({ page, google }) => {
   const cuenta = page.getByRole('region', { name: 'Cuenta de Guada/Hernán' })
   const rendicion = page.getByRole('form', { name: 'Rendición entre socios' })

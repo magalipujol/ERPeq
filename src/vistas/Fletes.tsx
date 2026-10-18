@@ -19,8 +19,10 @@ const ACCION: Record<M.EstadoFlete, string> = {
 
 // Flete que otra pantalla (el mapa de Inicio) pide ver; `vez` cambia aunque se pida dos veces seguidas el mismo.
 export interface FleteResaltado { id: string; vez: number }
+// Flete que Inicio propone para cubrir el faltante de pedidos: se carga en el formulario para revisarlo y registrarlo.
+export interface BorradorFlete extends M.FleteSugerido { vez: number }
 
-export function Fletes({ resaltar = null }: { resaltar?: FleteResaltado | null }) {
+export function Fletes({ resaltar = null, borrador = null }: { resaltar?: FleteResaltado | null; borrador?: BorradorFlete | null }) {
   const { datos, estadosFletes, costos, stock } = useBase();
   const estado = (id: string) => M.estadoFlete(estadosFletes, id);
   const activos = datos.fletes.filter((f) => M.fleteEnCurso(estado(f.id)));
@@ -36,15 +38,16 @@ export function Fletes({ resaltar = null }: { resaltar?: FleteResaltado | null }
         { label: 'Mercadería en camino (a costo)', valor: fmtMoney(enCamino) },
       ]} />
       <Grid gap="md" align="flex-start">
-        <Grid.Col span={{ base: 12, md: 6 }}><FormFlete /></Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}><FormFlete borrador={borrador} /></Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}><ListaFletes resaltar={resaltar} /></Grid.Col>
       </Grid>
     </Stack>
   );
 }
 
-function FormFlete() {
-  const { datos, pedidos, buscarProducto, buscarContacto, etiquetas, db } = useBase();
+function FormFlete({ borrador }: { borrador: BorradorFlete | null }) {
+  const { datos, pedidos, buscarProducto, buscarContacto, etiquetas, nombres, db } = useBase();
+  const formRef = useRef<HTMLFormElement>(null);
   // En celular los tres estados no entran en una fila.
   const enCelular = useMatches({ base: true, sm: false });
   const { guardando, msg, guardar, error } = useGuardar();
@@ -59,6 +62,22 @@ function FormFlete() {
   const [items, setItems] = useState<Item[]>(() => [itemVacio()]);
   const [pedidosSel, setPedidosSel] = useState<string[]>([]);
   const [asignado, setAsignado] = useState<Record<string, number | string>>({});
+  const [borradorAnterior, setBorradorAnterior] = useState(borrador);
+  if (borrador !== borradorAnterior) {
+    setBorradorAnterior(borrador);
+    if (borrador) {
+      setOrigen(borrador.origenId);
+      setDestino(borrador.destinoId);
+      setItems(borrador.items.length > 0
+        ? borrador.items.map((it) => ({ ...itemVacio(), producto: nombres.producto(it.productoId), cantidad: it.cantidad }))
+        : [itemVacio()]);
+      setPedidosSel(borrador.pedidos);
+      setAsignado({});
+    }
+  }
+  useEffect(() => {
+    if (borrador) formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [borrador]);
 
   const transportes = useMemo(() => unicos([
     ...datos.contactos.filter((c) => c.rol === 'transporte').map((c) => c.nombre),
@@ -123,7 +142,7 @@ function FormFlete() {
   return (
     <Paper>
       <Encabezado titulo="Nuevo flete" />
-      <form onSubmit={enviar} noValidate aria-label="Nuevo flete">
+      <form ref={formRef} onSubmit={enviar} noValidate aria-label="Nuevo flete">
         <Stack gap="sm">
           <Group grow gap="xs" align="flex-start">
             <TextInput label="Fecha" type="date" value={fecha} onChange={(e) => { setFecha(e.currentTarget.value); }} />
