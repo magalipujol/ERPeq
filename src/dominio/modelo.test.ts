@@ -8,7 +8,7 @@ const vacios = (): M.Datos => ({
   productos: [], contactos: [], tipos: [], vendedores: [], precios: [], reglas: [], compras: [], pedidos: [],
   pedidosItems: [], pedidosEstados: [], pedidosVendedores: [], ventas: [], ventasItems: [], ventasComisiones: [],
   fletes: [], fletesItems: [], fletesEstados: [], ajustes: [], socios: [], cobros: [], rendiciones: [],
-  recetas: [], recetasItems: [], envios: [],
+  recetas: [], recetasItems: [], envios: [], ventasEnvios: [],
 });
 const datos = (d: Partial<M.Datos>): M.Datos => ({ ...vacios(), ...d });
 const producto = (id: string): M.Producto => ({ id, producto: id, unidad: 'kg', minimo: 0 });
@@ -17,12 +17,12 @@ const compra = (c: Partial<M.Compra>): M.Compra => ({
   cantidad: 1, precio: null, importe: null, remito: '', pedidoId: '', nota: '', ...c,
 });
 const pedido = (id: string, depositoId = 'ROS'): M.Pedido => ({
-  id, fecha: fecha(2026, 10, 1), contactoId: '', depositoId, nota: '', cobraEnvio: false,
+  id, fecha: fecha(2026, 10, 1), contactoId: '', depositoId, nota: '',
 });
 const item = (pedidoId: string, linea: number, productoId: string, cantidad: number, precio = 100): M.PedidoItem => ({
   pedidoId, linea, productoId, cantidad, precioLista: precio, precio,
 });
-const venta = (id: string, pedidoId: string, depositoId = 'ROS', f = fecha(2026, 10, 5)): M.Venta => ({ id, fecha: f, pedidoId, depositoId, nota: '', envio: 0, envioVendedorId: '' });
+const venta = (id: string, pedidoId: string, depositoId = 'ROS', f = fecha(2026, 10, 5)): M.Venta => ({ id, fecha: f, pedidoId, depositoId, nota: '' });
 const ventaItem = (ventaId: string, linea: number, pedidoLinea: number, productoId: string, cantidad: number, precio = 100, costo: number | null = 50): M.VentaItem => ({
   ventaId, linea, pedidoLinea, productoId, cantidad, precio, importe: cantidad * precio, costo,
 });
@@ -102,7 +102,7 @@ describe('resumirPedidos', () => {
   });
 
   it('ganancia = entregado − comisiones − costo de mercadería (los fletes son gasto del mes)', () => {
-    expect(r.get('PE1')).toMatchObject({ importePedido: 1500, importeEntregado: 400, envio: 0, comisiones: 20, costoMercaderia: 200, ganancia: 180 });
+    expect(r.get('PE1')).toMatchObject({ importePedido: 1500, importeEntregado: 400, comisiones: 20, costoMercaderia: 200, ganancia: 180 });
   });
 });
 
@@ -347,12 +347,12 @@ const contacto = (id: string, nombre: string): M.Contacto => ({
 const caja = (d: Partial<M.Datos> = {}): M.Datos => datos({
   contactos: [contacto('C0001', 'Ana'), contacto('C0002', 'Bruno')],
   pedidos: [
-    { id: 'PE0001', fecha: fecha(2026, 10, 1), contactoId: 'C0001', depositoId: 'ROS', nota: '', cobraEnvio: false },
-    { id: 'PE0002', fecha: fecha(2026, 10, 1), contactoId: 'C0002', depositoId: 'BB', nota: '', cobraEnvio: false },
+    { id: 'PE0001', fecha: fecha(2026, 10, 1), contactoId: 'C0001', depositoId: 'ROS', nota: '' },
+    { id: 'PE0002', fecha: fecha(2026, 10, 1), contactoId: 'C0002', depositoId: 'BB', nota: '' },
   ],
   ventas: [
-    { id: 'V0001', fecha: fecha(2026, 10, 2), pedidoId: 'PE0001', depositoId: 'ROS', nota: '', envio: 0, envioVendedorId: '' },
-    { id: 'V0002', fecha: fecha(2026, 10, 4), pedidoId: 'PE0002', depositoId: 'BB', nota: '', envio: 0, envioVendedorId: '' },
+    { id: 'V0001', fecha: fecha(2026, 10, 2), pedidoId: 'PE0001', depositoId: 'ROS', nota: '' },
+    { id: 'V0002', fecha: fecha(2026, 10, 4), pedidoId: 'PE0002', depositoId: 'BB', nota: '' },
   ],
   ventasItems: [
     { ventaId: 'V0001', linea: 1, pedidoLinea: 1, productoId: 'P002', cantidad: 10, precio: 800, importe: 8000, costo: 500 },
@@ -433,53 +433,69 @@ describe('cuentasSocios', () => {
 
     expect(de(d)).toMatchObject({ comisiones: 0, saldo: 0, movimientos: [] });
   });
-
-  it('el envío de una venta se le acredita al socio del vendedor que lo lleva, además de la comisión', () => {
-    // V0001 cobra $5.000 de envío para VEN01 (Guada/Hernán), que cobra en efectivo los $13.000 de la venta.
-    const ventas = caja().ventas.map((v) => (v.id === 'V0001' ? { ...v, envio: 5000, envioVendedorId: 'VEN01' } : v));
-    const d = caja({ ventas, ventasComisiones: caja().ventasComisiones.slice(0, 1), cobros: [cobro('V0001', 13000, 'efectivo', GH)] });
-    const cuenta = de(d);
-
-    // 13.000 cobrados − 240 de comisión − 5.000 de envío = 7.760, lo mismo que sin envío.
-    expect(cuenta).toMatchObject({ cobradoEfectivo: 13000, comisiones: 240, envios: 5000, saldo: 7760 });
-    expect(cuenta.movimientos.map((m) => [m.tipo, m.importe])).toStrictEqual([['cobro', 13000], ['comision', -240], ['envio', -5000]]);
-  });
 });
 
-describe('envío', () => {
-  // Hasta el 9/10 los pedidos de menos de $100.000 pagan $4.000; desde el 10/10, menos de $150.000 pagan $5.000.
-  const envios: M.ConfigEnvio[] = [
-    { minimo: 100000, costo: 4000, desde: fecha(2026, 1, 1) },
-    { minimo: 150000, costo: 5000, desde: fecha(2026, 10, 10) },
+describe('envíos', () => {
+  // Desde el 1/1 se cobran $5.000 a los pedidos por menos de $150.000; desde el 1/11, $6.000 por menos de $200.000.
+  const envios: M.ReglaEnvio[] = [
+    { minimo: 150000, costo: 5000, desde: fecha(2026, 1, 1) },
+    { minimo: 200000, costo: 6000, desde: fecha(2026, 11, 1) },
   ];
-
-  it('se propone cobrarlo a los pedidos de menos del mínimo vigente a su fecha', () => {
-    expect(M.proponerEnvio(envios, 120000, fecha(2026, 10, 12))).toBe(true);
-    expect(M.proponerEnvio(envios, 120000, fecha(2026, 10, 5))).toBe(false); // el mínimo era $100.000
-    expect(M.proponerEnvio(envios, 150000, fecha(2026, 10, 12))).toBe(false); // llega al mínimo
-    expect(M.proponerEnvio(envios, 0, fecha(2026, 10, 12))).toBe(false); // pedido vacío
-    expect(M.proponerEnvio([], 1000, fecha(2026, 10, 12))).toBe(false); // sin configuración
+  const envio = (ventaId: string, vendedorId: string, costo: number, costoRegla: number | null = costo): M.VentaEnvio => ({
+    ventaId, vendedorId, costoRegla, costo,
   });
 
-  it('se cobra en la primera entrega, con el costo vigente a la fecha del pedido', () => {
-    const p: M.Pedido = { ...pedido('PE1'), fecha: fecha(2026, 10, 5), cobraEnvio: true };
+  it('se propone el costo vigente si el pedido es por menos del mínimo', () => {
+    const d = caja({ envios });
 
-    expect(M.envioDeEntrega({ pedido: p, ventas: [] }, envios)).toBe(4000);
-    expect(M.envioDeEntrega({ pedido: { ...p, fecha: fecha(2026, 10, 12) }, ventas: [] }, envios)).toBe(5000);
-    expect(M.envioDeEntrega({ pedido: p, ventas: [{ ...venta('V1', 'PE1'), envio: 4000, envioVendedorId: 'VEN01' }] }, envios)).toBe(0);
-    expect(M.envioDeEntrega({ pedido: { ...p, cobraEnvio: false }, ventas: [] }, envios)).toBe(0);
+    expect(M.envioPropuesto(d, 'PE0009', 100000, fecha(2026, 10, 18))).toBe(5000);
+    expect(M.envioPropuesto(d, 'PE0009', 150000, fecha(2026, 10, 18))).toBe(0);
+    expect(M.envioPropuesto(d, 'PE0009', 180000, fecha(2026, 11, 2))).toBe(6000);
+    expect(M.envioPropuesto(caja(), 'PE0009', 100000, fecha(2026, 10, 18))).toBe(0); // sin reglas
   });
 
-  it('suma a lo que paga el cliente pero no a la ganancia del pedido', () => {
-    const d = datos({
-      pedidos: [{ ...pedido('PE1'), cobraEnvio: true }],
-      pedidosItems: [item('PE1', 1, 'P001', 10)],
-      ventas: [{ ...venta('V1', 'PE1'), envio: 5000, envioVendedorId: 'VEN01' }],
-      ventasItems: [ventaItem('V1', 1, 1, 'P001', 10)],
+  it('se cobra una vez por pedido: si una entrega anterior ya lo registró, aunque en 0, no se vuelve a proponer', () => {
+    expect(M.envioPropuesto(caja({ envios, ventasEnvios: [envio('V0001', 'VEN01', 5000)] }), 'PE0001', 8000, null)).toBe(0);
+    expect(M.envioPropuesto(caja({ envios, ventasEnvios: [envio('V0001', 'VEN01', 0, 5000)] }), 'PE0001', 8000, null)).toBe(0);
+    expect(M.envioPropuesto(caja({ envios, ventasEnvios: [envio('V0001', 'VEN01', 5000)] }), 'PE0002', 15000, null)).toBe(6000);
+  });
+
+  it('armarEntrega guarda el envío si se propuso o se cobró', () => {
+    const v = venta('V1', 'PE1');
+    const con = (costoRegla: number, costo: number) => M.armarEntrega(v, [], { vendedorId: 'VEN01', costoRegla, costo }).envio;
+
+    expect(con(5000, 4000)).toStrictEqual({ ventaId: 'V1', vendedorId: 'VEN01', costoRegla: 5000, costo: 4000 });
+    expect(con(5000, 0)).toMatchObject({ costo: 0 });
+    expect(con(0, 0)).toBeNull();
+    expect(M.armarEntrega(v, []).envio).toBeNull();
+  });
+
+  it('el envío suma al importe a cobrar de la venta', () => {
+    const d = caja({ ventasEnvios: [envio('V0001', 'VEN01', 5000)] });
+
+    expect(M.cuentasVentas(d).map((c) => [c.venta.id, c.importe, c.saldo])).toStrictEqual([['V0001', 13000, 13000], ['V0002', 15000, 15000]]);
+  });
+
+  it('el envío del vendedor se le acredita al socio como la comisión', () => {
+    const d = caja({
+      ventasComisiones: caja().ventasComisiones.slice(0, 1),
+      ventasEnvios: [envio('V0001', 'VEN01', 5000)], cobros: [cobro('V0001', 13000, 'efectivo', GH)],
     });
+    const [cuenta] = M.cuentasSocios(d);
 
-    expect(M.resumirPedidos(d)[0]).toMatchObject({ importeEntregado: 1000, envio: 5000, ganancia: 500 });
-    expect(M.cuentasVentas(d)[0]).toMatchObject({ importe: 6000, saldo: 6000 });
+    // Cobró 13.000 (8.000 + 5.000 de envío) y se queda con 240 de comisión y 5.000 de envío: debe 7.760.
+    expect(cuenta).toMatchObject({ cobradoEfectivo: 13000, comisiones: 240, envios: 5000, saldo: 7760 });
+    expect(cuenta.movimientos.map((m) => [m.tipo, m.importe, m.saldo])).toStrictEqual([
+      ['cobro', 13000, 13000], ['comision', -240, 12760], ['envio', -5000, 7760],
+    ]);
+  });
+
+  it('en la ganancia del pedido solo suma el envío que queda para el negocio', () => {
+    const ganancia = (vendedorId: string) => M.resumirPedidos(caja({ ventasEnvios: [envio('V0001', vendedorId, 5000)] }))[0];
+
+    // 8.000 − 240 de comisión − 10 × 500 de costo = 2.760.
+    expect(ganancia('VEN01')).toMatchObject({ envios: 5000, ganancia: 2760 });
+    expect(ganancia('')).toMatchObject({ envios: 5000, ganancia: 7760 });
   });
 });
 

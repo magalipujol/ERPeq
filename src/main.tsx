@@ -19,7 +19,7 @@ if (!raiz) throw new Error('Falta el elemento #root en index.html');
 
 createRoot(raiz).render(
   <StrictMode>
-    <MantineProvider theme={tema} defaultColorScheme="auto">
+    <MantineProvider theme={tema} forceColorScheme="light">
       <App db={db} />
     </MantineProvider>
   </StrictMode>,

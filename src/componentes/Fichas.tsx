@@ -206,7 +206,6 @@ function FichaPedido({ id, acciones }: { id: string; acciones: Acciones }) {
         ['Entrega desde', nombres.deposito(r.pedido.depositoId)],
         ['Estado', <EstadoPedido key="e" estado={r.estado} />],
         ['Vendedores', r.vendedores.map(nombres.vendedor).join(', ') || 'Sin comisión'],
-        ['Envío', r.pedido.cobraEnvio ? (r.envio > 0 ? `Se cobró ${fmtMoney(r.envio)}` : 'Se cobra en la primera entrega') : ''],
         ['Nota', r.pedido.nota],
       ]} />
       {M.pedidoAbierto(r.estado) && (
@@ -225,6 +224,7 @@ function FichaPedido({ id, acciones }: { id: string; acciones: Acciones }) {
       </Seccion>
       <Totales items={[
         ['Importe', fmtMoney(r.importePedido)], ['Entregado', fmtMoney(r.importeEntregado)],
+        ...(r.envios > 0 ? [['Envío', fmtMoney(r.envios)] as [string, string]] : []),
         ...(r.ventas.length > 0 ? [['Ganancia', `${fmtMoney(r.ganancia)}${r.sinCosto ? '*' : ''}`] as [string, string]] : []),
       ]} />
       {r.sinCosto && <Text size="xs" c="dimmed">* Hay productos sin costo de compra: la ganancia no los descuenta.</Text>}
@@ -254,7 +254,8 @@ function FichaVenta({ id }: { id: string }) {
         ['Fecha', fmtFecha(f.venta.fecha)],
         ['Depósito', nombres.deposito(f.venta.depositoId)],
         ['Comisiones', f.comisiones.map((c) => `${nombres.vendedor(c.vendedorId)} ${fmtMoney(c.monto)}`).join(', ')],
-        ['Envío', f.venta.envio > 0 ? `${fmtMoney(f.venta.envio)} para ${nombres.vendedor(f.venta.envioVendedorId) || 'el dueño'}` : ''],
+        ['Envío', f.envio && f.envio.costo > 0
+          ? `${fmtMoney(f.envio.costo)} · ${f.envio.vendedorId ? `para ${nombres.vendedor(f.envio.vendedorId)}` : 'para el negocio'}` : ''],
         ['Nota', f.venta.nota],
       ]} />
       <Seccion titulo="Productos">

@@ -4,11 +4,12 @@ import type { Cobro, Entrega } from '../../dominio/modelo';
 import type { CompraNueva, FleteNuevo, Operaciones, PedidoNuevo } from '../puerto';
 import { type Escritura, filas, unir } from './hojas';
 
-export function escrituraEntrega({ venta, items, comisiones }: Entrega, cobros: Cobro[] = []): Escritura {
+export function escrituraEntrega({ venta, items, comisiones, envio }: Entrega, cobros: Cobro[] = []): Escritura {
   return {
     ventas: [filas.venta(venta)],
     ventasItems: items.map(filas.ventaItem),
     ...(comisiones.length > 0 ? { ventasComisiones: comisiones.map(filas.ventaComision) } : {}),
+    ...(envio ? { ventasEnvios: [filas.ventaEnvio(envio)] } : {}),
     ...(cobros.length > 0 ? { cobros: cobros.map(filas.cobro) } : {}),
   };
 }
@@ -54,7 +55,7 @@ export function operaciones(escribir: (e: Escritura) => Promise<void>): Operacio
     registrarAjuste: async (a) => escribir({ ajustes: [filas.ajuste(a)] }),
     registrarPrecio: async (p) => escribir({ precios: [filas.precio(p)] }),
     registrarReglaComision: async (r) => escribir({ reglas: [filas.regla(r)] }),
-    registrarEnvio: async (e) => escribir({ envios: [filas.envio(e)] }),
+    registrarReglaEnvio: async (r) => escribir({ envios: [filas.envio(r)] }),
     registrarCobro: async (c) => escribir({ cobros: [filas.cobro(c)] }),
     registrarRendicion: async (r) => escribir({ rendiciones: [filas.rendicion(r)] }),
     registrarReceta: async (r) => escribir({ recetas: [filas.receta(r.receta)], recetasItems: r.items.map(filas.recetaItem) }),

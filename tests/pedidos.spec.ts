@@ -49,7 +49,7 @@ test('registra un pedido con un precio especial y un producto sin precio de list
   await expect(form.getByText(/✓ Pedido de Ana registrado \(2 productos, \$\s6\.100\)\./)).toBeVisible()
 
   expect(google.escrituras).toEqual([{
-    'Pedidos': [['PE0003', HOY_SERIE, 'C0001', 'ROS', '', 'no']],
+    'Pedidos': [['PE0003', HOY_SERIE, 'C0001', 'ROS', '']],
     'Pedidos ítems': [
       ['PE0003', 1, 'P001', 2, 3000, 2800],
       ['PE0003', 2, 'P003', 1, '', 500],
@@ -72,8 +72,8 @@ test('venta directa: crea el pedido y la entrega juntos', async ({ page, google 
 
   expect(google.escrituras).toHaveLength(1)
   expect(google.escrituras[0]).toMatchObject({
-    'Pedidos': [['PE0003', HOY_SERIE, 'C0001', 'ROS', '', 'no']],
-    'Ventas': [['V0002', HOY_SERIE, 'PE0003', 'ROS', '', '', '']],
+    'Pedidos': [['PE0003', HOY_SERIE, 'C0001', 'ROS', '']],
+    'Ventas': [['V0002', HOY_SERIE, 'PE0003', 'ROS', '']],
     'Ventas ítems': [['V0002', 1, 1, 'P001', 1, 3000, 3000, 1500]],
   })
   await page.getByRole('radiogroup', { name: 'Mostrar' }).getByText('Todos').click()
@@ -135,7 +135,7 @@ test('entrega parcial con la comisión sobreescrita', async ({ page, google }) =
   await form.getByRole('button', { name: 'Registrar entrega' }).click()
   await expect(form.getByText(/✓ Entrega a Ana registrada/)).toBeVisible()
   expect(google.escrituras).toEqual([{
-    'Ventas': [['V0002', HOY_SERIE, 'PE0002', 'ROS', '', '', '']],
+    'Ventas': [['V0002', HOY_SERIE, 'PE0002', 'ROS', '']],
     'Ventas ítems': [['V0002', 1, 1, 'P002', 4, 800, 3200, 500]],
     'Ventas comisiones': [['V0002', 1, 'VEN02', 3, 5, 160]],
   }])

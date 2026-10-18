@@ -20,10 +20,10 @@ function datos(): M.Datos {
     contactos: [contacto('ANA', 'Funes', 'Santa Fe'), contacto('BETO', ' funes ', 'santa fe'), contacto('CARO', '', '')],
     tipos: [], vendedores: [], precios: [], reglas: [], compras: [],
     pedidos: [
-      { id: 'PE1', fecha: null, contactoId: 'ANA', depositoId: 'ROS', nota: '', cobraEnvio: false },
-      { id: 'PE2', fecha: null, contactoId: 'BETO', depositoId: 'ROS', nota: '', cobraEnvio: false },
-      { id: 'PE3', fecha: null, contactoId: 'CARO', depositoId: 'ROS', nota: '', cobraEnvio: false },
-      { id: 'PE4', fecha: null, contactoId: 'ANA', depositoId: 'ROS', nota: '', cobraEnvio: false },
+      { id: 'PE1', fecha: null, contactoId: 'ANA', depositoId: 'ROS', nota: '' },
+      { id: 'PE2', fecha: null, contactoId: 'BETO', depositoId: 'ROS', nota: '' },
+      { id: 'PE3', fecha: null, contactoId: 'CARO', depositoId: 'ROS', nota: '' },
+      { id: 'PE4', fecha: null, contactoId: 'ANA', depositoId: 'ROS', nota: '' },
     ],
     pedidosItems: ['PE1', 'PE2', 'PE3', 'PE4'].map((pedidoId) => ({
       pedidoId, linea: 1, productoId: 'P1', cantidad: 1, precioLista: null, precio: 100,
@@ -36,7 +36,7 @@ function datos(): M.Datos {
       { ref: 'F1', fecha: null, estado: 'camino' },
       { ref: 'F4', fecha: null, estado: 'finalizado' },
     ],
-    ajustes: [], socios: [], cobros: [], rendiciones: [], recetas: [], recetasItems: [], envios: [],
+    ajustes: [], socios: [], cobros: [], rendiciones: [], recetas: [], recetasItems: [], envios: [], ventasEnvios: [],
   };
 }
 

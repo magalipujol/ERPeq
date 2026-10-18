@@ -1,6 +1,4 @@
-import {
-  Alert, Autocomplete, Button, Code, Grid, Group, NativeSelect, NumberInput, Paper, ScrollArea, Stack, Table, Text, TextInput, Title,
-} from '@mantine/core';
+import { Alert, Autocomplete, Button, Code, Grid, Group, NativeSelect, NumberInput, Paper, ScrollArea, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import { faltantesDe } from '../db/puerto';
@@ -10,99 +8,25 @@ import { useFila } from '../ficha';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, unicos } from '../formato';
 import * as M from '../dominio/modelo';
 
-// Valores por defecto: precio de lista de cada producto, porcentaje de comisión de cada vendedor y envío.
+// Valores por defecto: precio de lista de cada producto, porcentaje de comisión de cada vendedor y costo de envío.
 // Cada cambio es una fila nueva con su fecha `desde`; los pedidos y ventas ya cargados no cambian.
 export function Precios() {
   return (
     <Stack gap="md">
-      <Title order={2}>Precios y comisiones</Title>
+      <Title order={2}>Precios, comisiones y envíos</Title>
       <Text c="dimmed" maw="70ch">
         Se proponen al cargar pedidos y entregas. Cambiarlos no modifica lo ya cargado.
       </Text>
       <Grid gap="md" align="flex-start">
         <Grid.Col span={{ base: 12, md: 6 }}><ListaPrecios /></Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <Stack gap="md"><ReglasComision /><Envio /></Stack>
+          <Stack gap="md">
+            <ReglasComision />
+            <ReglasEnvio />
+          </Stack>
         </Grid.Col>
       </Grid>
     </Stack>
-  );
-}
-
-// Mínimo de compra sin envío y costo del envío para los pedidos que no lo alcanzan.
-function Envio() {
-  const { datos, info, db } = useBase();
-  const { guardando, msg, guardar, error } = useGuardar();
-  const faltan = faltantesDe(info, 'envio');
-  const [minimoTxt, setMinimoTxt] = useState<number | string>('');
-  const [costoTxt, setCostoTxt] = useState<number | string>('');
-  const [desde, setDesde] = useState(hoyISO);
-  const [hoy] = useState(() => new Date());
-  const vigente = M.envioVigente(datos.envios, hoy);
-  const historial = datos.envios.toSorted((a, b) => (b.desde?.getTime() ?? 0) - (a.desde?.getTime() ?? 0));
-
-  function enviar(e: React.SubmitEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const minimo = aNumero(minimoTxt);
-    const costo = aNumero(costoTxt);
-    if (!(minimo >= 0)) { error('Ingresá el mínimo de compra sin envío.'); return; }
-    if (!(costo >= 0)) { error('Ingresá el costo del envío.'); return; }
-    if (!desde) { error('Elegí desde qué fecha rige.'); return; }
-    guardar(async () => {
-      await db.registrarEnvio({ minimo, costo, desde: deISO(desde) });
-      setMinimoTxt('');
-      setCostoTxt('');
-      return `✓ Envío: ${fmtMoney(costo)} para pedidos de menos de ${fmtMoney(minimo)}, desde ${fmtFecha(deISO(desde))}.`;
-    });
-  }
-
-  return (
-    <Paper role="region" aria-label="Envío">
-      <Encabezado titulo="Envío" />
-      {faltan.length > 0 ? (
-        <Alert color="yellow" title="Falta la hoja en la planilla">
-          <Text size="sm" mb="xs">Para cobrar envío, creá esta hoja con estos encabezados en la fila 1:</Text>
-          {faltan.map((f) => <Text key={f.nombre} size="sm"><strong>{f.nombre}</strong>: <Code>{f.encabezados.join(', ')}</Code></Text>)}
-        </Alert>
-      ) : (
-        <>
-          <Text size="sm" mb="xs">
-            {vigente
-              ? `Los pedidos de menos de ${fmtMoney(vigente.minimo)} pagan ${fmtMoney(vigente.costo)} de envío. Va para el vendedor, además de su comisión.`
-              : 'No hay envío configurado: ningún pedido lo cobra.'}
-          </Text>
-          <form onSubmit={enviar} noValidate aria-label="Cambiar envío">
-            <Stack gap="xs" mb="sm">
-              <Group grow gap="xs" align="flex-start">
-                <NumberInput label="Mínimo sin envío" allowNegative={false} value={minimoTxt} onChange={setMinimoTxt}
-                  leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none" />
-                <NumberInput label="Costo del envío" allowNegative={false} value={costoTxt} onChange={setCostoTxt}
-                  leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none" />
-              </Group>
-              <TextInput label="Desde" type="date" value={desde} onChange={(e) => { setDesde(e.currentTarget.value); }} />
-              <Button type="submit" loading={guardando}>Guardar envío</Button>
-              <Mensaje msg={msg} />
-            </Stack>
-          </form>
-          {historial.length > 0 && (
-            <Table fz="sm" aria-label="Historial de envío">
-              <Table.Thead>
-                <Table.Tr><Table.Th>Desde</Table.Th><Table.Th className="num">Mínimo</Table.Th><Table.Th className="num">Costo</Table.Th></Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {historial.map((e) => (
-                  <Table.Tr key={`${String(e.desde?.getTime())}|${String(e.minimo)}|${String(e.costo)}`}>
-                    <Table.Td c="dimmed">{fmtFecha(e.desde)}</Table.Td>
-                    <Table.Td className="num">{fmtMoney(e.minimo)}</Table.Td>
-                    <Table.Td className="num">{fmtMoney(e.costo)}</Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          )}
-        </>
-      )}
-    </Paper>
   );
 }
 
@@ -254,6 +178,90 @@ function ReglasComision() {
         </Table>
       </ScrollArea>
       {filas.length === 0 && <Text c="dimmed" mt="xs" size="sm">No hay reglas: las comisiones se proponen en 0%.</Text>}
+    </Paper>
+  );
+}
+
+// Costo de envío: las entregas de pedidos por menos del mínimo le cobran el envío al cliente. Cada cambio es una
+// fila nueva con su `desde`; un costo de 0 deja de cobrarlo.
+function ReglasEnvio() {
+  const { datos, info, db, cargando } = useBase();
+  const { guardando, msg, guardar, error } = useGuardar();
+  const faltan = faltantesDe(info, 'envios');
+  const [minimoTxt, setMinimoTxt] = useState<number | string>('');
+  const [costoTxt, setCostoTxt] = useState<number | string>('');
+  const [desde, setDesde] = useState(hoyISO);
+  const [hoy] = useState(() => new Date());
+  const vigente = M.reglaEnvio(datos.envios, hoy);
+  const filas = datos.envios.toSorted((a, b) => (b.desde?.getTime() ?? 0) - (a.desde?.getTime() ?? 0));
+
+  function enviar(e: React.SubmitEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const minimo = aNumero(minimoTxt);
+    const costo = aNumero(costoTxt);
+    if (!(minimo >= 0)) { error('Ingresá el monto mínimo sin cargo de envío.'); return; }
+    if (!(costo >= 0)) { error('Ingresá el costo del envío (0 para no cobrarlo).'); return; }
+    if (!desde) { error('Elegí desde qué fecha rige.'); return; }
+    guardar(async () => {
+      await db.registrarReglaEnvio({ minimo, costo, desde: deISO(desde) });
+      setMinimoTxt('');
+      setCostoTxt('');
+      return costo > 0
+        ? `✓ Envío de ${fmtMoney(costo)} para pedidos por menos de ${fmtMoney(minimo)}, desde ${fmtFecha(deISO(desde))}.`
+        : `✓ Desde ${fmtFecha(deISO(desde))} no se cobra envío.`;
+    });
+  }
+
+  return (
+    <Paper>
+      <Encabezado titulo="Costo de envío" />
+      {faltan.length > 0 ? (
+        <Alert color="yellow" title="Faltan hojas en la planilla">
+          <Text size="sm" mb="xs">Para cobrar envíos, creá estas hojas con estos encabezados en la fila 1:</Text>
+          {faltan.map((f) => <Text key={f.nombre} size="sm"><strong>{f.nombre}</strong>: <Code>{f.encabezados.join(', ')}</Code></Text>)}
+        </Alert>
+      ) : (
+        <>
+          <Text size="sm" mb="xs" c={vigente && vigente.costo > 0 ? undefined : 'dimmed'}>
+            {vigente && vigente.costo > 0
+              ? `Hoy: los pedidos por menos de ${fmtMoney(vigente.minimo)} pagan ${fmtMoney(vigente.costo)} de envío. El envío es para quien hace la entrega.`
+              : 'Hoy no se cobra envío.'}
+          </Text>
+          <form onSubmit={enviar} noValidate aria-label="Cambiar costo de envío">
+            <Stack gap="xs" mb="sm">
+              <Group grow gap="xs" align="flex-start">
+                <NumberInput label="Sin cargo desde" allowNegative={false} value={minimoTxt} onChange={setMinimoTxt}
+                  leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none" />
+                <NumberInput label="Costo del envío" allowNegative={false} value={costoTxt} onChange={setCostoTxt}
+                  leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none" />
+              </Group>
+              <TextInput label="Desde" type="date" value={desde} onChange={(e) => { setDesde(e.currentTarget.value); }} />
+              <Button type="submit" loading={guardando}>Guardar envío</Button>
+              <Mensaje msg={msg} />
+            </Stack>
+          </form>
+          {filas.length > 0 && (
+            <ScrollArea type="auto">
+              <Table highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }} aria-label="Costos de envío">
+                <Table.Thead>
+                  <Table.Tr><Table.Th className="num">Sin cargo desde</Table.Th><Table.Th className="num">Costo</Table.Th><Table.Th>Desde</Table.Th></Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {filas.map((r, i) => (
+                    // Las reglas no tienen ID y no se reordenan: el índice alcanza como clave.
+                    // eslint-disable-next-line @eslint-react/no-array-index-key
+                    <Table.Tr key={i} fw={r === vigente ? 600 : undefined}>
+                      <Table.Td className="num">{fmtMoney(r.minimo)}</Table.Td>
+                      <Table.Td className="num">{r.costo > 0 ? fmtMoney(r.costo) : 'Sin cargo'}</Table.Td>
+                      <Table.Td c="dimmed">{fmtFecha(r.desde)}{r === vigente ? ' (vigente)' : ''}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
+          )}
+        </>
+      )}
     </Paper>
   );
 }

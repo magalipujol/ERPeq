@@ -4,13 +4,24 @@ import { mesElegido, mesesDisponibles } from '../meses';
 
 export interface Kpi { label: string; valor: React.ReactNode; alerta?: boolean }
 
+// Una cifra nunca se corta en dos renglones: si no entra en la tarjeta (un importe de millones en un celular de
+// 360 px), la letra se achica hasta que entre. Cada carácter de OpenDyslexic en negrita ocupa unos 0,7em.
+const estiloCifra = (valor: React.ReactNode): React.CSSProperties => {
+  const largo = typeof valor === 'string' || typeof valor === 'number' ? String(valor).length : 0;
+  return {
+    fontVariantNumeric: 'tabular-nums',
+    whiteSpace: 'nowrap',
+    fontSize: largo > 0 ? `min(var(--mantine-h2-font-size), calc(100cqi / ${largo * 0.72}))` : undefined,
+  };
+};
+
 export function Kpis({ items, label }: { items: Kpi[]; label: string }) {
   return (
     <SimpleGrid cols={{ base: 2, md: items.length }} spacing="sm" role="group" aria-label={label}>
       {items.map((k) => (
-        <Paper key={k.label} p="sm" px="md" role="group" aria-label={k.label}>
+        <Paper key={k.label} p="sm" px="md" role="group" aria-label={k.label} style={{ containerType: 'inline-size' }}>
           <Text size="xs" c="dimmed">{k.label}</Text>
-          <Title order={3} size="h2" c={k.alerta === true ? 'red' : undefined} style={{ fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' }}>
+          <Title order={3} size="h2" c={k.alerta === true ? 'red' : undefined} style={estiloCifra(k.valor)}>
             {k.valor}
           </Title>
         </Paper>

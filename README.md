@@ -26,13 +26,13 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
 | Hojas | Contenido |
 |---|---|
 | Depósitos, Productos, Contactos, Tipos de cliente, Vendedores | Datos maestros. Los clientes se cargan a mano en *Contactos*; el pedido propone los vendedores y el depósito de la localidad del cliente. |
-| Precios, Reglas de comisión | Valores por defecto (precio de lista y % de comisión por vendedor y producto), con fecha desde. Se cambian desde la pantalla Precios, igual que el envío. |
-| Pedidos, Pedidos ítems, Pedidos estados, Pedidos vendedores | Lo que pide el cliente, con el precio fijado al crearlo y si paga envío. Reserva stock. |
-| Ventas, Ventas ítems, Ventas comisiones | Cada entrega de un pedido: descuenta stock, genera la comisión y, en la primera, cobra el envío para el vendedor. |
+| Precios, Reglas de comisión | Valores por defecto (precio de lista y % de comisión por vendedor y producto), con fecha desde. |
+| Pedidos, Pedidos ítems, Pedidos estados, Pedidos vendedores | Lo que pide el cliente, con el precio fijado al crearlo. Reserva stock. |
+| Ventas, Ventas ítems, Ventas comisiones | Cada entrega de un pedido: descuenta stock y genera la comisión. |
 | Compras, Ajustes | Entradas y correcciones de stock. |
 | Recetas, Recetas ítems | Recetas de productos de *Productos* (insumos por tanda y cuánto sale, con versiones). Cada fabricación se guarda en *Ajustes*. Si faltan, la app las lee vacías y la pantalla Recetas avisa. |
 | Fletes, Fletes ítems, Fletes estados | Viajes con su costo (gasto de logística del mes, no se asigna a pedidos) y la salida y llegada previstas; los que van entre depósitos mueven stock según su estado. |
-| Envío | Mínimo de compra sin envío y costo del envío, con fecha desde. Si falta, ningún pedido cobra envío y la pantalla Precios avisa. |
+| Envíos, Ventas envíos | Costo de envío para los pedidos por menos de un mínimo (con fecha desde) y el envío que cobró cada entrega, para el vendedor que la hizo. Si faltan, la app las lee vacías y la pantalla Precios avisa. |
 | Socios, Cobros, Rendiciones | Quién cobró cada venta (efectivo o transferencia) y lo que los socios se rinden entre sí. Si faltan, la app las lee vacías y la pantalla Caja avisa. |
 
 Cada fila guarda los IDs de lo que referencia (producto, contacto, vendedor, socio), nunca sus nombres: el nombre
@@ -41,7 +41,7 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
 
 **Stock** = compras − entregas + ajustes (incluidas las fabricaciones) ± fletes entre depósitos (en camino: sale del origen; finalizado: entra en el destino).
 **Costo promedio** = promedio ponderado de todas las compras con precio del producto.
-**Ganancia de un pedido** = lo entregado − comisiones − cantidad × costo promedio (los fletes son gasto del mes y el envío va para el vendedor).
+**Ganancia de un pedido** = lo entregado + envíos que quedan para el negocio − comisiones − cantidad × costo promedio (los fletes son gasto del mes).
 **Ganancia después de fletes** = ganancia de las ventas del período − costo de los fletes del período.
 **Saldo de un socio con el dueño** = lo que cobró − las comisiones y envíos de sus vendedores − lo que le rindió + lo que recibió del dueño.
 
@@ -101,7 +101,9 @@ git) es para las salidas temporales de scripts y herramientas: ahí quedan tambi
   de Sheets (lectura de filas, celdas y las filas que agrega cada operación, sobre una planilla en memoria).
   Tardan menos de un segundo.
 - **De punta a punta** (Playwright, `tests/`): la app entera contra el build. Google está simulado
-  (`tests/google-falso.ts`): no hace falta cuenta ni se toca la planilla real.
+  (`tests/google-falso.ts`): no hace falta cuenta ni se toca la planilla real. Corren en escritorio y en un celular
+  Samsung Galaxy A53 (360 px de ancho, `tests/dispositivos.ts`); `tests/legibilidad.spec.ts` revisa que ninguna
+  cifra quede partida en dos renglones.
 
 ```sh
 pnpm test:unit                          # unitarias
@@ -110,6 +112,7 @@ pnpm exec playwright install chromium   # la primera vez, para las de punta a pu
 pnpm test:e2e
 pnpm test:e2e tests/stock.spec.ts --project=chromium   # un solo archivo, solo escritorio
 pnpm test:e2e:ui                        # para verlas paso a paso
+CAPTURAS=1 pnpm test:e2e tests/legibilidad.spec.ts   # capturas de cada pantalla del celular en .tmp/capturas/
 pnpm test                               # todas
 ```
 

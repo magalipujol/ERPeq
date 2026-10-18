@@ -20,7 +20,7 @@ function armar(pedidos: PedidoPrueba[], extra: Partial<M.Datos> = {}): M.Datos {
     contactos: [], tipos: [], vendedores: [], precios: [], reglas: [], compras: [], pedidos: [],
     pedidosItems: [], pedidosEstados: [], pedidosVendedores: [], ventas: [], ventasItems: [], ventasComisiones: [],
     fletes: [], fletesItems: [], fletesEstados: [], ajustes: [], socios: [], cobros: [], rendiciones: [],
-    recetas: [], recetasItems: [], envios: [],
+    recetas: [], recetasItems: [], envios: [], ventasEnvios: [],
     ...extra,
   };
   for (const p of pedidos) {
@@ -31,10 +31,10 @@ function armar(pedidos: PedidoPrueba[], extra: Partial<M.Datos> = {}): M.Datos {
         provincia: '', observaciones: '',
       });
     }
-    d.pedidos.push({ id: p.id, fecha: p.fecha, contactoId, depositoId: 'BB', nota: '', cobraEnvio: false });
+    d.pedidos.push({ id: p.id, fecha: p.fecha, contactoId, depositoId: 'BB', nota: '' });
     if (p.cancelado === true) d.pedidosEstados.push({ ref: p.id, fecha: null, estado: 'cancelado' });
     const ventaId = `V-${p.id}`;
-    d.ventas.push({ id: ventaId, fecha: p.fecha, pedidoId: p.id, depositoId: 'BB', nota: '', envio: 0, envioVendedorId: '' });
+    d.ventas.push({ id: ventaId, fecha: p.fecha, pedidoId: p.id, depositoId: 'BB', nota: '' });
     p.lineas.forEach(([productoId, cantidad, precio, costo, comision], i) => {
       d.ventasItems.push({
         ventaId, linea: i + 1, pedidoLinea: i + 1, productoId, cantidad, precio, importe: cantidad * precio, costo,

@@ -4,9 +4,9 @@
 // Las filas guardan IDs y no copias de nombres: el nombre de un producto, contacto, vendedor o socio sale
 // siempre de su hoja.
 import {
-  type Ajuste, type Cobro, type Compra, type ConfigEnvio, type ContactoNuevo, type Datos, type Flete, type FleteItem, type Pedido,
+  type Ajuste, type Cobro, type Compra, type ContactoNuevo, type Datos, type Flete, type FleteItem, type Pedido,
   type PedidoItem, type PedidoVendedor, type Precio, type Producto, type Receta, type RecetaItem, redondear,
-  type ReglaComision, type Rendicion, type Socio, type Venta, type VentaComision, type VentaItem,
+  type ReglaComision, type ReglaEnvio, type Rendicion, type Socio, type Venta, type VentaComision, type VentaEnvio, type VentaItem,
 } from '../../dominio/modelo';
 import type { AreaOpcional } from '../puerto';
 import { type Celda, deSerie, type Fila, type ValorCelda } from './celdas';
@@ -21,11 +21,11 @@ export const HOJAS = {
   precios: ['Precios', ['producto_id', 'precio', 'desde']],
   reglas: ['Reglas de comisión', ['vendedor_id', 'producto_id', 'porcentaje', 'desde']],
   compras: ['Compras', ['fecha', 'deposito_id', 'contacto_id', 'producto_id', 'cantidad', 'precio', 'importe', 'remito', 'pedido_id', 'nota']],
-  pedidos: ['Pedidos', ['id', 'fecha', 'contacto_id', 'deposito_id', 'nota', 'cobra_envio']],
+  pedidos: ['Pedidos', ['id', 'fecha', 'contacto_id', 'deposito_id', 'nota']],
   pedidosItems: ['Pedidos ítems', ['pedido_id', 'linea', 'producto_id', 'cantidad', 'precio_lista', 'precio']],
   pedidosEstados: ['Pedidos estados', ['pedido_id', 'fecha', 'estado']],
   pedidosVendedores: ['Pedidos vendedores', ['pedido_id', 'vendedor_id']],
-  ventas: ['Ventas', ['id', 'fecha', 'pedido_id', 'deposito_id', 'nota', 'envio', 'envio_vendedor_id']],
+  ventas: ['Ventas', ['id', 'fecha', 'pedido_id', 'deposito_id', 'nota']],
   ventasItems: ['Ventas ítems', ['venta_id', 'linea', 'pedido_linea', 'producto_id', 'cantidad', 'precio', 'importe', 'costo']],
   ventasComisiones: ['Ventas comisiones', ['venta_id', 'linea', 'vendedor_id', 'porcentaje_regla', 'porcentaje', 'monto']],
   fletes: ['Fletes', ['id', 'fecha', 'contacto_id', 'origen_id', 'destino_id', 'costo', 'guia', 'nota', 'salida', 'llegada_estimada']],
@@ -37,7 +37,8 @@ export const HOJAS = {
   rendiciones: ['Rendiciones', ['fecha', 'de_socio_id', 'a_socio_id', 'importe', 'medio', 'nota']],
   recetas: ['Recetas', ['id', 'version', 'desde', 'producto_id', 'cantidad', 'activa']],
   recetasItems: ['Recetas ítems', ['receta_id', 'version', 'producto_id', 'cantidad']],
-  envios: ['Envío', ['minimo', 'costo', 'desde']],
+  envios: ['Envíos', ['minimo', 'costo', 'desde']],
+  ventasEnvios: ['Ventas envíos', ['venta_id', 'vendedor_id', 'costo_regla', 'costo']],
 } as const satisfies Record<string, readonly [string, readonly string[]]>;
 
 export type ClaveHoja = keyof typeof HOJAS;
@@ -51,7 +52,7 @@ export const encabezados = (k: ClaveHoja): readonly string[] => HOJAS[k][1];
 export const OPCIONALES = {
   socios: 'caja', cobros: 'caja', rendiciones: 'caja',
   recetas: 'recetas', recetasItems: 'recetas',
-  envios: 'envio',
+  envios: 'envios', ventasEnvios: 'envios',
 } as const satisfies Partial<Record<ClaveHoja, AreaOpcional>>;
 type Opcional = keyof typeof OPCIONALES;
 
@@ -117,7 +118,7 @@ export function parsear(crudo: Fila[][]): Datos {
       precio: num(f[5]), importe: num(f[6]), remito: txt(f[7]), pedidoId: txt(f[8]), nota: txt(f[9]),
     })),
     pedidos: de('pedidos', 0, (f) => ({
-      id: txt(f[0]), fecha: fecha(f[1]), contactoId: txt(f[2]), depositoId: txt(f[3]), nota: txt(f[4]), cobraEnvio: bool(f[5]),
+      id: txt(f[0]), fecha: fecha(f[1]), contactoId: txt(f[2]), depositoId: txt(f[3]), nota: txt(f[4]),
     })),
     pedidosItems: de('pedidosItems', 0, (f) => ({
       pedidoId: txt(f[0]), linea: num(f[1]) ?? 0, productoId: txt(f[2]), cantidad: num(f[3]) ?? 0, precioLista: num(f[4]),
@@ -125,10 +126,7 @@ export function parsear(crudo: Fila[][]): Datos {
     })),
     pedidosEstados: estados('pedidosEstados'),
     pedidosVendedores: de('pedidosVendedores', 0, (f) => ({ pedidoId: txt(f[0]), vendedorId: txt(f[1]) })),
-    ventas: de('ventas', 0, (f) => ({
-      id: txt(f[0]), fecha: fecha(f[1]), pedidoId: txt(f[2]), depositoId: txt(f[3]), nota: txt(f[4]), envio: num(f[5]) ?? 0,
-      envioVendedorId: txt(f[6]),
-    })),
+    ventas: de('ventas', 0, (f) => ({ id: txt(f[0]), fecha: fecha(f[1]), pedidoId: txt(f[2]), depositoId: txt(f[3]), nota: txt(f[4]) })),
     ventasItems: de('ventasItems', 0, (f) => ({
       ventaId: txt(f[0]), linea: num(f[1]) ?? 0, pedidoLinea: num(f[2]) ?? 0, productoId: txt(f[3]), cantidad: num(f[4]) ?? 0,
       precio: num(f[5]) ?? 0, importe: num(f[6]) ?? 0, costo: num(f[7]),
@@ -159,7 +157,10 @@ export function parsear(crudo: Fila[][]): Datos {
       activa: txt(f[5]) === '' || bool(f[5]),
     })),
     recetasItems: de('recetasItems', 0, (f) => ({ recetaId: txt(f[0]), version: num(f[1]) ?? 1, productoId: txt(f[2]), cantidad: num(f[3]) ?? 0 })),
-    envios: de('envios', 0, (f) => ({ minimo: num(f[0]) ?? 0, costo: num(f[1]) ?? 0, desde: fecha(f[2]) })),
+    envios: de('envios', 1, (f) => ({ minimo: num(f[0]) ?? 0, costo: num(f[1]) ?? 0, desde: fecha(f[2]) })),
+    ventasEnvios: de('ventasEnvios', 0, (f) => ({
+      ventaId: txt(f[0]), vendedorId: txt(f[1]), costoRegla: num(f[2]), costo: num(f[3]) ?? 0,
+    })),
   };
 }
 
@@ -194,13 +195,11 @@ export const filas = {
     c.fecha, c.depositoId, c.contactoId, c.productoId, c.cantidad, vacio(c.precio),
     c.precio === null ? '' : redondear(c.cantidad * c.precio), c.remito, c.pedidoId, c.nota,
   ],
-  pedido: (p: Pedido): ValorCelda[] => [p.id, p.fecha, p.contactoId, p.depositoId, p.nota, p.cobraEnvio ? 'sí' : 'no'],
+  pedido: (p: Pedido): ValorCelda[] => [p.id, p.fecha, p.contactoId, p.depositoId, p.nota],
   pedidoItem: (i: PedidoItem): ValorCelda[] => [i.pedidoId, i.linea, i.productoId, i.cantidad, vacio(i.precioLista), i.precio],
   estado: (ref: string, estado: string, momento: Date): ValorCelda[] => [ref, { momento }, estado],
   pedidoVendedor: (p: PedidoVendedor): ValorCelda[] => [p.pedidoId, p.vendedorId],
-  venta: (v: Venta): ValorCelda[] => [
-    v.id, v.fecha, v.pedidoId, v.depositoId, v.nota, v.envio > 0 ? v.envio : '', v.envio > 0 ? v.envioVendedorId : '',
-  ],
+  venta: (v: Venta): ValorCelda[] => [v.id, v.fecha, v.pedidoId, v.depositoId, v.nota],
   ventaItem: (i: VentaItem): ValorCelda[] => [i.ventaId, i.linea, i.pedidoLinea, i.productoId, i.cantidad, i.precio, i.importe, vacio(i.costo)],
   ventaComision: (c: VentaComision): ValorCelda[] => [c.ventaId, c.linea, c.vendedorId, vacio(c.porcentajeRegla), c.porcentaje, c.monto],
   flete: (f: Flete): ValorCelda[] => [
@@ -213,7 +212,8 @@ export const filas = {
   rendicion: (r: Rendicion): ValorCelda[] => [r.fecha, r.deId, r.aId, r.importe, r.medio, r.nota],
   receta: (r: Receta): ValorCelda[] => [r.id, r.version, r.desde, r.productoId, r.cantidad, r.activa ? 'sí' : 'no'],
   recetaItem: (i: RecetaItem): ValorCelda[] => [i.recetaId, i.version, i.productoId, i.cantidad],
-  envio: (e: ConfigEnvio): ValorCelda[] => [e.minimo, e.costo, e.desde],
+  envio: (r: ReglaEnvio): ValorCelda[] => [r.minimo, r.costo, r.desde],
+  ventaEnvio: (e: VentaEnvio): ValorCelda[] => [e.ventaId, e.vendedorId, vacio(e.costoRegla), e.costo],
 };
 
 // Filas por hoja que se escriben juntas en una operación.

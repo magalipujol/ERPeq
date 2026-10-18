@@ -1,4 +1,7 @@
-import { createTheme } from '@mantine/core';
+import {
+  createTheme, DEFAULT_THEME, defaultVariantColorsResolver, parseThemeColor, type MantineColorsTuple,
+  type VariantColorsResolver,
+} from '@mantine/core';
 
 // Pautas de legibilidad para dislexia (guía de estilo de la British Dyslexia Association): sans serif clara,
 // texto base de 17px, interlineado 1,5, sin mayúsculas sostenidas ni itálicas. Los números tabulares y los colores
@@ -6,11 +9,36 @@ import { createTheme } from '@mantine/core';
 // OpenDyslexic viene en 400 y 700: los pesos 500 se ven como 400 y los 600, como 700.
 const fuente = 'OpenDyslexic, Verdana, system-ui, sans-serif';
 
+// Los tonos 8 y 9 de Mantine para rojo, verde, amarillo y naranja no llegan a 4,5:1 sobre el fondo crema:
+// se oscurecen para que los textos de color y las etiquetas `light` (texto en el tono 9) se lean.
+const oscurecer = (color: string, tono8: string, tono9: string): MantineColorsTuple => {
+  const [t0, t1, t2, t3, t4, t5, t6, t7] = DEFAULT_THEME.colors[color];
+  return [t0, t1, t2, t3, t4, t5, t6, t7, tono8, tono9];
+};
+
+// Polaridad positiva: la variante `filled` (botones y etiquetas) usa un fondo claro del color, con borde más
+// oscuro, y el texto normal de la app en lugar de blanco.
+const variantes: VariantColorsResolver = (entrada) => {
+  const base = defaultVariantColorsResolver(entrada);
+  const color = parseThemeColor({ color: entrada.color, theme: entrada.theme });
+  if (entrada.variant !== 'filled' || !color.isThemeColor) return base;
+  return {
+    background: `var(--mantine-color-${color.color}-2)`,
+    hover: `var(--mantine-color-${color.color}-3)`,
+    color: 'var(--mantine-color-text)',
+    border: `1px solid var(--mantine-color-${color.color}-6)`,
+  };
+};
+
 export const tema = createTheme({
   primaryColor: 'salvia',
-  primaryShade: { light: 6, dark: 4 },
-  autoContrast: true,
+  primaryShade: 6,
+  variantColorResolver: variantes,
   colors: {
+    red: oscurecer('red', '#b42323', '#8f1d1d'),
+    green: oscurecer('green', '#256f33', '#1d5628'),
+    yellow: oscurecer('yellow', '#a35f00', '#7a4700'),
+    orange: oscurecer('orange', '#b33c0a', '#8a2e08'),
     salvia: ['#f0f6ec', '#e0ecd7', '#c2dab0', '#a3c787', '#8bbf6e', '#6f9c52', '#4f7a3a', '#436a31', '#375828', '#2a451e'],
   },
   fontFamily: fuente,
@@ -29,10 +57,14 @@ export const tema = createTheme({
   },
   defaultRadius: 'md',
   components: {
+    // Sin `color` ni `variant`, Mantine pinta estos componentes con sus variables propias y no pasa por `variantes`.
+    Button: { defaultProps: { color: 'salvia' } },
+    ActionIcon: { defaultProps: { color: 'salvia' } },
+    ThemeIcon: { defaultProps: { color: 'salvia' } },
     Paper: { defaultProps: { withBorder: true, radius: 'lg', p: 'md' } },
     Autocomplete: { defaultProps: { limit: 30 } },
     NumberInput: { defaultProps: { hideControls: true } },
     // Mantine muestra los Badge en mayúsculas; en minúsculas se leen por la forma de la palabra.
-    Badge: { styles: { label: { textTransform: 'none', letterSpacing: 'inherit', fontWeight: 600 } } },
+    Badge: { defaultProps: { color: 'salvia' }, styles: { label: { textTransform: 'none', letterSpacing: 'inherit', fontWeight: 600 } } },
   },
 });

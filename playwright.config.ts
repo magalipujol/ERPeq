@@ -1,4 +1,5 @@
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig } from '@playwright/test'
+import { escritorio, galaxyA53 } from './tests/dispositivos.ts'
 
 const PORT = 4173
 
@@ -16,8 +17,8 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'mobile', use: { ...devices['Pixel 7'] } },
+    { name: 'chromium', use: escritorio },
+    { name: 'mobile', use: { ...galaxyA53, browserName: 'chromium' } },
   ],
   // Contra el build y no contra `vite dev`, así también se prueba la Content-Security-Policy.
   webServer: {

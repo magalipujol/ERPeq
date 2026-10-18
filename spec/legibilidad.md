@@ -15,15 +15,17 @@ Association (BDA) y las pautas de contraste de WCAG. Los valores están en `src/
 | Sin mayúsculas sostenidas | Encabezados de tabla y etiquetas de estado (Badge) en mayúscula inicial. |
 | Sin itálicas ni subrayados para énfasis | El énfasis va en negrita; `em`/`i` se muestran en negrita. |
 | Sin texto justificado | Todo alineado a la izquierda; los números, a la derecha. |
-| Contraste alto sin blanco puro sobre negro puro | Fondo crema (`#f6f3ec`, tarjetas `#fffdf8`) y texto `#1f241c`. Texto secundario `#545a50` (contraste mayor a 6:1); en modo oscuro, texto `#e6e4dc` sobre `#20241d`. |
+| Polaridad positiva: texto oscuro sobre fondo claro | Siempre en esquema claro, aunque el dispositivo esté en modo oscuro (`forceColorScheme` en `src/main.tsx`). Botones y etiquetas `filled` con fondo claro del color (tono 2), borde del tono 6 y el texto normal, en lugar de texto blanco sobre color (`variantColorResolver` en `src/tema.ts`); lo mismo los globitos del mapa. |
+| Contraste alto sin blanco puro sobre negro puro | Fondo crema (`#f6f3ec`, tarjetas `#fffdf8`) y texto `#1f241c`. Texto secundario `#545a50` (contraste mayor a 6:1). Los textos de color (`c="red"`, etiquetas `light`) usan el tono 9; los tonos 8 y 9 de rojo, verde, amarillo y naranja están oscurecidos en `src/tema.ts` para pasar 4,5:1 sobre el fondo. |
 | Cifras fáciles de comparar | Números tabulares en las tablas y en los KPI; columnas numéricas alineadas a la derecha. |
+| Una cifra nunca se parte en dos renglones | Los KPI no cortan el valor: si no entra en la tarjeta, la letra se achica (`Kpis` en `src/componentes/comunes.tsx`). Lo prueba `tests/legibilidad.spec.ts` en un celular de 360 px con importes de millones. |
 
 ## Al escribir pantallas
 
 - Textos de ayuda de una sola idea y una línea cuando se pueda. Ejemplo: en *Ajuste de stock*, "Para corregir
   diferencias. Para restar, usá un número negativo."
 - No usar `tt="uppercase"`, `fs="italic"` ni `ta="justify"`.
-- OpenDyslexic es ancha: revisar cada pantalla en un celular de 360 a 412 px. Las tablas van dentro de un
+- OpenDyslexic es ancha: revisar cada pantalla en un celular de 360 a 412 px (las pruebas e2e de celular usan 360). Las tablas van dentro de un
   `ScrollArea`, y un `SegmentedControl` con varias opciones pasa a vertical (*Estado* en *Nuevo flete*) o a tamaño
   `xs` (*Período* en Análisis) en celular. La barra inferior tiene cuatro pantallas y un menú *Más* con el resto.
 - Texto secundario (`c="dimmed"`) solo para datos de apoyo (fecha, depósito, unidad); el dato principal de cada fila va

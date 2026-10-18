@@ -27,11 +27,11 @@ export const ENCABEZADOS: Record<string, string[]> = {
   'Precios': ['producto_id', 'precio', 'desde'],
   'Reglas de comisión': ['vendedor_id', 'producto_id', 'porcentaje', 'desde'],
   'Compras': ['fecha', 'deposito_id', 'contacto_id', 'producto_id', 'cantidad', 'precio', 'importe', 'remito', 'pedido_id', 'nota'],
-  'Pedidos': ['id', 'fecha', 'contacto_id', 'deposito_id', 'nota', 'cobra_envio'],
+  'Pedidos': ['id', 'fecha', 'contacto_id', 'deposito_id', 'nota'],
   'Pedidos ítems': ['pedido_id', 'linea', 'producto_id', 'cantidad', 'precio_lista', 'precio'],
   'Pedidos estados': ['pedido_id', 'fecha', 'estado'],
   'Pedidos vendedores': ['pedido_id', 'vendedor_id'],
-  'Ventas': ['id', 'fecha', 'pedido_id', 'deposito_id', 'nota', 'envio', 'envio_vendedor_id'],
+  'Ventas': ['id', 'fecha', 'pedido_id', 'deposito_id', 'nota'],
   'Ventas ítems': ['venta_id', 'linea', 'pedido_linea', 'producto_id', 'cantidad', 'precio', 'importe', 'costo'],
   'Ventas comisiones': ['venta_id', 'linea', 'vendedor_id', 'porcentaje_regla', 'porcentaje', 'monto'],
   'Fletes': ['id', 'fecha', 'contacto_id', 'origen_id', 'destino_id', 'costo', 'guia', 'nota', 'salida', 'llegada_estimada'],
@@ -43,7 +43,8 @@ export const ENCABEZADOS: Record<string, string[]> = {
   'Rendiciones': ['fecha', 'de_socio_id', 'a_socio_id', 'importe', 'medio', 'nota'],
   'Recetas': ['id', 'version', 'desde', 'producto_id', 'cantidad', 'activa'],
   'Recetas ítems': ['receta_id', 'version', 'producto_id', 'cantidad'],
-  'Envío': ['minimo', 'costo', 'desde'],
+  'Envíos': ['minimo', 'costo', 'desde'],
+  'Ventas envíos': ['venta_id', 'vendedor_id', 'costo_regla', 'costo'],
 }
 
 // Filas de datos de cada hoja (sin el encabezado).
@@ -80,8 +81,8 @@ export function planillaInicial(): Record<string, Fila[]> {
       [serie('2026-10-03'), 'ROS', 'C0003', 'P002', 30, 500, 15000, '', '', ''],
     ],
     'Pedidos': [
-      ['PE0001', serie('2026-10-05'), 'C0001', 'BB', '', 'no'],
-      ['PE0002', serie('2026-10-10'), 'C0001', 'ROS', '', 'no'],
+      ['PE0001', serie('2026-10-05'), 'C0001', 'BB', ''],
+      ['PE0002', serie('2026-10-10'), 'C0001', 'ROS', ''],
     ],
     'Pedidos ítems': [
       ['PE0001', 1, 'P001', 4, 3000, 3000],
@@ -89,7 +90,7 @@ export function planillaInicial(): Record<string, Fila[]> {
     ],
     'Pedidos estados': [['PE0001', serie('2026-10-05'), 'abierto'], ['PE0002', serie('2026-10-10'), 'abierto']],
     'Pedidos vendedores': [['PE0001', 'VEN01'], ['PE0002', 'VEN02']],
-    'Ventas': [['V0001', serie('2026-10-05'), 'PE0001', 'BB', '', '', '']],
+    'Ventas': [['V0001', serie('2026-10-05'), 'PE0001', 'BB', '']],
     'Ventas ítems': [['V0001', 1, 1, 'P001', 4, 3000, 12000, 1500]],
     'Ventas comisiones': [['V0001', 1, 'VEN01', 10, 10, 1200]],
     'Fletes': [['F0001', serie('2026-10-08'), 'C0004', 'BB', 'ROS', 5000, '', '', '', '']],
@@ -104,14 +105,9 @@ export function planillaInicial(): Record<string, Fila[]> {
     'Rendiciones': [],
     'Recetas': [],
     'Recetas ítems': [],
-    // Sin la hoja Envío: el área está apagada, como en una planilla que todavía no la tiene. Las pruebas de envío
-    // la agregan con `conEnvio`.
+    'Envíos': [],
+    'Ventas envíos': [],
   }
-}
-
-// Agrega la hoja Envío (pedidos de menos de $150.000 pagan $5.000) antes de ingresar.
-export const conEnvio = (google: GoogleFalso) => {
-  google.hojas['Envío'] = [[150000, 5000, serie('2026-01-01')]]
 }
 
 // Filas agregadas por hoja en un mismo batchUpdate (una operación de la app).

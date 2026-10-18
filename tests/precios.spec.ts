@@ -31,3 +31,19 @@ test('muestra las reglas de comisión vigentes y agrega una por producto', async
   await expect(form.getByText('✓ Leo: 12% en Avena.')).toBeVisible()
   expect(google.escrituras).toEqual([{ 'Reglas de comisión': [['VEN01', 'P002', 12, HOY_SERIE]] }])
 })
+
+test('el costo de envío arranca sin cobrarse y se puede dejar de cobrar con costo 0', async ({ page, google }) => {
+  await expect(page.getByText('Hoy no se cobra envío.')).toBeVisible()
+  const form = page.getByRole('form', { name: 'Cambiar costo de envío' })
+  await form.getByLabel('Sin cargo desde', { exact: true }).fill('150000')
+  await form.getByLabel('Costo del envío', { exact: true }).fill('5000')
+  await form.getByRole('button', { name: 'Guardar envío' }).click()
+  await expect(page.getByText(/Hoy: los pedidos por menos de \$\s150\.000 pagan \$\s5\.000 de envío/)).toBeVisible()
+
+  await form.getByLabel('Sin cargo desde', { exact: true }).fill('0')
+  await form.getByLabel('Costo del envío', { exact: true }).fill('0')
+  await form.getByRole('button', { name: 'Guardar envío' }).click()
+  await expect(form.getByText('✓ Desde 16/10/26 no se cobra envío.')).toBeVisible()
+  await expect(page.getByText('Hoy no se cobra envío.')).toBeVisible()
+  expect(google.escrituras).toEqual([{ 'Envíos': [[150000, 5000, HOY_SERIE]] }, { 'Envíos': [[0, 0, HOY_SERIE]] }])
+})

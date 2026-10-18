@@ -78,11 +78,11 @@ Entrá a https://console.cloud.google.com con la cuenta del dueño.
    | `Precios` | `producto_id`, `precio`, `desde` |
    | `Reglas de comisión` | `vendedor_id`, `producto_id`, `porcentaje`, `desde` |
    | `Compras` | `fecha`, `deposito_id`, `contacto_id`, `producto_id`, `cantidad`, `precio`, `importe`, `remito`, `pedido_id`, `nota` |
-   | `Pedidos` | `id`, `fecha`, `contacto_id`, `deposito_id`, `nota`, `cobra_envio` |
+   | `Pedidos` | `id`, `fecha`, `contacto_id`, `deposito_id`, `nota` |
    | `Pedidos ítems` | `pedido_id`, `linea`, `producto_id`, `cantidad`, `precio_lista`, `precio` |
    | `Pedidos estados` | `pedido_id`, `fecha`, `estado` |
    | `Pedidos vendedores` | `pedido_id`, `vendedor_id` |
-   | `Ventas` | `id`, `fecha`, `pedido_id`, `deposito_id`, `nota`, `envio`, `envio_vendedor_id` |
+   | `Ventas` | `id`, `fecha`, `pedido_id`, `deposito_id`, `nota` |
    | `Ventas ítems` | `venta_id`, `linea`, `pedido_linea`, `producto_id`, `cantidad`, `precio`, `importe`, `costo` |
    | `Ventas comisiones` | `venta_id`, `linea`, `vendedor_id`, `porcentaje_regla`, `porcentaje`, `monto` |
    | `Fletes` | `id`, `fecha`, `contacto_id`, `origen_id`, `destino_id`, `costo`, `guia`, `nota`, `salida`, `llegada_estimada` |
@@ -94,13 +94,14 @@ Entrá a https://console.cloud.google.com con la cuenta del dueño.
    | `Rendiciones` | `fecha`, `de_socio_id`, `a_socio_id`, `importe`, `medio`, `nota` |
    | `Recetas` | `id`, `version`, `desde`, `producto_id`, `cantidad`, `activa` |
    | `Recetas ítems` | `receta_id`, `version`, `producto_id`, `cantidad` |
-   | `Envío` | `minimo`, `costo`, `desde` |
+   | `Envíos` | `minimo`, `costo`, `desde` |
+   | `Ventas envíos` | `venta_id`, `vendedor_id`, `costo_regla`, `costo` |
 
 3. Cargá desde la fila 2 los datos fijos: *Depósitos* (por ejemplo `BB`, `General`, `Bahía Blanca`),
    *Productos*, *Tipos de cliente*, *Vendedores* (`activo` = `sí`; `localidad`, donde trabaja), los clientes,
    proveedores y transportes en *Contactos* y los socios en *Socios* (ver el paso 3 de "Agregar las hojas de
    caja"). Los clientes se cargan solo acá: la app no los da de alta. Las demás hojas quedan con el
-   encabezado solo: las llena la app. El mínimo y el costo del envío se cargan desde la pantalla Precios.
+   encabezado solo: las llena la app.
 4. Copiá el **ID** de la URL: `https://docs.google.com/spreadsheets/d/`**`ESTE-ES-EL-ID`**`/edit`.
 
 > La planilla tiene datos personales (agenda de clientes). No la compartas por canales públicos.
@@ -149,6 +150,21 @@ Quedan vacías: las recetas se cargan desde la app. El producto que sale de cada
 *Productos* y tener precio de lista (en la pantalla Precios). Las fabricaciones se guardan en *Ajustes*. Después,
 recargá la página.
 
+### Agregar las hojas de envíos a una planilla que ya existe
+
+El costo de envío (lo que se le cobra al cliente cuando el pedido es por menos de un monto mínimo) usa dos
+hojas: *Envíos* y *Ventas envíos*. Si la planilla no las tiene, la app funciona igual, pero la pantalla Precios
+avisa que faltan y las entregas no cobran envío. Para agregarlas, igual que las de caja: una hoja nueva por cada
+una, con el nombre exacto (con tilde en *Envíos*) y estos encabezados en la fila 1:
+
+| Hoja | Fila 1 (columnas A, B, C…) |
+|---|---|
+| `Envíos` | `minimo`, `costo`, `desde` |
+| `Ventas envíos` | `venta_id`, `vendedor_id`, `costo_regla`, `costo` |
+
+Quedan vacías. Después de recargar la página, cargá el costo en la pantalla **Precios**, en *Costo de envío*
+(por ejemplo, sin cargo desde $150.000 y $5.000 de envío).
+
 ### Agregar la localidad de los vendedores a una planilla que ya existe
 
 La hoja *Vendedores* tiene una cuarta columna, `localidad`: al tomar un pedido, la app propone los vendedores
@@ -156,19 +172,15 @@ de la localidad del cliente. Si la planilla no la tiene, la app no abre hasta ag
 tal como figura en *Contactos* (por ejemplo, `Rosario` para Guada/Hernán). Puede quedar vacía. Después,
 recargá la página.
 
-### Pasar una planilla que ya existe al modelo de fletes y envío
+### Pasar una planilla que ya existe al modelo de fletes sin pedidos
 
-Los fletes ya no se asignan a pedidos (su costo es gasto de logística del mes), los fletes guardan la salida y la
-llegada previstas, y los pedidos chicos pagan envío. Si la planilla es anterior a este cambio, la app no abre
-hasta migrarla. Los datos que ya tiene no se tocan: solo se agregan columnas vacías al final.
+Los fletes ya no se asignan a pedidos (su costo es gasto de logística del mes) y guardan la salida y la llegada
+previstas. Si la planilla es anterior a este cambio, la app no abre hasta migrarla. Los datos que ya tiene no se
+tocan:
 
-1. En **Pedidos**, escribí `cobra_envio` en la celda **F1**. Los pedidos anteriores quedan vacíos (no cobran envío).
-2. En **Ventas**, escribí `envio` en **F1** y `envio_vendedor_id` en **G1**. Las ventas anteriores quedan vacías.
-3. En **Fletes**, escribí `salida` en **I1** y `llegada_estimada` en **J1**. Los fletes anteriores quedan vacíos.
-4. La hoja **Pedidos fletes** ya no se usa: la app la ignora. Podés borrarla o dejarla como historial.
-5. Agregá una hoja **Envío** (con tilde) con `minimo`, `costo`, `desde` en la fila 1. Queda vacía: el mínimo y el
-   costo se cargan desde la pantalla **Precios** (hoy, $150.000 y $5.000). Sin esta hoja, ningún pedido cobra envío.
-6. Recargá la página.
+1. En **Fletes**, escribí `salida` en **I1** y `llegada_estimada` en **J1**. Los fletes anteriores quedan vacíos.
+2. La hoja **Pedidos fletes** ya no se usa: la app la ignora. Podés borrarla o dejarla como historial.
+3. Recargá la página.
 
 ### Si la app dice que las columnas de una hoja no son las que espera
 

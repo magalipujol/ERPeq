@@ -79,8 +79,8 @@ Por eso la ganancia por producto (y por pedido) es **antes de fletes**, y los fl
 - **Fletes del período** = Σ `costo` de los fletes con fecha en el período.
 - **Ganancia después de fletes** = Σ ganancia de productos − fletes del período.
 
-El envío que pagan los pedidos chicos tampoco cuenta: lo paga el cliente y va para el vendedor (ver "Cobro de
-envío" en [modelo-de-datos.md](modelo-de-datos.md)).
+El envío que se queda el vendedor tampoco cuenta: lo paga el cliente y va para él (ver "Envíos" en
+[modelo-de-datos.md](modelo-de-datos.md)).
 
 ### Ejemplo
 
