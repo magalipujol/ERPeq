@@ -517,8 +517,7 @@ En el ejemplo, la venta V0101 tiene dos ítems (las dos primeras cajas) y la V01
 
 ## Comisiones
 
-El porcentaje de comisión depende del vendedor y, a veces, del producto. Las reglas que salen del Excel
-(el porcentaje más frecuente de cada vendedor, en general y por producto) son:
+El porcentaje de comisión depende del vendedor y, a veces, del producto. Por ejemplo:
 
 | vendedor | producto | porcentaje |
 |---|---|---|
@@ -527,7 +526,7 @@ El porcentaje de comisión depende del vendedor y, a veces, del producto. Las re
 | VEN01 Guada/Hernán | maní repelado tostado con sal y sin sal | 10 |
 | VEN02 Leo | almendras non pareil, arándanos rojos, castañas W4, frasco de aceite de coco 360cc | 10 |
 
-Leo no tiene regla general: en la mayoría de sus ventas del Excel no hubo comisión.
+Leo no tiene regla general: en los demás productos no comisiona.
 
 Los vendedores se asignan al **pedido** (*Pedidos vendedores*). La comisión se genera en cada **venta**,
 para cada ítem entregado y cada vendedor del pedido:
@@ -753,60 +752,12 @@ transferencia para reponer stock) cuenta como gasto de logística del mes. Contr
 La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e inactivos) está descripta en
 [analisis.md](analisis.md).
 
-## Carga inicial desde el Excel
-
-[herramientas/excel_a_base.py](../herramientas/excel_a_base.py) genera la planilla completa a partir de
-`ROSARIO ACTUALIZADO.xlsm`:
-
-1. **Depósitos y vendedores:** fijos en el script (`BB`/`ROS`; GUADA/HERNAN → `VEN01`, LEO → `VEN02`, según
-   la columna CARGA).
-2. **Contactos:** la agenda *ALTA CLIEN-PROV*, más los clientes de las ventas, los proveedores de las compras
-   y los transportes de los fletes que no estén en la agenda. Un contacto es proveedor si aparece en las
-   compras; si no, cliente.
-3. **Pedidos y ventas:** cada fila de *Ventas Realizadas* es un ítem. Las filas con la misma fecha, cliente,
-   depósito y vendedor forman un pedido y una venta que lo entrega completo (el pedido queda *entregado*).
-   `precio_lista` queda vacío, porque el Excel no tenía lista de precios. El costo es el promedio de las
-   compras hasta esa fecha.
-4. **Comisiones:** cada ítem con comisión genera una fila en *Ventas comisiones* con el porcentaje que tuvo
-   (`comision / importe`) y el de la regla deducida (`porcentaje_regla`).
-5. **Reglas de comisión:** el porcentaje más frecuente de cada vendedor (general) y, por producto, cuando es
-   distinto del general.
-6. **Precios:** una fila por producto con el precio de su última venta.
-7. **Fletes:** sin origen, destino ni ítems y en estado `finalizado`: no cambian el stock. Las columnas
-   *Abonado*, *Comisión* y *Total a recibir* del Excel no se pasan (estaban vacías).
-8. **Socios:** fijos en el script: `SOC01` Sampatti (dueño, con el vendedor de LEO) y `SOC02` Guada/Hernán
-   (con el de GUADA/HERNAN). *Cobros* y *Rendiciones* quedan vacías: el Excel no dice quién cobró cada venta,
-   así que las ventas históricas aparecen como "a cobrar" hasta que se carguen sus cobros.
-9. **Recetas:** *Recetas* y *Recetas ítems* quedan vacías (solo el encabezado): el Excel no
-   tiene recetas; se cargan desde la app.
-
-## Planillas con nombres copiados
-
-Las planillas generadas antes de normalizar las tablas guardaban, además del ID, el nombre del producto,
-cliente, proveedor, transporte, vendedor o socio, y el tipo, la localidad y la provincia del cliente en
-cada pedido. La app no abre esas planillas (los encabezados no coinciden).
-[herramientas/normalizar_planilla.gs](../herramientas/normalizar_planilla.gs), un Apps Script que se corre
-desde la planilla, las migra:
-
-1. Revisa que cada fila con un nombre copiado tenga su ID y que el ID exista en su hoja. Si no, lista los
-   problemas y no cambia nada.
-2. Completa en *Contactos* el tipo, la localidad y la provincia que el contacto tenga vacíos con los de su
-   último pedido. Lo que ya tiene el contacto no se toca: los pedidos con otra localidad pasan a mostrar
-   la del contacto.
-3. Borra las columnas copiadas: `producto` de *Precios*, *Pedidos ítems*, *Ventas ítems*, *Fletes ítems* y
-   *Ajustes*; `proveedor` y `producto` de *Compras*; `cliente`, `tipo_cliente`, `localidad` y `provincia`
-   de *Pedidos*; `vendedor` de *Ventas comisiones*; `transporte` de *Fletes* y `socio` de *Cobros*.
-
-Ejemplo: `PE0001` tenía `C0001`, "Ana", "Minorista", "Funes", "Santa Fe". Si en *Contactos* `C0001` dice
-"Ana María", con localidad "Funes" y sin tipo ni provincia, después de migrar el pedido queda con `C0001`
-y el contacto con tipo "Minorista" y provincia "Santa Fe"; la app muestra "Ana María".
-
 ## Preguntas abiertas
 
 - **Depósito por pedido o por línea.** Esta spec usa uno por pedido. Si un pedido puede entregarse en parte
   desde Bahía Blanca y en parte desde Rosario, el depósito pasa a la línea.
-- **Hoja FLETES del Excel.** Tiene columnas *Abonado*, *Comisión* y *Total a recibir IKAL IBI* vacías, bajo
-  el título "CAJA ROSARIO". No se modelan; falta saber si el flete tiene una comisión o un cobro al cliente.
+- **Comisión o cobro de los fletes.** No se modelan; falta saber si el flete tiene una comisión o un cobro
+  al cliente.
 - **IDs con varios usuarios a la vez.** La app calcula el siguiente ID con lo último que leyó. Si dos
   personas cargan un pedido al mismo tiempo, pueden quedar dos con el mismo ID.
 - **Costo de las transferencias.** Esta spec lo trata como gasto de logística (o lo asigna a pedidos). La
@@ -815,7 +766,7 @@ y el contacto con tipo "Minorista" y provincia "Santa Fe"; la app muestra "Ana M
 - **Comisiones de ventas sin cobrar.** La cuenta de un socio descuenta sus comisiones desde la entrega,
   aunque el cliente todavía no haya pagado. La alternativa es acreditarlas recién cuando se cobra la venta
   (o en proporción a lo cobrado).
-- **Ventas históricas sin cobros.** Las ventas que vienen del Excel no tienen cobros y figuran como "a
+- **Ventas históricas sin cobros.** Las ventas cargadas del Excel histórico no tienen cobros y figuran como "a
   cobrar". Falta decidir si se cargan como cobradas (¿por quién?) o si se marca una fecha de corte.
 - **Pagos a proveedores.** El pedido original hablaba de qué se le paga a cada proveedor en efectivo o por
   transferencia. Esta parte cubre las ventas; las compras no registran todavía cómo ni quién las pagó.

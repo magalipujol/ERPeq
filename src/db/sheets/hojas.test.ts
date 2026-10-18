@@ -116,13 +116,13 @@ describe('encabezados', () => {
     expect(d.pedidos).toMatchObject([{ id: 'PE0001', contactoId: 'C0001', depositoId: 'BB' }]);
   });
 
-  it('una planilla con las columnas de nombres copiados no se lee', async () => {
+  it('una hoja con otras columnas no se lee', async () => {
     expect.hasAssertions();
 
-    const viejos = ['id', 'fecha', 'contacto_id', 'cliente', 'tipo_cliente', 'localidad', 'provincia', 'deposito_id', 'nota'];
+    const otras = ['id', 'fecha', 'contacto_id', 'cliente', 'deposito_id', 'nota'];
 
-    await expect(H.leerHojas(leer(viejos))).rejects.toThrow(H.FormatoDistinto);
-    await expect(H.leerHojas(leer(viejos))).rejects.toThrow(/hoja "Pedidos".*normalizar_planilla/);
+    await expect(H.leerHojas(leer(otras))).rejects.toThrow(H.FormatoDistinto);
+    await expect(H.leerHojas(leer(otras))).rejects.toThrow(/hoja "Pedidos".*En la planilla están: id, fecha, contacto_id, cliente/);
   });
 });
 

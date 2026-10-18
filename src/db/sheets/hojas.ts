@@ -1,6 +1,6 @@
 // Cómo se guarda el dominio en la planilla: hojas, orden de columnas, lectura de filas y filas a
-// escribir. Tiene que coincidir con la planilla real, con tests/google-falso.ts y con
-// herramientas/excel_a_base.py. La referencia es spec/modelo-de-datos.md.
+// escribir. Tiene que coincidir con la planilla real y con tests/google-falso.ts. La referencia es
+// spec/modelo-de-datos.md.
 // Las filas guardan IDs y no copias de nombres: el nombre de un producto, contacto, vendedor o socio sale
 // siempre de su hoja.
 import {
@@ -64,8 +64,7 @@ export const rango = (k: ClaveHoja) => `'${nombreHoja(k)}'!A1:${columna(encabeza
 export class FormatoDistinto extends Error {
   constructor(hoja: string, esperados: readonly string[], leidos: string[]) {
     super(`Las columnas de la hoja "${hoja}" no son las que espera la app. Tienen que ser: ${esperados.join(', ')}. `
-      + `En la planilla están: ${leidos.join(', ') || '(ninguna)'}. Si la planilla tiene todavía las columnas con `
-      + 'nombres copiados (cliente, producto, vendedor…), hay que correr la migración de herramientas/normalizar_planilla.gs.');
+      + `En la planilla están: ${leidos.join(', ') || '(ninguna)'}. Corregí la fila 1 de esa hoja.`);
   }
 }
 

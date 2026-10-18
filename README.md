@@ -70,36 +70,10 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
 - `.github/workflows/ci.yml`: lint, tipos y pruebas en cada pull request y push.
 - `.github/workflows/deploy.yml`: corre el CI y, si pasa, compila y publica en GitHub Pages en cada push a `main`
   (en *Settings → Pages*, la fuente tiene que ser **GitHub Actions**).
-- `herramientas/excel_a_base.py`: convierte el Excel histórico en la planilla inicial.
 - `herramientas/iconos.mjs`: genera los íconos PNG desde `public/icono.svg` (`node herramientas/iconos.mjs`, usa
   el Chromium de Playwright).
 - `herramientas/mapa_argentina.py`: genera `src/mapa/argentina.json` con los datos abiertos de Georef (IGN e INDEC).
-- `herramientas/normalizar_planilla.gs`: Apps Script que saca de una planilla vieja las columnas con nombres
-  copiados (ver "Migrar una planilla con nombres copiados").
 - `GUIA-CONFIGURACION.md`: paso a paso para configurar Google y la planilla.
-
-## Generar la base desde el Excel
-
-```sh
-uv run --with openpyxl herramientas/excel_a_base.py "ROSARIO ACTUALIZADO.xlsm" "ERPeq-base.xlsx"
-```
-
-(o `pip install openpyxl` y `python herramientas/excel_a_base.py ...`). Muestra un resumen con las reglas de
-comisión deducidas, los productos con stock negativo y los datos a revisar. Para cargarla en la planilla ver
-`GUIA-CONFIGURACION.md`.
-**El `.xlsx` generado tiene datos personales: no lo subas al repo** (`.gitignore` ya lo excluye).
-
-## Migrar una planilla con nombres copiados
-
-Las planillas de antes guardaban en *Pedidos*, *Compras*, *Fletes*, los ítems, las comisiones y los cobros una
-copia del nombre del cliente, producto, vendedor o socio. La app ya no las abre. Para migrarla, en la planilla:
-
-1. *Extensiones → Apps Script*, pegar `herramientas/normalizar_planilla.gs` y guardar.
-2. Ejecutar `revisar`. No cambia nada: el registro de ejecución lista los problemas (filas con un nombre pero
-   sin ID) y las columnas que se van a borrar. Corregir los problemas completando el ID.
-3. Hacer una copia de respaldo (*Archivo → Hacer una copia*) y ejecutar `migrar`.
-
-El detalle está en "Planillas con nombres copiados" de `spec/modelo-de-datos.md`.
 
 ## Probar en la compu
 

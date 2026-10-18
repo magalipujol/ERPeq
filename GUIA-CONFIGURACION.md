@@ -62,29 +62,53 @@ Entrá a https://console.cloud.google.com con la cuenta del dueño.
 
 ## 2. La planilla
 
-La base inicial se genera desde el Excel histórico con `herramientas/excel_a_base.py`
-(ver README). Eso produce `ERPeq-base.xlsx`.
+1. En https://sheets.google.com, creá una hoja de cálculo en blanco y ponele un nombre (por ejemplo
+   `ERPeq - Base de datos`).
+2. Creá una hoja (pestaña) por cada fila de esta tabla: abajo a la izquierda, **+** (*Agregar hoja*), y
+   renombrala con doble clic. El nombre tiene que ser exacto, con mayúscula inicial, tildes y sin espacios de
+   más. En la fila 1 de cada hoja escribí los encabezados, uno por columna, empezando en A1:
 
-1. En https://drive.google.com → *Nuevo* → *Subir archivo* → `ERPeq-base.xlsx`.
-2. Abrilo y andá a *Archivo* → *Guardar como Hojas de cálculo de Google*. Se abre la planilla convertida
-   en otra pestaña. (Si arriba, al lado del nombre, dice **.XLSX**, todavía es el Excel: la API no puede usarlo.)
-   Podés borrar el `.xlsx` subido.
-3. Renombrala si querés (por ejemplo `ERPeq - Base de datos`).
+   | Hoja | Fila 1 (columnas A, B, C…) |
+   |---|---|
+   | `Depósitos` | `id`, `nombre`, `localidad` |
+   | `Productos` | `id`, `producto`, `unidad`, `minimo` |
+   | `Contactos` | `id`, `rol`, `nombre`, `tipo_cliente`, `telefono`, `direccion`, `email`, `localidad`, `provincia`, `observaciones` |
+   | `Tipos de cliente` | `tipo` |
+   | `Vendedores` | `id`, `nombre`, `activo`, `localidad` |
+   | `Precios` | `producto_id`, `precio`, `desde` |
+   | `Reglas de comisión` | `vendedor_id`, `producto_id`, `porcentaje`, `desde` |
+   | `Compras` | `fecha`, `deposito_id`, `contacto_id`, `producto_id`, `cantidad`, `precio`, `importe`, `remito`, `pedido_id`, `nota` |
+   | `Pedidos` | `id`, `fecha`, `contacto_id`, `deposito_id`, `nota` |
+   | `Pedidos ítems` | `pedido_id`, `linea`, `producto_id`, `cantidad`, `precio_lista`, `precio` |
+   | `Pedidos estados` | `pedido_id`, `fecha`, `estado` |
+   | `Pedidos vendedores` | `pedido_id`, `vendedor_id` |
+   | `Ventas` | `id`, `fecha`, `pedido_id`, `deposito_id`, `nota` |
+   | `Ventas ítems` | `venta_id`, `linea`, `pedido_linea`, `producto_id`, `cantidad`, `precio`, `importe`, `costo` |
+   | `Ventas comisiones` | `venta_id`, `linea`, `vendedor_id`, `porcentaje_regla`, `porcentaje`, `monto` |
+   | `Fletes` | `id`, `fecha`, `contacto_id`, `origen_id`, `destino_id`, `costo`, `guia`, `nota` |
+   | `Fletes ítems` | `flete_id`, `producto_id`, `cantidad` |
+   | `Fletes estados` | `flete_id`, `fecha`, `estado` |
+   | `Pedidos fletes` | `pedido_id`, `flete_id`, `costo_asignado` |
+   | `Ajustes` | `fecha`, `deposito_id`, `producto_id`, `cantidad`, `motivo` |
+   | `Socios` | `id`, `nombre`, `vendedor_id`, `rol` |
+   | `Cobros` | `fecha`, `venta_id`, `importe`, `medio`, `socio_id`, `nota` |
+   | `Rendiciones` | `fecha`, `de_socio_id`, `a_socio_id`, `importe`, `medio`, `nota` |
+   | `Recetas` | `id`, `version`, `desde`, `producto_id`, `cantidad`, `activa` |
+   | `Recetas ítems` | `receta_id`, `version`, `producto_id`, `cantidad` |
+
+3. Cargá desde la fila 2 los datos fijos: *Depósitos* (por ejemplo `BB`, `General`, `Bahía Blanca`),
+   *Productos*, *Tipos de cliente*, *Vendedores* (`activo` = `sí`; `localidad`, donde trabaja), los clientes,
+   proveedores y transportes en *Contactos* y los socios en *Socios* (ver el paso 3 de "Agregar las hojas de
+   caja"). Los clientes se cargan solo acá: la app no los da de alta. Las demás hojas quedan con el
+   encabezado solo: las llena la app.
 4. Copiá el **ID** de la URL: `https://docs.google.com/spreadsheets/d/`**`ESTE-ES-EL-ID`**`/edit`.
 
-### Volver a cargar la base en una planilla que ya existe
-
-Para no cambiar el ID (y no tener que tocar `config.ts` ni volver a compartir), se puede reemplazar el
-contenido de la planilla actual: abrila → *Archivo* → *Importar* → *Subir* → `ERPeq-base.xlsx` →
-*Reemplazar hoja de cálculo*. **Se pierde todo lo que tenía**, incluido lo cargado desde la app después de
-generar la base: hacé antes una copia (*Archivo* → *Crear una copia*).
-
-> El `.xlsx` tiene datos personales (agenda de clientes). No lo subas al repositorio ni lo mandes por canales públicos.
+> La planilla tiene datos personales (agenda de clientes). No la compartas por canales públicos.
 
 ### Agregar las hojas de caja a una planilla que ya existe
 
 La pantalla **Caja** (cobros de las ventas y cuentas entre socios) usa tres hojas: *Socios*, *Cobros* y
-*Rendiciones*. Una base generada con el script ya las tiene. En una planilla anterior, la app funciona igual
+*Rendiciones*. Si la planilla no las tiene, la app funciona igual
 pero la pantalla Caja avisa que faltan y no deja registrar cobros. Para agregarlas a mano:
 
 1. Abajo a la izquierda, **+** (*Agregar hoja*) y renombrala (doble clic en la pestaña). El nombre tiene que
@@ -112,8 +136,7 @@ pero la pantalla Caja avisa que faltan y no deja registrar cobros. Para agregarl
 
 ### Agregar las hojas de recetas a una planilla que ya existe
 
-La pantalla **Recetas** usa dos hojas: *Recetas* y *Recetas ítems*. Una base generada con el
-script ya las tiene. En una planilla anterior, la app funciona igual pero la pantalla Recetas avisa que faltan y
+La pantalla **Recetas** usa dos hojas: *Recetas* y *Recetas ítems*. Si la planilla no las tiene, la app funciona igual pero la pantalla Recetas avisa que faltan y
 no deja guardar recetas ni fabricar. Para agregarlas, igual que las de caja: una hoja nueva por cada una, con el
 nombre exacto y estos encabezados en la fila 1:
 
@@ -129,17 +152,15 @@ recargá la página.
 ### Agregar la localidad de los vendedores a una planilla que ya existe
 
 La hoja *Vendedores* tiene una cuarta columna, `localidad`: al tomar un pedido, la app propone los vendedores
-de la localidad del cliente. Una base generada con el script ya la tiene. En una planilla anterior, la app no
-abre hasta agregarla: escribí `localidad` en la celda **D1** de *Vendedores* y, en cada vendedor, su localidad
+de la localidad del cliente. Si la planilla no la tiene, la app no abre hasta agregarla: escribí `localidad` en la celda **D1** de *Vendedores* y, en cada vendedor, su localidad
 tal como figura en *Contactos* (por ejemplo, `Rosario` para Guada/Hernán). Puede quedar vacía. Después,
 recargá la página.
 
 ### Si la app dice que las columnas de una hoja no son las que espera
 
-La planilla es de una versión anterior, que guardaba una copia del nombre del cliente, producto, vendedor o
-socio en cada pedido, venta, flete y cobro. Hay que migrarla una vez con el script
-`herramientas/normalizar_planilla.gs`, siguiendo "Migrar una planilla con nombres copiados" del `README.md`.
-Si agregaste *Cobros* a mano con la columna `socio`, el script también la saca.
+El mensaje dice qué hoja es, qué encabezados espera y cuáles encontró. Corregí la fila 1 de esa hoja para que
+tenga exactamente esos encabezados, en ese orden (puede haber columnas de más a la derecha), y recargá la
+página. Si faltan columnas en el medio, insertalas en su lugar: no las agregues al final.
 
 ## 3. Completar `src/config.ts`
 

@@ -53,11 +53,9 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 | `tests/` | Pruebas e2e. `tests/google-falso.ts` reemplaza a Google con una planilla en memoria (su estado inicial está resumido al principio de `historias.spec.ts`) y tiene `ir()` para cambiar de pantalla en escritorio o celular. `tests/historias.spec.ts` tiene las historias de usuario de punta a punta; el resto prueba una pantalla cada uno. |
 | `spec/` | Especificaciones. `spec/modelo-de-datos.md` es la referencia del modelo de datos; `spec/arquitectura.md`, la de las capas; `spec/legibilidad.md`, las pautas de tipografía y contraste (apto dislexia); `spec/analisis.md`, la de los análisis; `spec/mapa.md`, la del mapa de Inicio; `spec/recetas.md`, la de recetas y fabricación. |
 | `diseño/experimental/` | Propuesta de rediseño para celular (exportada de un lienzo de diseño de Claude): una pantalla por archivo `.dc.html` (Inicio, Pedido, Entregar, Cobrar, Stock, Fletes) y `Sistema.dc.html` con colores, íconos y letra; `canvas.json` ubica las pantallas en el lienzo. Son referencia: cargan un `support.js` del editor que no está en el repo, así que no se abren solas en el navegador. Datos inventados. |
-| `herramientas/excel_a_base.py` | Convierte el Excel histórico en la planilla inicial. |
 | `public/` | Se copia tal cual a `dist/`: `manifest.webmanifest` (app instalable, sin service worker), `icono.svg` (original del ícono y favicon) y los PNG que genera `herramientas/iconos.mjs` (192, 512 —también *maskable*— y `apple-touch-icon` de 180). Las rutas son relativas porque la app vive en `/ERPeq/`. |
 | `herramientas/iconos.mjs` | Genera los íconos PNG desde `public/icono.svg` con el Chromium de Playwright: `node herramientas/iconos.mjs`. |
 | `herramientas/mapa_argentina.py` | Baja provincias (IGN) y localidades censales (INDEC) del servicio Georef y genera `src/mapa/argentina.json`. |
-| `herramientas/normalizar_planilla.gs` | Apps Script que migra una planilla vieja: saca las columnas con nombres copiados. |
 | `README.md` | Qué es, cómo funciona, estructura de la planilla, cómo correrlo. |
 | `GUIA-CONFIGURACION.md` | Paso a paso para configurar Google Cloud y la planilla (para el dueño, no técnico). |
 | `TODO.md` | Pendientes. |
@@ -92,9 +90,10 @@ Arquitectura hexagonal, con los límites controlados por ESLint (`no-restricted-
 - Cada operación del puerto es atómica: escribe todas sus filas con un solo `escribir` (un `batchUpdate`).
   Nunca la partas en varias operaciones ni en varias llamadas.
 - El orden de columnas de cada hoja está definido en `HOJAS` y `filas` de `src/db/sheets/hojas.ts`, y tiene que
-  coincidir con la planilla real, con `ENCABEZADOS` y las filas de `tests/google-falso.ts` y con
-  `herramientas/excel_a_base.py`. La app verifica los encabezados al leer: cambiar columnas de una planilla
-  existente necesita una migración (como `herramientas/normalizar_planilla.gs`).
+  coincidir con la planilla real, con `ENCABEZADOS` y las filas de `tests/google-falso.ts` y con la tabla de
+  hojas de `GUIA-CONFIGURACION.md`. La app verifica los encabezados al leer: cambiar columnas de una planilla
+  existente necesita migrarla, con el paso a mano descripto en `GUIA-CONFIGURACION.md` (como "Agregar la
+  localidad de los vendedores a una planilla que ya existe").
 - `spec/modelo-de-datos.md` describe el modelo implementado. Si cambiás el modelo, actualizalo junto con
   sus diagramas y las preguntas abiertas que resuelvas.
 
@@ -104,7 +103,7 @@ Cada cambio deja la documentación al día **en el mismo commit**. Antes de term
 
 | Si cambiaste… | Actualizá |
 |---|---|
-| Tipos o cálculos de `src/dominio/modelo.ts`, u hojas y columnas de `src/db/sheets/hojas.ts` | `spec/modelo-de-datos.md` (tablas y diagramas Mermaid), la sección "Estructura de la planilla" del `README.md`, `tests/google-falso.ts` y, si afecta la carga inicial, `herramientas/excel_a_base.py`. |
+| Tipos o cálculos de `src/dominio/modelo.ts`, u hojas y columnas de `src/db/sheets/hojas.ts` | `spec/modelo-de-datos.md` (tablas y diagramas Mermaid), la sección "Estructura de la planilla" del `README.md`, `tests/google-falso.ts` y, si cambian hojas o columnas, la tabla de hojas y el paso de migración en `GUIA-CONFIGURACION.md`. |
 | Una decisión de diseño del modelo (sin código todavía) | `spec/modelo-de-datos.md`: el cambio y, si queda algo sin decidir, en "Preguntas abiertas". |
 | Archivos o carpetas (nuevos, movidos, borrados) | La tabla "Estructura" de este archivo y la sección "Archivos" del `README.md`. |
 | Capas, el puerto o un adaptador | La sección "Capas" de este archivo y `spec/arquitectura.md` (tabla de operaciones y diagramas). |
@@ -118,7 +117,7 @@ Para las specs:
 - Una por tema, en `spec/<tema>.md`, en español.
 - Diagramas en Mermaid (`erDiagram` para tablas, `stateDiagram-v2` para estados, `flowchart` para
   cálculos y flujos). Los diagramas tienen que coincidir con las tablas del mismo documento.
-- Ejemplos con datos concretos (como los del Excel) para cada caso de uso.
+- Ejemplos con datos concretos (inventados o anonimizados) para cada caso de uso.
 - Describen cómo es el sistema, no cómo llegó a ser así: el historial está en git.
 
 Si encontrás documentación que no coincide con el código, corregila o avisá; no la dejes como está.
