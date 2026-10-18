@@ -14,8 +14,12 @@ Sus ideas centrales:
    el último precio de lista o uno especial, y no cambia hasta la entrega.
 3. Las comisiones dependen del vendedor y del producto, se generan al entregar (en la venta) y un pedido
    puede comisionar a más de un vendedor. El porcentaje de la regla se puede cambiar en cada entrega.
-4. Los fletes se asocian a pedidos (uno o varios fletes por pedido, uno o varios pedidos por flete).
-5. Los fletes entre depósitos mueven stock y tienen estados: en preparación, en camino y finalizado.
+4. **Los fletes mueven productos, no pedidos.** Un flete no sabe para qué pedidos va (en la práctica se manda
+   de más para aprovechar el viaje) y su costo es un **gasto de logística del mes**: no se reparte entre pedidos
+   ni productos. A partir de los pedidos abiertos, la app propone qué mandar (ver
+   [Flete para cubrir faltantes](#flete-para-cubrir-faltantes)).
+5. Los fletes entre depósitos mueven stock y tienen estados: en preparación, en camino y finalizado. Al
+   cargarlos se pueden anotar la salida y la llegada previstas.
 6. Cada venta registra sus **cobros**: cuánto, en efectivo o por transferencia y qué socio recibió la plata.
    Con eso y las comisiones se calcula cuánto le debe cada socio al dueño de la mercadería (o al revés).
 
@@ -110,8 +114,6 @@ erDiagram
     VENDEDOR ||--o{ VENTA_COMISION : cobra
     VENDEDOR ||--o{ REGLA_COMISION : tiene
 
-    PEDIDO ||--o{ PEDIDO_FLETE : ""
-    FLETE ||--o{ PEDIDO_FLETE : ""
     FLETE ||--o{ FLETE_ITEM : transporta
     FLETE ||--|{ FLETE_ESTADO : historial
 
@@ -233,8 +235,10 @@ erDiagram
         string contacto_id FK "transporte"
         string origen_id FK "depósito; vacío = proveedor"
         string destino_id FK "depósito; vacío = cliente"
-        number costo
+        number costo "gasto de logística"
         string guia
+        datetime salida "prevista"
+        datetime llegada_estimada "prevista, opcional"
     }
     FLETE_ITEM {
         string flete_id FK
@@ -245,11 +249,6 @@ erDiagram
         string flete_id FK
         datetime fecha
         string estado "preparacion, camino, finalizado, cancelado"
-    }
-    PEDIDO_FLETE {
-        string pedido_id FK
-        string flete_id FK
-        number costo_asignado
     }
     AJUSTE {
         date fecha
@@ -346,10 +345,9 @@ columnas corridas guardaría cada dato en otra columna.
 | Hoja | Columnas | Notas |
 |---|---|---|
 | **Compras** | `fecha`, `deposito_id`, `contacto_id`, `producto_id`, `cantidad`, `precio`, `importe`, `remito`, `pedido_id`, `nota` | `contacto_id` es el proveedor. `pedido_id` opcional: la compra se hizo para un pedido. No cambia el cálculo de stock. |
-| **Fletes** | `id`, `fecha`, `contacto_id`, `origen_id`, `destino_id`, `costo`, `guia`, `nota` | `contacto_id` es el transporte. `origen_id` / `destino_id` son depósitos; vacío = afuera (proveedor o cliente). |
+| **Fletes** | `id`, `fecha`, `contacto_id`, `origen_id`, `destino_id`, `costo`, `guia`, `nota`, `salida`, `llegada_estimada` | `contacto_id` es el transporte. `origen_id` / `destino_id` son depósitos; vacío = afuera (proveedor o cliente). `costo` es gasto de logística del mes: no se asigna a pedidos. `salida` y `llegada_estimada` son la fecha y hora previstas al cargarlo (la llegada es opcional); las reales salen de *Fletes estados*. |
 | **Fletes ítems** | `flete_id`, `producto_id`, `cantidad` | Solo para mercadería que va **entre depósitos**. |
 | **Fletes estados** | `flete_id`, `fecha`, `estado` | Cada cambio de estado es una fila nueva. El estado actual es el de la última fila. Un flete que se carga ya despachado o terminado escribe también los estados anteriores. |
-| **Pedidos fletes** | `pedido_id`, `flete_id`, `costo_asignado` | Une pedidos y fletes (N a N). `costo_asignado` es la parte del flete que se carga a ese pedido. |
 | **Ajustes** | `fecha`, `deposito_id`, `producto_id`, `cantidad`, `motivo` | Correcciones de stock (roturas, conteos) y fabricaciones: una fila negativa por insumo y una positiva por el producto, con `motivo` = "Fabricación FA0001 (RE0001 v1)" (ID de la fabricación, receta y versión). |
 
 ### Recetas
@@ -531,7 +529,6 @@ flowchart LR
     PE["Pedido PE0042<br/>Dietética de ejemplo · Rosario<br/>vendedor: Guada/Hernán"]
     PE --> L1["Línea 1 · Harina de almendras sin piel<br/>25 kg × $4080"]
     PE --> L2["Línea 2 · Maní repelado sin sal<br/>25 kg × $2550"]
-    PE --> PF["Pedidos fletes<br/>F0017 · $12.000"]
     L1 --> V1["Venta V0101 · 20/09<br/>25 kg harina = $102.000"]
     L2 --> V1b["Venta V0101 · 20/09<br/>10 kg maní = $25.500"]
     L2 --> V2["Venta V0108 · 27/09<br/>15 kg maní = $38.250"]
@@ -629,16 +626,22 @@ flowchart TD
 
 ## Fletes
 
-Un flete es un viaje con un transporte y un costo. Según el origen y el destino, cubre tres casos:
+Un flete es un viaje con un transporte y un costo. **Lleva productos, no pedidos**: no guarda para qué pedidos
+va, porque en la práctica se manda de más para aprovechar el viaje, y un transporte cobra por bulto o un precio
+fijo, así que no hay forma justa de repartir su costo entre los productos vendidos. Por eso el costo de un flete es
+un **gasto de logística del mes**, que Análisis compara con la ganancia del período.
 
-| Caso | `origen_id` | `destino_id` | Fletes ítems | Pedidos fletes | ¿Mueve stock? |
-|---|---|---|---|---|---|
-| **Transferencia** (Bahía Blanca → Rosario) | depósito | depósito | sí | opcional | sí, según el estado |
-| **Entrega a cliente** | depósito | vacío | no | sí | no: la venta descuenta el stock |
-| **Compra con flete** (de un proveedor a un depósito) | vacío | depósito | no | opcional | no: la compra suma el stock |
+Según el origen y el destino, cubre tres casos:
 
-Un mismo flete puede llevar mercadería para varios pedidos y, a la vez, stock general para el depósito de
-destino. Solo los *Fletes ítems* mueven stock, así ninguna mercadería se cuenta dos veces.
+| Caso | `origen_id` | `destino_id` | Fletes ítems | ¿Mueve stock? |
+|---|---|---|---|---|
+| **Transferencia** (Bahía Blanca → Rosario) | depósito | depósito | sí | sí, según el estado |
+| **Entrega a cliente** | depósito | vacío | no | no: la venta descuenta el stock |
+| **Compra con flete** (de un proveedor a un depósito) | vacío | depósito | no | no: la compra suma el stock |
+
+Solo los *Fletes ítems* mueven stock, así ninguna mercadería se cuenta dos veces. Al cargarlo se pueden anotar la
+**salida prevista** y la **llegada estimada** (fecha y hora; la llegada es opcional): son la previsión. Cuándo salió
+y llegó de verdad lo dicen sus estados.
 
 ### Estados
 
@@ -672,13 +675,12 @@ F0002"). El flete no guarda la cantidad recibida.
 `cancelado` es para un flete que se arma y no sale. Mientras está en preparación, la mercadería no se
 movió, así que cancelarlo no toca el stock.
 
-### Ejemplo: transferencia de Bahía Blanca a Rosario para un pedido
+### Ejemplo: transferencia de Bahía Blanca a Rosario
 
 | Hoja | Fila |
 |---|---|
-| Fletes | `F0020`, 19/06/2026, Interprovincial, origen `BB`, destino `ROS`, costo $159.720 |
+| Fletes | `F0020`, 19/06/2026, Interprovincial, origen `BB`, destino `ROS`, costo $159.720, salida 19/06 18:00, llegada 21/06 12:00 |
 | Fletes ítems | `F0020`, P014 harina de almendras sin piel, 500 |
-| Pedidos fletes | `PE0050`, `F0020`, $159.720 |
 | Fletes estados | `F0020`, 19/06 09:00, `preparacion` |
 | Fletes estados | `F0020`, 19/06 18:00, `camino` |
 | Fletes estados | `F0020`, 21/06 11:00, `finalizado` |
@@ -690,7 +692,7 @@ Stock de P014 en cada momento (empieza con 800 en Bahía Blanca y 100 en Rosario
 | preparación | 800 (500 reservados) | 0 | 100 | 900 |
 | en camino | 300 | 500 | 100 | 900 |
 | finalizado | 300 | 0 | 600 | 900 |
-| venta de 500 al cliente de PE0050 | 300 | 0 | 100 | 400 |
+| venta de 500 a un cliente de Rosario | 300 | 0 | 100 | 400 |
 
 ## Cálculo de stock
 
@@ -746,7 +748,9 @@ en el formulario de Fletes para completar el transporte y registrarlo (nada se g
   el depósito o viene en camino cubre primero.
 - **Origen**: el otro depósito que más cubre de esos productos con su stock libre,
   `max(0, disponible(p, d))`; con empate, el primero de la hoja.
-- **Pedidos que lleva**: los elegidos, con el costo repartido como en cualquier flete.
+
+El flete no guarda los pedidos elegidos: el formulario solo los muestra ("Propuesto para cubrir lo que les falta
+a…"), y se pueden agregar productos o cantidades de más.
 
 Por ejemplo, con 25 kg de avena en Rosario, el pedido de Ana del 10/10 (10 kg de avena) y uno nuevo (12 kg de
 almendras y 30 de avena), faltan 15 kg de avena y 6 de almendras (hay 6 en camino). Con los dos pedidos, el flete
@@ -817,20 +821,17 @@ le deben a Sampatti efectivo − comisión".
 
 ## Análisis
 
-La unidad de análisis de la ganancia es el **pedido**, porque es donde se juntan las entregas, las
-comisiones y los fletes:
+La ganancia se calcula por **pedido**, donde se juntan las entregas, las comisiones y los envíos:
 
 - **Importe del pedido** = Σ `importe` de los ítems de sus ventas.
 - **Comisiones** = Σ `monto` de las comisiones de sus ventas.
 - **Costo de mercadería** = Σ `cantidad × costo` de los ítems de sus ventas.
-- **Costo de fletes** = Σ `costo_asignado` de sus filas en *Pedidos fletes*.
 - **Envíos del negocio** = Σ `costo` de sus filas en *Ventas envíos* sin `vendedor_id`.
-- **Ganancia** = importe + envíos del negocio − comisiones − costo de mercadería − costo de fletes.
+- **Ganancia** = importe + envíos del negocio − comisiones − costo de mercadería.
 
-Reparto del costo de un flete entre varios pedidos: la app propone repartir `costo` en proporción al
-importe pedido, y el usuario puede cambiarlo. Lo que no se asigna a ningún pedido (por ejemplo, una
-transferencia para reponer stock) cuenta como gasto de logística del mes. Control: para cada flete,
-Σ `costo_asignado` ≤ `costo`.
+Los **fletes no se asignan a pedidos**: son gasto de logística del mes. Para saber si el negocio rinde se comparan
+por período: ganancia de las ventas del mes − costo de los fletes del mes. Con eso se decide, por ejemplo, subir
+precios o el mínimo para no cobrar envío.
 
 | Indicador | Cálculo |
 |---|---|
@@ -839,7 +840,7 @@ transferencia para reponer stock) cuenta como gasto de logística del mes. Contr
 | Pedidos pendientes | pedidos abiertos con algo pendiente, y su importe pendiente |
 | Comisión por vendedor | Σ `monto` por vendedor y mes de la venta |
 | Costo de flete sobre ventas | Σ costo de fletes del mes / Σ importe de ventas del mes |
-| Gasto de logística del mes | Σ costo de fletes − Σ costo asignado a pedidos |
+| Ganancia después de fletes | Σ ganancia de las ventas del período − Σ costo de los fletes del período |
 | Mercadería en tránsito | `en_transito(p) × costo promedio` |
 | Faltante por depósito | `faltante(p, d)` para los pedidos abiertos |
 | Tiempo de entrega | fecha de la última venta − fecha del pedido |
@@ -851,8 +852,8 @@ La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e 
 
 - **Depósito por pedido o por línea.** Esta spec usa uno por pedido. Si un pedido puede entregarse en parte
   desde Bahía Blanca y en parte desde Rosario, el depósito pasa a la línea.
-- **Comisión o cobro de los fletes.** No se modelan; falta saber si el flete tiene una comisión o un cobro
-  al cliente. El envío al cliente final sí se cobra (ver [Envíos](#envíos)).
+- **Comisión de los fletes.** Los fletes no tienen comisión y su costo es gasto del mes. El envío al cliente
+  final sí se cobra (ver [Envíos](#envíos)).
 - **Envío con varios vendedores.** Si el pedido tiene varios vendedores, el envío es de uno solo (el que se
   elige en la entrega). Falta saber si en algún caso se reparte.
 - **Envío por entrega o por pedido.** El mínimo se compara con el importe del pedido y el envío se cobra una

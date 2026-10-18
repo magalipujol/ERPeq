@@ -10,12 +10,10 @@ const recientes = <T extends { fecha: Date | null }>(lista: T[]) =>
   [...lista].sort((a, b) => (b.fecha?.getTime() ?? 0) - (a.fecha?.getTime() ?? 0));
 
 export interface VentaDePedido { venta: M.Venta; importe: number; cobrado: number; saldo: number }
-export interface FleteDePedido { flete: M.Flete; estado: M.EstadoFlete; costoAsignado: number | null }
 
 export interface FichaPedido {
   resumen: M.ResumenPedido;
   ventas: VentaDePedido[];
-  fletes: FleteDePedido[];
   compras: M.Compra[]; // compras hechas para este pedido
 }
 
@@ -23,17 +21,11 @@ export function fichaPedido(datos: M.Datos, resumenes: M.ResumenPedido[], id: st
   const resumen = resumenes.find((r) => r.pedido.id === id);
   if (!resumen) return null;
   const cuentas = new Map(M.cuentasVentas(datos).map((c) => [c.venta.id, c]));
-  const estados = M.estadosActuales(datos.fletesEstados);
-  const fletes = new Map(datos.fletes.map((f) => [f.id, f]));
   return {
     resumen,
     ventas: recientes(resumen.ventas).map((venta) => {
       const c = cuentas.get(venta.id);
       return { venta, importe: c?.importe ?? 0, cobrado: c?.cobrado ?? 0, saldo: c?.saldo ?? 0 };
-    }),
-    fletes: datos.pedidosFletes.filter((pf) => pf.pedidoId === id).flatMap((pf) => {
-      const flete = fletes.get(pf.fleteId);
-      return flete ? [{ flete, estado: M.estadoFlete(estados, flete.id), costoAsignado: pf.costoAsignado }] : [];
     }),
     compras: recientes(datos.compras.filter((c) => c.pedidoId === id)),
   };
@@ -152,7 +144,6 @@ export interface FichaFlete {
   estado: M.EstadoFlete;
   historial: M.RegistroEstado[]; // en el orden en que se agregaron
   items: M.FleteItem[];
-  pedidos: M.PedidoFlete[];
 }
 
 export function fichaFlete(datos: M.Datos, id: string): FichaFlete | null {
@@ -163,7 +154,6 @@ export function fichaFlete(datos: M.Datos, id: string): FichaFlete | null {
     estado: M.estadoFlete(M.estadosActuales(datos.fletesEstados), id),
     historial: datos.fletesEstados.filter((e) => e.ref === id),
     items: datos.fletesItems.filter((it) => it.fleteId === id),
-    pedidos: datos.pedidosFletes.filter((pf) => pf.fleteId === id),
   };
 }
 

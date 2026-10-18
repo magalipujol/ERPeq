@@ -7,7 +7,7 @@ const vacios = (): M.Datos => ({
   depositos: [{ id: 'BB', nombre: 'General', localidad: '' }, { id: 'ROS', nombre: 'Rosario', localidad: '' }],
   productos: [], contactos: [], tipos: [], vendedores: [], precios: [], reglas: [], compras: [], pedidos: [],
   pedidosItems: [], pedidosEstados: [], pedidosVendedores: [], ventas: [], ventasItems: [], ventasComisiones: [],
-  fletes: [], fletesItems: [], fletesEstados: [], pedidosFletes: [], ajustes: [], socios: [], cobros: [], rendiciones: [],
+  fletes: [], fletesItems: [], fletesEstados: [], ajustes: [], socios: [], cobros: [], rendiciones: [],
   recetas: [], recetasItems: [], envios: [], ventasEnvios: [],
 });
 const datos = (d: Partial<M.Datos>): M.Datos => ({ ...vacios(), ...d });
@@ -27,7 +27,7 @@ const ventaItem = (ventaId: string, linea: number, pedidoLinea: number, producto
   ventaId, linea, pedidoLinea, productoId, cantidad, precio, importe: cantidad * precio, costo,
 });
 const flete = (id: string, origenId: string, destinoId: string, costo: number | null = null): M.Flete => ({
-  id, fecha: fecha(2026, 10, 1), contactoId: '', origenId, destinoId, costo, guia: '', nota: '',
+  id, fecha: fecha(2026, 10, 1), contactoId: '', origenId, destinoId, costo, guia: '', nota: '', salida: null, llegadaEstimada: null,
 });
 const estado = (ref: string, e: string): M.RegistroEstado => ({ ref, fecha: null, estado: e });
 
@@ -89,7 +89,6 @@ describe('resumirPedidos', () => {
     ventasItems: [ventaItem('V1', 1, 1, 'P001', 4), ventaItem('V2', 1, 1, 'P001', 3), ventaItem('V3', 1, 1, 'P001', 1)],
     ventasComisiones: [{ ventaId: 'V1', linea: 1, vendedorId: 'VEN01', porcentajeRegla: 3, porcentaje: 5, monto: 20 }],
     pedidosEstados: [estado('PE3', 'abierto'), estado('PE3', 'cancelado'), estado('PE4', 'cerrado')],
-    pedidosFletes: [{ pedidoId: 'PE1', fleteId: 'F1', costoAsignado: 30 }],
   });
   const r = new Map(M.resumirPedidos(base).map((x) => [x.pedido.id, x]));
 
@@ -102,8 +101,8 @@ describe('resumirPedidos', () => {
     expect(r.get('PE4')?.lineas[0].pendiente).toBe(0);
   });
 
-  it('ganancia = entregado − comisiones − costo de mercadería − fletes asignados', () => {
-    expect(r.get('PE1')).toMatchObject({ importePedido: 1500, importeEntregado: 400, comisiones: 20, costoMercaderia: 200, fletes: 30, ganancia: 150 });
+  it('ganancia = entregado − comisiones − costo de mercadería (los fletes son gasto del mes)', () => {
+    expect(r.get('PE1')).toMatchObject({ importePedido: 1500, importeEntregado: 400, comisiones: 20, costoMercaderia: 200, ganancia: 180 });
   });
 });
 

@@ -5,7 +5,7 @@
 // siempre de su hoja.
 import {
   type Ajuste, type Cobro, type Compra, type ContactoNuevo, type Datos, type Flete, type FleteItem, type Pedido,
-  type PedidoFlete, type PedidoItem, type PedidoVendedor, type Precio, type Producto, type Receta, type RecetaItem, redondear,
+  type PedidoItem, type PedidoVendedor, type Precio, type Producto, type Receta, type RecetaItem, redondear,
   type ReglaComision, type ReglaEnvio, type Rendicion, type Socio, type Venta, type VentaComision, type VentaEnvio, type VentaItem,
 } from '../../dominio/modelo';
 import type { AreaOpcional } from '../puerto';
@@ -28,10 +28,9 @@ export const HOJAS = {
   ventas: ['Ventas', ['id', 'fecha', 'pedido_id', 'deposito_id', 'nota']],
   ventasItems: ['Ventas ítems', ['venta_id', 'linea', 'pedido_linea', 'producto_id', 'cantidad', 'precio', 'importe', 'costo']],
   ventasComisiones: ['Ventas comisiones', ['venta_id', 'linea', 'vendedor_id', 'porcentaje_regla', 'porcentaje', 'monto']],
-  fletes: ['Fletes', ['id', 'fecha', 'contacto_id', 'origen_id', 'destino_id', 'costo', 'guia', 'nota']],
+  fletes: ['Fletes', ['id', 'fecha', 'contacto_id', 'origen_id', 'destino_id', 'costo', 'guia', 'nota', 'salida', 'llegada_estimada']],
   fletesItems: ['Fletes ítems', ['flete_id', 'producto_id', 'cantidad']],
   fletesEstados: ['Fletes estados', ['flete_id', 'fecha', 'estado']],
-  pedidosFletes: ['Pedidos fletes', ['pedido_id', 'flete_id', 'costo_asignado']],
   ajustes: ['Ajustes', ['fecha', 'deposito_id', 'producto_id', 'cantidad', 'motivo']],
   socios: ['Socios', ['id', 'nombre', 'vendedor_id', 'rol']],
   cobros: ['Cobros', ['fecha', 'venta_id', 'importe', 'medio', 'socio_id', 'nota']],
@@ -138,11 +137,10 @@ export function parsear(crudo: Fila[][]): Datos {
     })),
     fletes: de('fletes', 0, (f) => ({
       id: txt(f[0]), fecha: fecha(f[1]), contactoId: txt(f[2]), origenId: txt(f[3]), destinoId: txt(f[4]), costo: num(f[5]),
-      guia: txt(f[6]), nota: txt(f[7]),
+      guia: txt(f[6]), nota: txt(f[7]), salida: fecha(f[8]), llegadaEstimada: fecha(f[9]),
     })),
     fletesItems: de('fletesItems', 0, (f) => ({ fleteId: txt(f[0]), productoId: txt(f[1]), cantidad: num(f[2]) ?? 0 })),
     fletesEstados: estados('fletesEstados'),
-    pedidosFletes: de('pedidosFletes', 0, (f) => ({ pedidoId: txt(f[0]), fleteId: txt(f[1]), costoAsignado: num(f[2]) })),
     ajustes: de('ajustes', 2, (f) => ({
       fecha: fecha(f[0]), depositoId: txt(f[1]), productoId: txt(f[2]), cantidad: num(f[3]) ?? 0, motivo: txt(f[4]),
     })),
@@ -204,9 +202,11 @@ export const filas = {
   venta: (v: Venta): ValorCelda[] => [v.id, v.fecha, v.pedidoId, v.depositoId, v.nota],
   ventaItem: (i: VentaItem): ValorCelda[] => [i.ventaId, i.linea, i.pedidoLinea, i.productoId, i.cantidad, i.precio, i.importe, vacio(i.costo)],
   ventaComision: (c: VentaComision): ValorCelda[] => [c.ventaId, c.linea, c.vendedorId, vacio(c.porcentajeRegla), c.porcentaje, c.monto],
-  flete: (f: Flete): ValorCelda[] => [f.id, f.fecha, f.contactoId, f.origenId, f.destinoId, vacio(f.costo), f.guia, f.nota],
+  flete: (f: Flete): ValorCelda[] => [
+    f.id, f.fecha, f.contactoId, f.origenId, f.destinoId, vacio(f.costo), f.guia, f.nota,
+    f.salida ? { momento: f.salida } : '', f.llegadaEstimada ? { momento: f.llegadaEstimada } : '',
+  ],
   fleteItem: (i: FleteItem): ValorCelda[] => [i.fleteId, i.productoId, i.cantidad],
-  pedidoFlete: (p: PedidoFlete): ValorCelda[] => [p.pedidoId, p.fleteId, vacio(p.costoAsignado)],
   ajuste: (a: Ajuste): ValorCelda[] => [a.fecha, a.depositoId, a.productoId, a.cantidad, a.motivo],
   cobro: (c: Cobro): ValorCelda[] => [c.fecha, c.ventaId, c.importe, c.medio, c.socioId, c.nota],
   rendicion: (r: Rendicion): ValorCelda[] => [r.fecha, r.deId, r.aId, r.importe, r.medio, r.nota],

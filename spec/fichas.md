@@ -38,14 +38,12 @@ flowchart LR
   C -->|proveedor| CO[Compra]
   C -->|transporte| FL[Flete]
   PE --> V[Venta]
-  PE --> FL
   PE --> CO
   PE --> PR[Producto]
   V --> PE
   V --> C
   V --> PR
   FL --> C
-  FL --> PE
   FL --> PR
   CO --> C
   CO --> PR
@@ -58,11 +56,11 @@ flowchart LR
 
 | Ficha | Datos | Vínculos y listas | Acción |
 |---|---|---|---|
-| **Pedido** | Cliente, fecha, depósito de entrega, estado, vendedores, nota; importe, entregado, envío (si hubo) y ganancia | Productos (con lo entregado y pendiente), entregas (con lo que falta cobrar de cada una), fletes asignados (con su costo) y compras hechas para el pedido | *Registrar entrega* (si está abierto): abre Pedidos con ese pedido elegido |
+| **Pedido** | Cliente, fecha, depósito de entrega, estado, vendedores, nota; importe, entregado, envío (si hubo) y ganancia | Productos (con lo entregado y pendiente), entregas (con lo que falta cobrar de cada una) y compras hechas para el pedido | *Registrar entrega* (si está abierto): abre Pedidos con ese pedido elegido |
 | **Venta** | Cliente, pedido, fecha, depósito, comisión por vendedor, envío (y para quién), nota; importe (con el envío), cobrado, a cobrar y ganancia | Productos entregados (con costo y ganancia de cada uno) y cobros | — |
 | **Producto** | Unidad, precio de lista vigente hoy, costo promedio, mínimo | Stock por depósito (en depósito, en camino, en fletes en preparación y comprometido), receta activa que lo fabrica, recetas activas que lo usan, pedidos abiertos con algo pendiente, ventas y compras | — |
 | **Contacto** | Tipo, teléfono, dirección, email, localidad, observaciones (los vacíos no se muestran) | Como cliente: cantidad de pedidos, lo comprado (entregado), lo que debe y sus pedidos. Como proveedor: sus compras. Como transporte: sus fletes | — |
-| **Flete** | Transporte, fecha, recorrido, estado, costo, guía, nota | Mercadería, pedidos (con el costo asignado) y los estados por los que pasó | *Ver en Fletes*: abre Fletes con la fila resaltada |
+| **Flete** | Transporte, fecha, recorrido, estado, costo, salida prevista, llegada estimada, guía, nota | Mercadería y los estados por los que pasó | *Ver en Fletes*: abre Fletes con la fila resaltada |
 | **Compra** | Proveedor, producto, fecha, depósito, cantidad, precio, importe, remito, nota | Pedido para el que se compró | — |
 
 - Las listas van de lo más reciente a lo más viejo. Las de ventas, compras, pedidos de un cliente y fletes de un

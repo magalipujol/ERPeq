@@ -32,7 +32,6 @@ export function escrituraFlete(f: FleteNuevo): Escritura {
     fletes: [filas.flete(f.flete)],
     fletesItems: f.items.map(filas.fleteItem),
     fletesEstados: f.estados.map((e) => filas.estado(f.flete.id, e, f.momento)),
-    pedidosFletes: f.pedidos.map(filas.pedidoFlete),
   };
 }
 

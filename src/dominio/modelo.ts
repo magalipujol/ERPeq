@@ -37,12 +37,13 @@ export interface VentaComision {
   ventaId: string; linea: number; vendedorId: string; porcentajeRegla: number | null;
   porcentaje: number; monto: number;
 }
+// Un flete mueve productos, no pedidos: su costo es un gasto de logística del mes. `salida` y `llegadaEstimada`
+// son las previstas al cargarlo (fecha y hora); las reales salen de sus estados.
 export interface Flete {
   id: string; fecha: Date | null; contactoId: string; origenId: string; destinoId: string;
-  costo: number | null; guia: string; nota: string;
+  costo: number | null; guia: string; nota: string; salida: Date | null; llegadaEstimada: Date | null;
 }
 export interface FleteItem { fleteId: string; productoId: string; cantidad: number }
-export interface PedidoFlete { pedidoId: string; fleteId: string; costoAsignado: number | null }
 export type Medio = 'efectivo' | 'transferencia';
 export const MEDIOS: readonly Medio[] = ['efectivo', 'transferencia'];
 export const NOMBRE_MEDIO: Record<Medio, string> = { efectivo: 'Efectivo', transferencia: 'Transferencia' };
@@ -67,7 +68,7 @@ export interface Datos {
   precios: Precio[]; reglas: ReglaComision[]; compras: Compra[]; pedidos: Pedido[]; pedidosItems: PedidoItem[];
   pedidosEstados: RegistroEstado[]; pedidosVendedores: PedidoVendedor[]; ventas: Venta[]; ventasItems: VentaItem[];
   ventasComisiones: VentaComision[]; fletes: Flete[]; fletesItems: FleteItem[]; fletesEstados: RegistroEstado[];
-  pedidosFletes: PedidoFlete[]; ajustes: Ajuste[]; socios: Socio[]; cobros: Cobro[]; rendiciones: Rendicion[];
+  ajustes: Ajuste[]; socios: Socio[]; cobros: Cobro[]; rendiciones: Rendicion[];
   recetas: Receta[]; recetasItems: RecetaItem[]; envios: ReglaEnvio[]; ventasEnvios: VentaEnvio[];
 }
 
@@ -212,7 +213,7 @@ export interface LineaPedido extends PedidoItem { entregado: number; pendiente: 
 export interface ResumenPedido {
   pedido: Pedido; estado: EstadoPedido; lineas: LineaPedido[]; vendedores: string[];
   importePedido: number; importeEntregado: number; comisiones: number; costoMercaderia: number;
-  sinCosto: boolean; fletes: number; ganancia: number; ventas: Venta[];
+  sinCosto: boolean; ganancia: number; ventas: Venta[];
   envios: number; // envío cobrado al cliente en sus entregas
 }
 
@@ -227,7 +228,6 @@ export function resumirPedidos(datos: Datos): ResumenPedido[] {
   const items = porPedido(datos.pedidosItems);
   const ventas = porPedido(datos.ventas);
   const vendedores = porPedido(datos.pedidosVendedores);
-  const fletes = porPedido(datos.pedidosFletes);
   const ventaItems = new Map<string, VentaItem[]>();
   for (const it of datos.ventasItems) ventaItems.set(it.ventaId, [...(ventaItems.get(it.ventaId) ?? []), it]);
   const comisionDeVenta = new Map<string, number>();
@@ -250,7 +250,6 @@ export function resumirPedidos(datos: Datos): ResumenPedido[] {
     const importeEntregado = redondear(its.reduce((s, it) => s + it.importe, 0));
     const comisiones = redondear(vs.reduce((s, v) => s + (comisionDeVenta.get(v.id) ?? 0), 0));
     const costoMercaderia = redondear(its.reduce((s, it) => s + it.cantidad * (it.costo ?? 0), 0));
-    const costoFletes = redondear((fletes.get(pedido.id) ?? []).reduce((s, f) => s + (f.costoAsignado ?? 0), 0));
     const envios = vs.flatMap((v) => envioDeVenta.get(v.id) ?? []);
     // El envío que se queda el vendedor entra y sale: solo suma a la ganancia el que queda para el negocio.
     const enviosNegocio = envios.reduce((s, e) => s + (e.vendedorId === '' ? e.costo : 0), 0);
@@ -258,10 +257,11 @@ export function resumirPedidos(datos: Datos): ResumenPedido[] {
       pedido, estado, lineas, ventas: vs,
       vendedores: (vendedores.get(pedido.id) ?? []).map((v) => v.vendedorId),
       importePedido: redondear(lineas.reduce((s, l) => s + l.cantidad * l.precio, 0)),
-      importeEntregado, comisiones, costoMercaderia, fletes: costoFletes,
+      importeEntregado, comisiones, costoMercaderia,
       envios: redondear(envios.reduce((s, e) => s + e.costo, 0)),
       sinCosto: its.some((it) => it.costo === null),
-      ganancia: redondear(importeEntregado + enviosNegocio - comisiones - costoMercaderia - costoFletes),
+      // Los fletes no se asignan a pedidos: son gasto de logística del mes.
+      ganancia: redondear(importeEntregado + enviosNegocio - comisiones - costoMercaderia),
     };
   });
 }

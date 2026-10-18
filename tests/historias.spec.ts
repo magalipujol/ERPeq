@@ -67,15 +67,14 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
   await esperarStock(page, 'Almendras', { general: ['10', '–', '–'], rosario: ['0', '6', '12'] })
   await expect(kpi(page, 'Faltan para pedidos')).toContainText('1')
 
-  // 3. Se arma un flete de Bahía Blanca a Rosario con los 6 kg que faltan; todo su costo va al pedido.
+  // 3. Se arma un flete de Bahía Blanca a Rosario con los 6 kg que faltan. Su costo es gasto de logística del mes:
+  //    el flete no se asigna al pedido.
   await ir(page, 'Fletes')
   const flete = formFlete(page)
   await flete.getByLabel('Transporte', { exact: true }).fill('Interprovincial')
   await flete.getByLabel('Costo', { exact: true }).fill('8000')
   await flete.getByLabel('Producto', { exact: true }).fill('Almendras')
   await flete.getByLabel('Cantidad', { exact: true }).fill('6')
-  await elegirOpcion(page, flete.getByLabel('Pedidos que lleva', { exact: true }), 'Ana · 16/10/26')
-  await expect(flete.getByLabel('Costo asignado a Ana · 16/10/26')).toHaveValue('8000')
   await flete.getByRole('button', { name: 'Registrar flete' }).click()
   await expect(flete.getByText('✓ Flete de Interprovincial registrado (en preparación).')).toBeVisible()
 
@@ -127,9 +126,9 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
   await expect(entrega.getByRole('group', { name: 'Ganancia' })).toContainText('12.260')
   await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
   await expect(entrega.getByText(/✓ Entrega a Ana registrada \(\$\s29\.000\)/)).toBeVisible()
-  // La ganancia del pedido descuenta además el flete asignado: 12.260 − 8.000.
+  // La ganancia del pedido no descuenta el flete: es la de la entrega, 12.260.
   await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText('Parcial')
-  await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText(/4\.260/)
+  await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText(/12\.260/)
 
   // 8. Segunda entrega: 1 kg (el último que quedó en Rosario) con la comisión de la regla.
   await expect(entrega.getByLabel('Entregar Almendras')).toHaveValue('2')
@@ -141,10 +140,10 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
   await entrega.getByRole('button', { name: 'Cerrar con pendientes' }).click()
   await expect(page.getByText('El pedido de Ana · 16/10/26 quedó cerrado.')).toBeVisible()
   await page.getByRole('radiogroup', { name: 'Mostrar' }).getByText('Todos').click()
-  // Entregado 31.900 − comisiones 1.943 − costo 11 × 1.500 − flete 8.000 = 5.457.
+  // Entregado 31.900 − comisiones 1.943 − costo 11 × 1.500 = 13.457 (el flete de $ 8.000 es gasto del mes).
   await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText('Cerrado')
   await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText(/31\.900/)
-  await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText(/5\.457/)
+  await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText(/13\.457/)
 
   // 10. El stock queda sin comprometer y la liquidación muestra el porcentaje cambiado.
   await ir(page, 'Stock')
@@ -157,10 +156,9 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
   // Cada operación se guardó en una sola escritura.
   expect(google.escrituras).toHaveLength(9)
   expect(google.escrituras[1]).toEqual({
-    'Fletes': [['F0002', HOY_SERIE, 'C0004', 'BB', 'ROS', 8000, '', '']],
+    'Fletes': [['F0002', HOY_SERIE, 'C0004', 'BB', 'ROS', 8000, '', '', '', '']],
     'Fletes ítems': [['F0002', 'P001', 6]],
     'Fletes estados': [['F0002', AHORA, 'preparacion']],
-    'Pedidos fletes': [['PE0003', 'F0002', 8000]],
   })
   expect(google.escrituras[5]).toEqual({ 'Ajustes': [[HOY_SERIE, 'ROS', 'P001', -1, 'Bolsa rota en flete F0002']] })
   expect(google.escrituras[6]).toEqual({
@@ -486,8 +484,8 @@ test('desde Inicio se arma el flete que cubre lo que les falta a los pedidos de 
   await expect(flete.getByLabel('Destino', { exact: true })).toHaveValue('ROS')
   await expect(flete.getByLabel('Producto', { exact: true })).toHaveValue('Avena')
   await expect(flete.getByLabel('Cantidad', { exact: true })).toHaveValue('10')
-  await expect(flete.getByLabel('Costo asignado a Ana · 10/10/26')).toBeVisible()
-  await expect(flete.getByLabel('Costo asignado a Ana · 16/10/26')).toBeHidden()
+  // El flete no guarda pedidos: solo dice para cuáles se propuso.
+  await expect(flete.getByText('Propuesto para cubrir lo que les falta a: Ana · 10/10/26.')).toBeVisible()
 
   // 4. Mejor con los dos: avena 15 (los 40 kg de los dos pedidos, sin pasar el faltante de Rosario) y almendras 6,
   //    en el orden de los pedidos, del más viejo al más nuevo.
@@ -499,7 +497,7 @@ test('desde Inicio se arma el flete que cubre lo que les falta a los pedidos de 
   await expect(flete.getByLabel('Cantidad', { exact: true }).nth(0)).toHaveValue('15')
   await expect(flete.getByLabel('Producto', { exact: true }).nth(1)).toHaveValue('Almendras')
   await expect(flete.getByLabel('Cantidad', { exact: true }).nth(1)).toHaveValue('6')
-  await expect(flete.getByLabel('Costo asignado a Ana · 16/10/26')).toBeVisible()
+  await expect(flete.getByText('Propuesto para cubrir lo que les falta a: Ana · 10/10/26, Ana · 16/10/26.')).toBeVisible()
 
   // 5. Se completa el transporte y se despacha: ya no falta nada en Rosario y el botón desaparece.
   await flete.getByLabel('Transporte', { exact: true }).fill('Interprovincial')

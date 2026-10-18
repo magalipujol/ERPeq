@@ -35,7 +35,6 @@ flowchart LR
   C -->|fecha de pedido en el período| CA[Clientes más activos]
   C -->|toda la historia| CI[Clientes que dejaron de comprar]
   F[Fletes] -->|fecha en el período| FL[Fletes del período]
-  PF[Pedidos fletes] --> FL
   FL --> R[Ganancia después de fletes]
   GP --> R
 ```
@@ -72,22 +71,20 @@ muestra todos.
 
 ### Fletes
 
-Los fletes **no se reparten entre productos**. Un flete se asigna a pedidos (*Pedidos fletes*), no a ítems,
-y lleva productos de distintos pedidos y a veces reposición sin pedido; repartirlo por importe o por kilo
-sería arbitrario y movería la ganancia de un producto según con qué otros viajó. Por eso la ganancia por
-producto es **antes de fletes**, y los fletes se muestran aparte:
+Los fletes **no se reparten entre productos ni pedidos**: son gasto de logística del mes. Un flete lleva
+productos de distintos pedidos y a veces reposición sin pedido, y el transporte cobra por bulto o un precio fijo;
+repartirlo por importe o por kilo sería arbitrario y movería la ganancia de un producto según con qué otros viajó.
+Por eso la ganancia por producto (y por pedido) es **antes de fletes**, y los fletes se muestran aparte:
 
 - **Fletes del período** = Σ `costo` de los fletes con fecha en el período.
-  - **Asignados a pedidos** = Σ `costo_asignado` de esos fletes.
-  - **Logística** = fletes del período − asignados.
 - **Ganancia después de fletes** = Σ ganancia de productos − fletes del período.
 
-La ganancia por pedido, que sí descuenta sus fletes, está en la pantalla Pedidos (ver "Análisis" en
+El envío que se queda el vendedor tampoco cuenta: lo paga el cliente y va para él (ver "Envíos" en
 [modelo-de-datos.md](modelo-de-datos.md)).
 
 ### Ejemplo
 
-Período: últimos 6 meses al 16/10/2026. Hay un flete de $5.000 el 08/10 sin asignar.
+Período: últimos 6 meses al 16/10/2026. Hay un flete de $5.000 el 08/10.
 
 | Producto | Ventas | Vendido | Comisiones | Costo | Ganancia | Margen |
 |---|---|---|---|---|---|---|
@@ -152,8 +149,7 @@ Hoy: 16/10/2026.
 - **Clientes con pocas compras.** Un cliente que compró una o dos veces y no volvió no aparece como
   inactivo. Si interesa recuperarlos, se puede agregar una lista aparte ("compraron y no volvieron en N
   días").
-- **Fletes por producto.** Si hiciera falta la ganancia por producto después de fletes, la opción menos
-  arbitraria es repartir el costo asignado a cada pedido entre sus ítems entregados en proporción al
-  importe. Queda sin hacer hasta que se pida.
+- **Fletes por producto.** Si hiciera falta la ganancia por producto después de fletes, habría que elegir un
+  criterio de reparto (por importe, por kilo o por bulto). Queda sin hacer hasta que se pida.
 - **Umbrales.** 3 compras, el doble del intervalo y 30 días son un punto de partida; conviene revisarlos
   con los datos reales.

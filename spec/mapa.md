@@ -38,7 +38,6 @@ flowchart LR
   ped["Pedido abierto"] -->|contacto| cli["Cliente"] -->|localidad + provincia| lugar
   fl["Flete en curso"] -->|origen_id| dep2["Depósito de origen<br/>(vacío: proveedor, sin lugar)"] --> lugar
   fl -->|destino_id| dep3["Depósito de destino"] --> lugar
-  fl -->|destino vacío: Pedidos fletes| cli
   lugar["Lugar<br/>(localidad, provincia)"] -->|ubicar| punto["Punto en el mapa"]
   punto -->|"a menos de 12 unidades"| sitio["Sitio"]
 ```
@@ -49,7 +48,7 @@ flowchart LR
 |---|---|---|
 | Depósito | Todos los que tienen localidad. | `localidad` del depósito (puede traer la provincia: "Rosario, Santa Fe"). |
 | Pedido | Los abiertos (`pendiente` o `parcial`). | `localidad` y `provincia` del cliente. |
-| Flete | Los en curso (`preparacion` o `camino`). | Origen: el depósito de origen; si está vacío viene de un proveedor y no tiene lugar. Destino: el depósito de destino; si está vacío, las localidades de los clientes de sus pedidos (*Pedidos fletes*), un tramo por localidad distinta. |
+| Flete | Los en curso (`preparacion` o `camino`). | Origen: el depósito de origen; si está vacío viene de un proveedor y no tiene lugar. Destino: el depósito de destino; si está vacío va a un cliente y no tiene lugar (un flete no sabe para qué pedidos va). |
 
 ## Ubicar una localidad
 

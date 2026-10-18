@@ -2,7 +2,7 @@
 // conoce esta interfaz; cómo se guarda (hojas, columnas, celdas, API) es asunto de cada adaptador.
 // Ver spec/arquitectura.md.
 import type {
-  Ajuste, Cobro, Compra, ContactoNuevo, Datos, Entrega, EstadoFlete, Flete, FleteItem, Pedido, PedidoFlete, PedidoItem,
+  Ajuste, Cobro, Compra, ContactoNuevo, Datos, Entrega, EstadoFlete, Flete, FleteItem, Pedido, PedidoItem,
   Precio, Producto, Receta, RecetaItem, ReglaComision, ReglaEnvio, Rendicion,
 } from '../dominio/modelo';
 
@@ -43,12 +43,12 @@ export interface PedidoNuevo {
   cobros?: Cobro[];
 }
 
+// Un flete lleva productos, no pedidos: no guarda para qué pedidos va.
 export interface FleteNuevo {
   flete: Flete;
   items: FleteItem[];
   estados: EstadoFlete[]; // en orden, todos con el mismo momento
   momento: Date;
-  pedidos: PedidoFlete[];
   transporteNuevo: ContactoNuevo | null;
 }
 

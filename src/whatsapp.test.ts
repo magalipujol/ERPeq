@@ -12,7 +12,7 @@ const linea = (l: Partial<M.LineaPedido>): M.LineaPedido => ({
 const resumen = (id: string, estado: M.EstadoPedido, f: Date | null, lineas: M.LineaPedido[] = [], extra: Partial<M.Pedido> = {}): M.ResumenPedido => ({
   pedido: { id, fecha: f, contactoId: 'C0001', depositoId: 'ROS', nota: '', ...extra },
   estado, lineas, vendedores: [], importePedido: 0, importeEntregado: 0, comisiones: 0, costoMercaderia: 0,
-  sinCosto: false, fletes: 0, ganancia: 0, ventas: [], envios: 0,
+  sinCosto: false, ganancia: 0, ventas: [], envios: 0,
 });
 const de = (m: Partial<Record<string, string>>, otro?: string) => (id: string) => m[id] ?? otro ?? id;
 const nombres = {

@@ -1,16 +1,16 @@
 import {
-  Autocomplete, Button, Grid, Group, MultiSelect, NativeSelect, NumberInput, ScrollArea, SegmentedControl, Stack,
+  Autocomplete, Button, Grid, Group, NativeSelect, NumberInput, ScrollArea, SegmentedControl, Stack,
   Table, Text, TextInput, Title, useMatches,
 } from '@mantine/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBase, useGuardar } from '../base';
-import { Encabezado, Kpis, Mensaje, Resumen, Seccion } from '../componentes/comunes';
+import { Encabezado, Kpis, Mensaje, Seccion } from '../componentes/comunes';
 import { EstadoFlete, Recorrido } from '../componentes/estados';
 import { Vinculo } from '../componentes/Fichas';
 import { useFila } from '../ficha';
 import { type Item, itemVacio } from '../componentes/item';
 import { Items } from '../componentes/Items';
-import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, numeroOCero, porFechaDesc, unicos } from '../formato';
+import { aNumero, deISO, deISOConHora, fmtFecha, fmtFechaHora, fmtMoney, fmtNum, hoyISO, porFechaDesc, unicos } from '../formato';
 import * as M from '../dominio/modelo';
 
 const ACCION: Record<M.EstadoFlete, string> = {
@@ -46,7 +46,7 @@ export function Fletes({ resaltar = null, borrador = null }: { resaltar?: FleteR
 }
 
 function FormFlete({ borrador }: { borrador: BorradorFlete | null }) {
-  const { datos, pedidos, buscarProducto, buscarContacto, etiquetas, nombres, db } = useBase();
+  const { datos, buscarProducto, buscarContacto, etiquetas, nombres, db } = useBase();
   const formRef = useRef<HTMLFormElement>(null);
   // En celular los tres estados no entran en una fila.
   const enCelular = useMatches({ base: true, sm: false });
@@ -58,10 +58,13 @@ function FormFlete({ borrador }: { borrador: BorradorFlete | null }) {
   const [costoTxt, setCostoTxt] = useState<number | string>('');
   const [guia, setGuia] = useState('');
   const [nota, setNota] = useState('');
+  // Fecha y hora previstas, del <input type="datetime-local">; la llegada es opcional.
+  const [salida, setSalida] = useState('');
+  const [llegada, setLlegada] = useState('');
   const [estadoInicial, setEstadoInicial] = useState<M.EstadoFlete>('preparacion');
   const [items, setItems] = useState<Item[]>(() => [itemVacio()]);
-  const [pedidosSel, setPedidosSel] = useState<string[]>([]);
-  const [asignado, setAsignado] = useState<Record<string, number | string>>({});
+  // Pedidos para los que Inicio propuso el flete. Solo se muestran: el flete no guarda pedidos.
+  const [paraPedidos, setParaPedidos] = useState<string[]>([]);
   const [borradorAnterior, setBorradorAnterior] = useState(borrador);
   if (borrador !== borradorAnterior) {
     setBorradorAnterior(borrador);
@@ -71,8 +74,7 @@ function FormFlete({ borrador }: { borrador: BorradorFlete | null }) {
       setItems(borrador.items.length > 0
         ? borrador.items.map((it) => ({ ...itemVacio(), producto: nombres.producto(it.productoId), cantidad: it.cantidad }))
         : [itemVacio()]);
-      setPedidosSel(borrador.pedidos);
-      setAsignado({});
+      setParaPedidos(borrador.pedidos);
     }
   }
   useEffect(() => {
@@ -82,20 +84,11 @@ function FormFlete({ borrador }: { borrador: BorradorFlete | null }) {
   const transportes = useMemo(() => unicos([
     ...datos.contactos.filter((c) => c.rol === 'transporte').map((c) => c.nombre),
   ]), [datos]);
-  const opcionesPedidos = pedidos.filter((r) => r.estado !== 'cancelado')
-    .sort((a, b) => porFechaDesc(a.pedido, b.pedido))
-    .map((r) => ({ value: r.pedido.id, label: etiquetas.pedido(r.pedido.id) }));
   const lugares = (afuera: string) => [{ value: '', label: afuera }, ...datos.depositos.map((d) => ({ value: d.id, label: d.nombre }))];
   const transferencia = origen !== '' && destino !== '' && origen !== destino;
   const costo = aNumero(costoTxt);
-
-  // Reparto propuesto: proporcional al importe de cada pedido. Se puede cambiar a mano.
-  const importes = new Map(pedidos.map((r) => [r.pedido.id, r.importePedido]));
-  const totalImportes = pedidosSel.reduce((s, id) => s + (importes.get(id) ?? 0), 0);
-  const propuesto = (id: string) => (Number.isNaN(costo) || totalImportes === 0 ? 0
-    : M.redondear(costo * (importes.get(id) ?? 0) / totalImportes));
-  const asignacion = pedidosSel.map((id) => ({ id, costo: !(id in asignado) || asignado[id] === '' ? propuesto(id) : numeroOCero(asignado[id]) }));
-  const totalAsignado = asignacion.reduce((s, a) => s + a.costo, 0);
+  const salidaPrevista = deISOConHora(salida);
+  const llegadaEstimada = deISOConHora(llegada);
 
   const lineas = items.filter((it) => it.producto.trim() !== '').map((it) => ({ p: buscarProducto(it.producto), cantidad: aNumero(it.cantidad) }));
 
@@ -110,7 +103,7 @@ function FormFlete({ borrador }: { borrador: BorradorFlete | null }) {
       : lineas.length > 0 && !transferencia ? 'Solo un flete entre dos depósitos lleva productos.'
       : lineas.some((l) => !l.p) ? 'Hay productos que no existen en la lista.'
       : lineas.some((l) => !(l.cantidad > 0)) ? 'Todas las cantidades tienen que ser mayores a 0.'
-      : totalAsignado > (Number.isNaN(costo) ? 0 : costo) + 0.005 ? 'Lo asignado a pedidos supera el costo del flete.'
+      : salidaPrevista && llegadaEstimada && llegadaEstimada < salidaPrevista ? 'La llegada estimada no puede ser antes de la salida.'
       : null;
     if (falta || !dia) { error(falta ?? 'Elegí la fecha.'); return; }
 
@@ -123,18 +116,19 @@ function FormFlete({ borrador }: { borrador: BorradorFlete | null }) {
         flete: {
           id, fecha: dia, contactoId, origenId: origen, destinoId: destino,
           costo: Number.isNaN(costo) ? null : costo, guia: guia.trim(), nota: nota.trim(),
+          salida: salidaPrevista, llegadaEstimada,
         },
         items: lineas.map((l) => ({ fleteId: id, productoId: l.p?.id ?? '', cantidad: l.cantidad })),
         estados: M.caminoFlete(estadoInicial),
         momento: new Date(),
-        pedidos: asignacion.map((a) => ({ pedidoId: a.id, fleteId: id, costoAsignado: a.costo })),
       });
       setItems([itemVacio()]);
-      setPedidosSel([]);
-      setAsignado({});
+      setParaPedidos([]);
       setCostoTxt('');
       setGuia('');
       setNota('');
+      setSalida('');
+      setLlegada('');
       return `✓ Flete de ${nombre} registrado (${M.NOMBRE_ESTADO_FLETE[estadoInicial].toLowerCase()}).`;
     });
   }
@@ -157,21 +151,19 @@ function FormFlete({ borrador }: { borrador: BorradorFlete | null }) {
               leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none" />
             <TextInput label="Guía" maxLength={60} placeholder="Opcional" value={guia} onChange={(e) => { setGuia(e.currentTarget.value); }} />
           </Group>
+          <Group grow gap="xs" align="flex-start">
+            <TextInput label="Salida prevista" type="datetime-local" value={salida} onChange={(e) => { setSalida(e.currentTarget.value); }} />
+            <TextInput label="Llegada estimada" type="datetime-local" description="Opcional" value={llegada}
+              onChange={(e) => { setLlegada(e.currentTarget.value); }} />
+          </Group>
 
           {transferencia
             ? <Items modo="flete" deposito={origen} fecha={null} items={items} onChange={setItems} />
             : <Text size="sm" c="dimmed">Solo los fletes entre depósitos mueven stock.</Text>}
-
-          <MultiSelect label="Pedidos que lleva" placeholder={pedidosSel.length > 0 ? undefined : 'Ninguno'} data={opcionesPedidos} searchable
-            value={pedidosSel} onChange={setPedidosSel} />
-          {asignacion.map((a) => (
-            <Group key={a.id} gap="xs" wrap="nowrap">
-              <Text size="sm" style={{ flex: 1 }}>{etiquetas.pedido(a.id)}</Text>
-              <NumberInput size="xs" w={140} allowNegative={false} aria-label={`Costo asignado a ${etiquetas.pedido(a.id)}`}
-                value={asignado[a.id] ?? propuesto(a.id)} onChange={(v) => { setAsignado((x) => ({ ...x, [a.id]: v })); }}
-                leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none" />
-            </Group>
-          ))}
+          {paraPedidos.length > 0 && (
+            <Text size="xs" c="dimmed">Propuesto para cubrir lo que les falta a: {paraPedidos.map(etiquetas.pedido).join(', ')}.</Text>
+          )}
+          <Text size="xs" c="dimmed">El costo es gasto de logística del mes: no se reparte entre pedidos.</Text>
 
           <TextInput label="Nota" maxLength={200} placeholder="Opcional" value={nota} onChange={(e) => { setNota(e.currentTarget.value); }} />
           <div>
@@ -180,12 +172,6 @@ function FormFlete({ borrador }: { borrador: BorradorFlete | null }) {
               orientation={enCelular ? 'vertical' : 'horizontal'} fullWidth={enCelular}
               data={(['preparacion', 'camino', 'finalizado'] as const).map((e) => ({ value: e, label: M.NOMBRE_ESTADO_FLETE[e] }))} />
           </div>
-          {pedidosSel.length > 0 && (
-            <Group className="suave" px="md" py="xs" gap="xl">
-              <Resumen label="Asignado a pedidos" valor={fmtMoney(totalAsignado)} />
-              <Resumen label="Gasto de logística" valor={fmtMoney(Math.max(0, (Number.isNaN(costo) ? 0 : costo) - totalAsignado))} />
-            </Group>
-          )}
           <Button type="submit" loading={guardando}>Registrar flete</Button>
           <Mensaje msg={msg} />
         </Stack>
@@ -206,8 +192,6 @@ function ListaFletes({ resaltar }: { resaltar: FleteResaltado | null }) {
   }, [resaltar]);
   const items = new Map<string, M.FleteItem[]>();
   for (const it of datos.fletesItems) items.set(it.fleteId, [...(items.get(it.fleteId) ?? []), it]);
-  const pedidos = new Map<string, string[]>();
-  for (const p of datos.pedidosFletes) pedidos.set(p.fleteId, [...(pedidos.get(p.fleteId) ?? []), p.pedidoId]);
 
   const filas = datos.fletes
     .map((f) => ({ f, estado: M.estadoFlete(estadosFletes, f.id) }))
@@ -244,7 +228,12 @@ function ListaFletes({ resaltar }: { resaltar: FleteResaltado | null }) {
                   <Text size="sm" fw={500}><Vinculo a={{ tipo: 'flete', id: f.id }}>{nombres.contacto(f.contactoId)}</Vinculo></Text>
                   <Text size="xs" c="dimmed"><Recorrido flete={f} /></Text>
                   {(items.get(f.id) ?? []).map((it) => <Text key={it.productoId} size="xs">{fmtNum(it.cantidad)} {nombres.producto(it.productoId)}</Text>)}
-                  {pedidos.has(f.id) && <Text size="xs" c="dimmed">Pedidos: {(pedidos.get(f.id) ?? []).map(etiquetas.pedido).join(', ')}</Text>}
+                  {(f.salida ?? f.llegadaEstimada) && (
+                    <Text size="xs" c="dimmed">
+                      {[f.salida && `Sale ${fmtFechaHora(f.salida)}`, f.llegadaEstimada && `llega ${fmtFechaHora(f.llegadaEstimada)}`]
+                        .filter(Boolean).join(' · ')}
+                    </Text>
+                  )}
                 </Table.Td>
                 <Table.Td className="num">{fmtMoney(f.costo)}</Table.Td>
                 <Table.Td>

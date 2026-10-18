@@ -85,10 +85,9 @@ Entrá a https://console.cloud.google.com con la cuenta del dueño.
    | `Ventas` | `id`, `fecha`, `pedido_id`, `deposito_id`, `nota` |
    | `Ventas ítems` | `venta_id`, `linea`, `pedido_linea`, `producto_id`, `cantidad`, `precio`, `importe`, `costo` |
    | `Ventas comisiones` | `venta_id`, `linea`, `vendedor_id`, `porcentaje_regla`, `porcentaje`, `monto` |
-   | `Fletes` | `id`, `fecha`, `contacto_id`, `origen_id`, `destino_id`, `costo`, `guia`, `nota` |
+   | `Fletes` | `id`, `fecha`, `contacto_id`, `origen_id`, `destino_id`, `costo`, `guia`, `nota`, `salida`, `llegada_estimada` |
    | `Fletes ítems` | `flete_id`, `producto_id`, `cantidad` |
    | `Fletes estados` | `flete_id`, `fecha`, `estado` |
-   | `Pedidos fletes` | `pedido_id`, `flete_id`, `costo_asignado` |
    | `Ajustes` | `fecha`, `deposito_id`, `producto_id`, `cantidad`, `motivo` |
    | `Socios` | `id`, `nombre`, `vendedor_id`, `rol` |
    | `Cobros` | `fecha`, `venta_id`, `importe`, `medio`, `socio_id`, `nota` |
@@ -172,6 +171,16 @@ La hoja *Vendedores* tiene una cuarta columna, `localidad`: al tomar un pedido, 
 de la localidad del cliente. Si la planilla no la tiene, la app no abre hasta agregarla: escribí `localidad` en la celda **D1** de *Vendedores* y, en cada vendedor, su localidad
 tal como figura en *Contactos* (por ejemplo, `Rosario` para Guada/Hernán). Puede quedar vacía. Después,
 recargá la página.
+
+### Pasar una planilla que ya existe al modelo de fletes sin pedidos
+
+Los fletes ya no se asignan a pedidos (su costo es gasto de logística del mes) y guardan la salida y la llegada
+previstas. Si la planilla es anterior a este cambio, la app no abre hasta migrarla. Los datos que ya tiene no se
+tocan:
+
+1. En **Fletes**, escribí `salida` en **I1** y `llegada_estimada` en **J1**. Los fletes anteriores quedan vacíos.
+2. La hoja **Pedidos fletes** ya no se usa: la app la ignora. Podés borrarla o dejarla como historial.
+3. Recargá la página.
 
 ### Si la app dice que las columnas de una hoja no son las que espera
 

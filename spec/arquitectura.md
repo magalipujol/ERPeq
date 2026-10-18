@@ -88,7 +88,7 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
 | `registrarPedido` | `pedido`, `items`, `vendedores`, `momento`, `preciosNuevos`, `entrega`, `cobros` (opcional) | *Pedidos*, *Pedidos ítems*, *Pedidos estados* (`abierto`), *Pedidos vendedores*, *Precios* (productos sin precio de lista) y, en una venta directa, las de `registrarEntrega`. |
 | `registrarEntrega` | `Entrega` (`venta`, `items`, `comisiones`, `envio`) y `cobros` (opcional) | *Ventas*, *Ventas ítems*, *Ventas comisiones* (si hay), *Ventas envíos* (si hay), *Cobros* (si hay). |
 | `cambiarEstadoPedido` | `pedidoId`, `cancelado` o `cerrado`, `momento` | *Pedidos estados*. |
-| `registrarFlete` | `flete`, `items`, `estados`, `momento`, `pedidos`, `transporteNuevo` | *Contactos* (si el transporte es nuevo), *Fletes*, *Fletes ítems*, *Fletes estados* (uno por estado), *Pedidos fletes*. |
+| `registrarFlete` | `flete` (con la salida y la llegada previstas), `items`, `estados`, `momento`, `transporteNuevo` | *Contactos* (si el transporte es nuevo), *Fletes*, *Fletes ítems*, *Fletes estados* (uno por estado). No guarda pedidos: un flete lleva productos. |
 | `cambiarEstadoFlete` | `fleteId`, estado, `momento` | *Fletes estados*. |
 | `registrarCompra` | `lineas`, `productosNuevos`, `proveedorNuevo` | *Productos* (nuevos), *Contactos* (si el proveedor es nuevo), *Compras* (el importe lo calcula el adaptador). |
 | `registrarAjuste` | `Ajuste` | *Ajustes*. |

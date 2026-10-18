@@ -77,22 +77,24 @@ describe('operaciones sobre la planilla', () => {
     expect(M.cuentasVentas(leidos)[0]).toMatchObject({ importe: 5000, saldo: 5000 });
   });
 
-  it('un flete ya despachado guarda los estados anteriores y el reparto a pedidos', async () => {
+  it('un flete ya despachado guarda los estados anteriores y la salida y llegada previstas', async () => {
     expect.hasAssertions();
 
     const db = crearPlanillaEnMemoria();
     await db.registrarFlete({
-      flete: { id: 'F0001', fecha: dia, contactoId: 'C0004', origenId: 'BB', destinoId: 'ROS', costo: 900, guia: '', nota: '' },
+      flete: {
+        id: 'F0001', fecha: dia, contactoId: 'C0004', origenId: 'BB', destinoId: 'ROS', costo: 900, guia: '', nota: '',
+        salida: dia, llegadaEstimada: null,
+      },
       items: [{ fleteId: 'F0001', productoId: 'P001', cantidad: 3 }],
       estados: M.caminoFlete('camino'), momento: dia,
-      pedidos: [{ pedidoId: 'PE0001', fleteId: 'F0001', costoAsignado: 900 }],
       transporteNuevo: null,
     });
     await db.cambiarEstadoFlete('F0001', 'finalizado', dia);
 
     expect(db.hojas.contactos).toStrictEqual([]);
     expect(db.hojas.fletesEstados).toStrictEqual([['F0001', MOMENTO, 'preparacion'], ['F0001', MOMENTO, 'camino'], ['F0001', MOMENTO, 'finalizado']]);
-    expect(db.hojas.pedidosFletes).toStrictEqual([['PE0001', 'F0001', 900]]);
+    expect(db.hojas.fletes).toStrictEqual([['F0001', DIA, 'C0004', 'BB', 'ROS', 900, '', '', MOMENTO, '']]);
     expect(M.estadoFlete(M.estadosActuales((await db.leer()).fletesEstados), 'F0001')).toBe('finalizado');
   });
 

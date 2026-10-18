@@ -17,6 +17,13 @@ export const deISO = (s: string) => {
   const [a, m, d] = s.split('-').map(Number);
   return new Date(a, m - 1, d, 12);
 };
+// Valor de un <input type="datetime-local"> ("2026-10-18T09:30") → fecha local; null si está vacío o incompleto.
+export const deISOConHora = (s: string) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(s);
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5])) : null;
+};
+export const fmtFechaHora = (d: Date | null) =>
+  (d ? `${fmtFecha(d)} ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}` : '–');
 export const hora = () => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 export const unicos = (arr: (string | null | undefined)[]) =>
   [...new Set(arr.filter((v): v is string => Boolean(v)))].sort((a, b) => a.localeCompare(b, 'es'));

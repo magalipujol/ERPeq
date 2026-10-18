@@ -36,10 +36,9 @@ const datos: M.Datos = {
   ventas: [{ id: 'V1', fecha: fecha(2026, 10, 3), pedidoId: 'PE1', depositoId: 'ROS', nota: '' }],
   ventasItems: [{ ventaId: 'V1', linea: 1, pedidoLinea: 1, productoId: 'P001', cantidad: 4, precio: 1000, importe: 4000, costo: 600 }],
   ventasComisiones: [{ ventaId: 'V1', linea: 1, vendedorId: 'VEN01', porcentajeRegla: 10, porcentaje: 10, monto: 400 }],
-  fletes: [{ id: 'F1', fecha: fecha(2026, 10, 2), contactoId: 'C3', origenId: 'BB', destinoId: 'ROS', costo: 900, guia: '', nota: '' }],
+  fletes: [{ id: 'F1', fecha: fecha(2026, 10, 2), contactoId: 'C3', origenId: 'BB', destinoId: 'ROS', costo: 900, guia: '', nota: '', salida: null, llegadaEstimada: null }],
   fletesItems: [{ fleteId: 'F1', productoId: 'P001', cantidad: 2 }],
   fletesEstados: [{ ref: 'F1', fecha: null, estado: 'preparacion' }, { ref: 'F1', fecha: null, estado: 'camino' }],
-  pedidosFletes: [{ pedidoId: 'PE1', fleteId: 'F1', costoAsignado: 300 }],
   ajustes: [], socios: [],
   cobros: [{ fecha: fecha(2026, 10, 4), ventaId: 'V1', importe: 1000, medio: 'efectivo', socioId: 'SOC01', nota: '' }],
   rendiciones: [],
@@ -51,12 +50,11 @@ const resumenes = M.resumirPedidos(datos);
 const stock = M.calcularStock(datos, resumenes);
 
 describe('fichas', () => {
-  it('pedido: sus entregas con lo que falta cobrar, los fletes asignados y las compras hechas para él', () => {
+  it('pedido: sus entregas con lo que falta cobrar y las compras hechas para él', () => {
     const f = F.fichaPedido(datos, resumenes, 'PE1');
 
     expect(f?.resumen.estado).toBe('parcial');
     expect(f?.ventas).toStrictEqual([{ venta: datos.ventas[0], importe: 4000, cobrado: 1000, saldo: 3000 }]);
-    expect(f?.fletes).toStrictEqual([{ flete: datos.fletes[0], estado: 'camino', costoAsignado: 300 }]);
     expect(f?.compras.map((c) => c.fila)).toStrictEqual([3]);
     expect(F.fichaPedido(datos, resumenes, 'PE9')).toBeNull();
   });
@@ -104,7 +102,8 @@ describe('fichas', () => {
   });
 
   it('flete y compra', () => {
-    expect(F.fichaFlete(datos, 'F1')).toMatchObject({ estado: 'camino', items: [{ cantidad: 2 }], pedidos: [{ pedidoId: 'PE1' }] });
+    expect(F.fichaFlete(datos, 'F1')).toMatchObject({ estado: 'camino', items: [{ cantidad: 2 }] });
+    expect(F.fichaFlete(datos, 'F1')).not.toHaveProperty('pedidos');
     expect(F.fichaFlete(datos, 'F1')?.historial.map((e) => e.estado)).toStrictEqual(['preparacion', 'camino']);
     expect(F.fichaCompra(datos, '3')?.pedidoId).toBe('PE1');
     expect(F.fichaCompra(datos, '9')).toBeNull();
