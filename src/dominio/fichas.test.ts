@@ -45,6 +45,7 @@ const datos: M.Datos = {
   rendiciones: [],
   recetas: [{ id: 'RE1', version: 1, desde: fecha(2026, 1, 1), productoId: 'P003', cantidad: 1, activa: true }],
   recetasItems: [{ recetaId: 'RE1', version: 1, productoId: 'P002', cantidad: 1 }],
+  envios: [], ventasEnvios: [],
 };
 const resumenes = M.resumirPedidos(datos);
 const stock = M.calcularStock(datos, resumenes);

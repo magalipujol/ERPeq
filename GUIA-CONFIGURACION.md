@@ -95,6 +95,8 @@ Entrá a https://console.cloud.google.com con la cuenta del dueño.
    | `Rendiciones` | `fecha`, `de_socio_id`, `a_socio_id`, `importe`, `medio`, `nota` |
    | `Recetas` | `id`, `version`, `desde`, `producto_id`, `cantidad`, `activa` |
    | `Recetas ítems` | `receta_id`, `version`, `producto_id`, `cantidad` |
+   | `Envíos` | `minimo`, `costo`, `desde` |
+   | `Ventas envíos` | `venta_id`, `vendedor_id`, `costo_regla`, `costo` |
 
 3. Cargá desde la fila 2 los datos fijos: *Depósitos* (por ejemplo `BB`, `General`, `Bahía Blanca`),
    *Productos*, *Tipos de cliente*, *Vendedores* (`activo` = `sí`; `localidad`, donde trabaja), los clientes,
@@ -148,6 +150,21 @@ nombre exacto y estos encabezados en la fila 1:
 Quedan vacías: las recetas se cargan desde la app. El producto que sale de cada receta tiene que estar antes en
 *Productos* y tener precio de lista (en la pantalla Precios). Las fabricaciones se guardan en *Ajustes*. Después,
 recargá la página.
+
+### Agregar las hojas de envíos a una planilla que ya existe
+
+El costo de envío (lo que se le cobra al cliente cuando el pedido es por menos de un monto mínimo) usa dos
+hojas: *Envíos* y *Ventas envíos*. Si la planilla no las tiene, la app funciona igual, pero la pantalla Precios
+avisa que faltan y las entregas no cobran envío. Para agregarlas, igual que las de caja: una hoja nueva por cada
+una, con el nombre exacto (con tilde en *Envíos*) y estos encabezados en la fila 1:
+
+| Hoja | Fila 1 (columnas A, B, C…) |
+|---|---|
+| `Envíos` | `minimo`, `costo`, `desde` |
+| `Ventas envíos` | `venta_id`, `vendedor_id`, `costo_regla`, `costo` |
+
+Quedan vacías. Después de recargar la página, cargá el costo en la pantalla **Precios**, en *Costo de envío*
+(por ejemplo, sin cargo desde $150.000 y $5.000 de envío).
 
 ### Agregar la localidad de los vendedores a una planilla que ya existe
 

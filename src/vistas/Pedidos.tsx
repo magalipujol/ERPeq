@@ -211,6 +211,10 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
     importe: '', medio: 'efectivo', socioId: M.socioPropuesto(datos.socios, resumen.vendedores)?.id ?? '',
   }));
   const cobrado = aNumero(cobro.importe);
+  // Envío: solo si la base tiene las hojas y hay alguna regla cargada en Precios.
+  const conEnvio = datos.envios.length > 0 && faltantesDe(info, 'envios').length === 0;
+  const [envioTxt, setEnvioTxt] = useState<number | string | null>(null);
+  const [envioPara, setEnvioPara] = useState<string | null>(null);
   const [fecha, setFecha] = useState(hoyISO);
   const [nota, setNota] = useState('');
   // Solo las cantidades editadas; las demás proponen entregar todo lo pendiente.
@@ -238,13 +242,18 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
   const aEntregar = lineas.filter((l) => l.cantidad > 0);
   const importe = aEntregar.reduce((s, l) => s + l.importe, 0);
   const comision = aEntregar.reduce((s, l) => s + l.comisiones.reduce((a, c) => a + c.monto, 0), 0);
-  const ganancia = importe - comision - aEntregar.reduce((s, l) => s + l.cantidad * (l.costo ?? 0), 0);
+  const envioRegla = conEnvio ? M.envioPropuesto(datos, pedido.id, resumen.importePedido, dia) : 0;
+  const envio = conEnvio ? numeroOCero(envioTxt ?? envioRegla) : 0;
+  // El envío es de quien hace la entrega: se propone el primer vendedor del pedido; sin vendedores, el negocio.
+  const paraVendedor = envioPara ?? vendedores.at(0)?.id ?? '';
+  const total = M.redondear(importe + envio);
+  const ganancia = importe + (paraVendedor === '' ? envio : 0) - comision - aEntregar.reduce((s, l) => s + l.cantidad * (l.costo ?? 0), 0);
 
   function entregar() {
     const falta = !dia ? 'Elegí la fecha.'
       : aEntregar.length === 0 ? 'Indicá qué cantidad se entrega.'
       : lineas.some((l) => l.cantidad > l.linea.pendiente) ? 'No se puede entregar más de lo pendiente.'
-      : cobrado > M.redondear(importe) ? 'No se puede cobrar más que el importe de la entrega.'
+      : cobrado > total ? 'No se puede cobrar más que el importe de la entrega.'
       : null;
     if (falta || !dia) { error(falta ?? 'Elegí la fecha.'); return; }
     const socio = datos.socios.find((s) => s.id === cobro.socioId);
@@ -253,13 +262,16 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
       const cobros: M.Cobro[] = conCobro && cobrado > 0 && socio ? [{
         fecha: dia, ventaId: venta.id, importe: cobrado, medio: cobro.medio, socioId: socio.id, nota: '',
       }] : [];
-      await db.registrarEntrega(M.armarEntrega(venta, aEntregar), cobros);
+      const envioEntrega = conEnvio ? { vendedorId: paraVendedor, costoRegla: envioRegla, costo: envio } : null;
+      await db.registrarEntrega(M.armarEntrega(venta, aEntregar, envioEntrega), cobros);
       setCobro((c) => ({ ...c, importe: '' }));
+      setEnvioTxt(null);
+      setEnvioPara(null);
       // La próxima entrega vuelve a proponer lo pendiente y los porcentajes de las reglas.
       setCantidades({});
       setEditados({});
       setNota('');
-      return `✓ Entrega a ${nombres.contacto(pedido.contactoId)} registrada (${fmtMoney(importe)}).`;
+      return `✓ Entrega a ${nombres.contacto(pedido.contactoId)} registrada (${fmtMoney(total)}${envio > 0 ? `, con ${fmtMoney(envio)} de envío` : ''}).`;
     });
   }
 
@@ -318,11 +330,22 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
             </Paper>
           );
         })}
+        {conEnvio && (
+          <Group grow gap="xs" align="flex-start">
+            <NumberInput label="Costo de envío" allowNegative={false} value={envioTxt ?? envioRegla} onChange={setEnvioTxt}
+              leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none"
+              description={envio !== envioRegla ? `Regla: ${fmtMoney(envioRegla)}` : envioRegla > 0 ? 'Pedido por menos del mínimo' : undefined} />
+            <NativeSelect label="El envío es para" value={paraVendedor} onChange={(e) => { setEnvioPara(e.currentTarget.value); }}
+              data={[...vendedores.map((v) => ({ value: v.id, label: v.nombre })), { value: '', label: 'El negocio' }]} />
+          </Group>
+        )}
         <TextInput label="Nota" maxLength={200} placeholder="Opcional" value={nota} onChange={(e) => { setNota(e.currentTarget.value); }} />
         {conCobro && <CamposCobro valor={cobro} onChange={setCobro} socios={datos.socios} etiqueta="Cobrado en la entrega" placeholder="Sin cobrar" />}
         {aEntregar.length > 0 && (
           <Group className="suave" px="md" py="xs" gap="xl">
             <Resumen label="Importe" valor={fmtMoney(importe)} />
+            {envio > 0 && <Resumen label="Envío" valor={fmtMoney(envio)} />}
+            {envio > 0 && <Resumen label="Total" valor={fmtMoney(total)} />}
             <Resumen label="Comisión" valor={fmtMoney(comision)} />
             <Resumen label="Ganancia" valor={fmtMoney(ganancia)} />
           </Group>

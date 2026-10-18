@@ -6,7 +6,7 @@
 //   Precios de lista: Almendras $3.000, Avena $800, Mix europeo $2.500. Miel sin precio.
 //   Reglas: Leo 10% general; Guada/Hernán 3% general y 7% en Almendras.
 //   Socios: Sampatti (la empresa de Leo, dueña de la mercadería) y Guada/Hernán. Sin cobros ni rendiciones.
-//   Sin recetas ni fabricaciones.
+//   Sin recetas ni fabricaciones. Sin costo de envío.
 import { devices, type Page } from '@playwright/test'
 import { AHORA, esperarDatosStock, expect, HOY_SERIE, ir, stockEn, test } from './google-falso'
 
@@ -714,4 +714,46 @@ test('desde una venta se recorre lo relacionado en fichas y se termina entregand
   await page.getByRole('dialog', { name: 'Pedido de Ana · 10/10/26' }).getByRole('button', { name: 'Registrar entrega' }).click()
   await expect(page.getByRole('dialog')).toBeHidden()
   await expect(page.getByRole('heading', { name: 'Entregar pedido de Ana · 10/10/26' })).toBeVisible()
+})
+
+test('un pedido por menos del mínimo paga envío, que es para el vendedor que entrega', async ({ page, google }) => {
+  // 1. En Precios se configura el envío: $5.000 para los pedidos por menos de $150.000.
+  await ir(page, 'Precios')
+  const envio = page.getByRole('form', { name: 'Cambiar costo de envío' })
+  await envio.getByLabel('Sin cargo desde', { exact: true }).fill('150000')
+  await envio.getByLabel('Costo del envío', { exact: true }).fill('5000')
+  await envio.getByRole('button', { name: 'Guardar envío' }).click()
+  await expect(envio.getByText(/✓ Envío de \$\s5\.000 para pedidos por menos de \$\s150\.000/)).toBeVisible()
+  expect(google.escrituras[0]).toEqual({ 'Envíos': [[150000, 5000, HOY_SERIE]] })
+
+  // 2. Se entrega el pedido de avena de Ana (10 kg × 800 = 8.000, menos del mínimo): propone $5.000 de envío
+  //    para Guada/Hernán, el vendedor del pedido. Total 8.000 + 5.000 = 13.000; comisión 3% de 8.000 = 240.
+  await ir(page, 'Pedidos')
+  await filaPedido(page, 'Ana · 10/10/26').getByRole('button', { name: 'Entregar' }).click()
+  const entrega = formEntrega(page)
+  await expect(entrega.getByLabel('Costo de envío', { exact: true })).toHaveValue('5000')
+  await expect(entrega.getByLabel('El envío es para', { exact: true })).toHaveValue('VEN02')
+  await expect(entrega.getByRole('group', { name: 'Total' })).toContainText('13.000')
+  await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
+  await expect(page.getByText('El pedido de Ana · 10/10/26 quedó entregado.')).toBeVisible()
+  expect(google.escrituras[1]).toEqual({
+    'Ventas': [['V0002', HOY_SERIE, 'PE0002', 'ROS', '']],
+    'Ventas ítems': [['V0002', 1, 1, 'P002', 10, 800, 8000, 500]],
+    'Ventas comisiones': [['V0002', 1, 'VEN02', 3, 3, 240]],
+    'Ventas envíos': [['V0002', 'VEN02', 5000, 5000]],
+  })
+
+  // 3. En Caja la venta queda a cobrar por 13.000. Guada/Hernán la cobra en efectivo.
+  await ir(page, 'Caja')
+  await expect(page.getByRole('table', { name: 'Ventas a cobrar' }).getByRole('row', { name: 'Venta a Ana · 16/10/26' })).toContainText('13.000')
+  const cobro = page.getByRole('form', { name: 'Registrar cobro' })
+  await cobro.getByLabel('Venta', { exact: true }).selectOption({ label: 'Ana · 16/10/26 · falta $ 13.000' })
+  await expect(cobro.getByLabel('Importe', { exact: true })).toHaveValue('13000')
+  await cobro.getByRole('button', { name: 'Registrar cobro' }).click()
+  await expect(cobro.getByText(/✓ Cobro de \$\s13\.000/)).toBeVisible()
+
+  // 4. Guada/Hernán se queda con su comisión y el envío: debe 13.000 − 240 − 5.000 = 7.760.
+  const cuenta = page.getByRole('region', { name: 'Cuenta de Guada/Hernán' })
+  await expect(cuenta).toContainText(/Guada\/Hernán le debe \$\s7\.760 a Sampatti\./)
+  await expect(cuenta.getByRole('row').filter({ hasText: 'Envío de la venta a Ana · 16/10/26' })).toContainText(/-\$\s5\.000/)
 })

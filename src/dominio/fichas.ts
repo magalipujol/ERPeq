@@ -47,8 +47,9 @@ export interface FichaVenta {
   items: ItemVenta[];
   comisiones: { vendedorId: string; monto: number }[]; // por vendedor, sumando los ítems
   cobros: M.Cobro[];
-  importe: number; cobrado: number; saldo: number;
-  // Importe − comisiones − costo de la mercadería. Null si algún ítem no tiene costo.
+  envio: M.VentaEnvio | undefined;
+  importe: number; cobrado: number; saldo: number; // el importe incluye el envío
+  // Importe − comisiones − envío del vendedor − costo de la mercadería. Null si algún ítem no tiene costo.
   ganancia: number | null;
 }
 
@@ -62,13 +63,14 @@ export function fichaVenta(datos: M.Datos, id: string): FichaVenta | null {
     porVendedor.set(c.vendedorId, M.redondear((porVendedor.get(c.vendedorId) ?? 0) + c.monto));
   }
   const comision = items.reduce((s, it) => s + it.comision, 0);
+  const envioVendedor = cuenta.envio && cuenta.envio.vendedorId !== '' ? cuenta.envio.costo : 0;
   return {
     venta: cuenta.venta, pedido: cuenta.pedido, items,
     comisiones: [...porVendedor].map(([vendedorId, monto]) => ({ vendedorId, monto })),
     cobros: recientes(datos.cobros.filter((c) => c.ventaId === id)),
-    importe: cuenta.importe, cobrado: cuenta.cobrado, saldo: cuenta.saldo,
+    envio: cuenta.envio, importe: cuenta.importe, cobrado: cuenta.cobrado, saldo: cuenta.saldo,
     ganancia: items.some((it) => it.ganancia === null) ? null
-      : M.redondear(cuenta.importe - comision - items.reduce((s, it) => s + it.cantidad * (it.costo ?? 0), 0)),
+      : M.redondear(cuenta.importe - comision - envioVendedor - items.reduce((s, it) => s + it.cantidad * (it.costo ?? 0), 0)),
   };
 }
 

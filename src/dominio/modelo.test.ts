@@ -8,7 +8,7 @@ const vacios = (): M.Datos => ({
   productos: [], contactos: [], tipos: [], vendedores: [], precios: [], reglas: [], compras: [], pedidos: [],
   pedidosItems: [], pedidosEstados: [], pedidosVendedores: [], ventas: [], ventasItems: [], ventasComisiones: [],
   fletes: [], fletesItems: [], fletesEstados: [], pedidosFletes: [], ajustes: [], socios: [], cobros: [], rendiciones: [],
-  recetas: [], recetasItems: [],
+  recetas: [], recetasItems: [], envios: [], ventasEnvios: [],
 });
 const datos = (d: Partial<M.Datos>): M.Datos => ({ ...vacios(), ...d });
 const producto = (id: string): M.Producto => ({ id, producto: id, unidad: 'kg', minimo: 0 });
@@ -433,6 +433,70 @@ describe('cuentasSocios', () => {
     const d = caja({ socios: [SAMPATTI, { ...GH, vendedores: [] }] });
 
     expect(de(d)).toMatchObject({ comisiones: 0, saldo: 0, movimientos: [] });
+  });
+});
+
+describe('envíos', () => {
+  // Desde el 1/1 se cobran $5.000 a los pedidos por menos de $150.000; desde el 1/11, $6.000 por menos de $200.000.
+  const envios: M.ReglaEnvio[] = [
+    { minimo: 150000, costo: 5000, desde: fecha(2026, 1, 1) },
+    { minimo: 200000, costo: 6000, desde: fecha(2026, 11, 1) },
+  ];
+  const envio = (ventaId: string, vendedorId: string, costo: number, costoRegla: number | null = costo): M.VentaEnvio => ({
+    ventaId, vendedorId, costoRegla, costo,
+  });
+
+  it('se propone el costo vigente si el pedido es por menos del mínimo', () => {
+    const d = caja({ envios });
+
+    expect(M.envioPropuesto(d, 'PE0009', 100000, fecha(2026, 10, 18))).toBe(5000);
+    expect(M.envioPropuesto(d, 'PE0009', 150000, fecha(2026, 10, 18))).toBe(0);
+    expect(M.envioPropuesto(d, 'PE0009', 180000, fecha(2026, 11, 2))).toBe(6000);
+    expect(M.envioPropuesto(caja(), 'PE0009', 100000, fecha(2026, 10, 18))).toBe(0); // sin reglas
+  });
+
+  it('se cobra una vez por pedido: si una entrega anterior ya lo registró, aunque en 0, no se vuelve a proponer', () => {
+    expect(M.envioPropuesto(caja({ envios, ventasEnvios: [envio('V0001', 'VEN01', 5000)] }), 'PE0001', 8000, null)).toBe(0);
+    expect(M.envioPropuesto(caja({ envios, ventasEnvios: [envio('V0001', 'VEN01', 0, 5000)] }), 'PE0001', 8000, null)).toBe(0);
+    expect(M.envioPropuesto(caja({ envios, ventasEnvios: [envio('V0001', 'VEN01', 5000)] }), 'PE0002', 15000, null)).toBe(6000);
+  });
+
+  it('armarEntrega guarda el envío si se propuso o se cobró', () => {
+    const v = venta('V1', 'PE1');
+    const con = (costoRegla: number, costo: number) => M.armarEntrega(v, [], { vendedorId: 'VEN01', costoRegla, costo }).envio;
+
+    expect(con(5000, 4000)).toStrictEqual({ ventaId: 'V1', vendedorId: 'VEN01', costoRegla: 5000, costo: 4000 });
+    expect(con(5000, 0)).toMatchObject({ costo: 0 });
+    expect(con(0, 0)).toBeNull();
+    expect(M.armarEntrega(v, []).envio).toBeNull();
+  });
+
+  it('el envío suma al importe a cobrar de la venta', () => {
+    const d = caja({ ventasEnvios: [envio('V0001', 'VEN01', 5000)] });
+
+    expect(M.cuentasVentas(d).map((c) => [c.venta.id, c.importe, c.saldo])).toStrictEqual([['V0001', 13000, 13000], ['V0002', 15000, 15000]]);
+  });
+
+  it('el envío del vendedor se le acredita al socio como la comisión', () => {
+    const d = caja({
+      ventasComisiones: caja().ventasComisiones.slice(0, 1),
+      ventasEnvios: [envio('V0001', 'VEN01', 5000)], cobros: [cobro('V0001', 13000, 'efectivo', GH)],
+    });
+    const [cuenta] = M.cuentasSocios(d);
+
+    // Cobró 13.000 (8.000 + 5.000 de envío) y se queda con 240 de comisión y 5.000 de envío: debe 7.760.
+    expect(cuenta).toMatchObject({ cobradoEfectivo: 13000, comisiones: 240, envios: 5000, saldo: 7760 });
+    expect(cuenta.movimientos.map((m) => [m.tipo, m.importe, m.saldo])).toStrictEqual([
+      ['cobro', 13000, 13000], ['comision', -240, 12760], ['envio', -5000, 7760],
+    ]);
+  });
+
+  it('en la ganancia del pedido solo suma el envío que queda para el negocio', () => {
+    const ganancia = (vendedorId: string) => M.resumirPedidos(caja({ ventasEnvios: [envio('V0001', vendedorId, 5000)] }))[0];
+
+    // 8.000 − 240 de comisión − 10 × 500 de costo = 2.760.
+    expect(ganancia('VEN01')).toMatchObject({ envios: 5000, ganancia: 2760 });
+    expect(ganancia('')).toMatchObject({ envios: 5000, ganancia: 7760 });
   });
 });
 

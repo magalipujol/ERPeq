@@ -39,3 +39,20 @@ test('si la planilla todavía no tiene las hojas de caja, la app funciona y avis
   await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
   await expect(page.getByText('El pedido de Ana · 10/10/26 quedó entregado.')).toBeVisible()
 })
+
+test('si la planilla todavía no tiene las hojas de envíos, Precios avisa cuáles crear y la entrega no cobra envío', async ({ page, ingresar, google }) => {
+  for (const hoja of ['Envíos', 'Ventas envíos']) Reflect.deleteProperty(google.hojas, hoja)
+  await page.goto('/#precios')
+  await ingresar()
+
+  await expect(page.getByText('venta_id, vendedor_id, costo_regla, costo')).toBeVisible()
+  await expect(page.getByRole('form', { name: 'Cambiar costo de envío' })).toHaveCount(0)
+
+  await ir(page, 'Pedidos')
+  await page.getByRole('row', { name: 'Pedido Ana · 10/10/26' }).getByRole('button', { name: 'Entregar' }).click()
+  const entrega = page.getByRole('form', { name: 'Registrar entrega' })
+  await expect(entrega.getByLabel('Costo de envío', { exact: true })).toHaveCount(0)
+  await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
+  await expect(page.getByText('El pedido de Ana · 10/10/26 quedó entregado.')).toBeVisible()
+  expect(google.escrituras[0]).not.toHaveProperty('Ventas envíos')
+})

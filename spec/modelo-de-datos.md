@@ -121,6 +121,10 @@ erDiagram
     SOCIO ||--o{ RENDICION : entrega
     SOCIO ||--o{ RENDICION : recibe
 
+    VENTA ||--o| VENTA_ENVIO : "cobra"
+    VENDEDOR |o--o{ VENTA_ENVIO : "se queda con"
+    REGLA_ENVIO ||..o{ VENTA_ENVIO : "propone"
+
     PRODUCTO ||--o{ RECETA : "sale de"
     RECETA ||--o{ RECETA_ITEM : "lleva (por versión)"
     PRODUCTO ||--o{ RECETA_ITEM : "insumo"
@@ -276,6 +280,17 @@ erDiagram
         string medio "efectivo, transferencia"
         string nota
     }
+    REGLA_ENVIO {
+        number minimo "sin cargo desde"
+        number costo
+        date desde
+    }
+    VENTA_ENVIO {
+        string venta_id FK
+        string vendedor_id FK "vacío = el negocio"
+        number costo_regla "por defecto (copia)"
+        number costo "el que se cobró"
+    }
     RECETA {
         string id PK "RE0001 (con version)"
         number version PK "1, 2, ..."
@@ -360,6 +375,16 @@ son obligatorias: si falta una, la lectura falla.
 | **Cobros** | `fecha`, `venta_id`, `importe`, `medio`, `socio_id`, `nota` | Lo que pagó el cliente por una venta. Una venta puede tener varios cobros (pagos parciales o mezcla de medios). `medio`: `efectivo` o `transferencia`. `socio_id` es quien recibió la plata (en mano o en su cuenta). |
 | **Rendiciones** | `fecha`, `de_socio_id`, `a_socio_id`, `importe`, `medio`, `nota` | Plata que un socio le entrega a otro para saldar la cuenta: un socio que le rinde al dueño lo cobrado, o el dueño que le paga a un socio sus comisiones. |
 
+### Envíos
+
+También son **opcionales**: si faltan, la pantalla Precios avisa cuáles crear y las entregas no cobran envío.
+El detalle está en [Envíos](#envíos).
+
+| Hoja | Columnas | Notas |
+|---|---|---|
+| **Envíos** | `minimo`, `costo`, `desde` | Costo de envío vigente desde `desde`: los pedidos por menos de `minimo` pagan `costo`. Un `costo` de 0 deja de cobrarlo. Una fila sin `costo` no se lee. |
+| **Ventas envíos** | `venta_id`, `vendedor_id`, `costo_regla` (c), `costo` | Envío de una entrega (a lo sumo una fila por venta). `vendedor_id`: quien hizo la entrega y se queda con el envío; vacío si es para el negocio. `costo_regla` es el que propuso *Envíos*; `costo`, el que se cobró. |
+
 ## Valores por defecto y sobreescritura
 
 El precio de un pedido y el porcentaje de comisión de una entrega tienen un valor por defecto, que se
@@ -371,6 +396,7 @@ modifica lo ya cargado.
 |---|---|---|---|---|---|
 | Precio unitario | *Precios* (vigente a la fecha del pedido) | Nuevo pedido | *Pedidos ítems* | `precio_lista` | `precio` |
 | % de comisión | *Reglas de comisión* (vigente a la fecha de la entrega) | Registrar entrega | *Ventas comisiones* | `porcentaje_regla` | `porcentaje` |
+| Costo de envío | *Envíos* (vigente a la fecha de la entrega) | Registrar entrega | *Ventas envíos* | `costo_regla` | `costo` |
 
 ```mermaid
 flowchart LR
@@ -483,7 +509,8 @@ stateDiagram-v2
 
 Una venta siempre pertenece a un pedido, así todos los análisis (fletes, ganancia por pedido) funcionan
 igual. Cuando se vende en el momento, sin pedido previo, se marca "Se entrega ahora (venta directa)" en el
-pedido: la app crea el pedido y la venta en la misma operación, con las comisiones de las reglas.
+pedido: la app crea el pedido y la venta en la misma operación, con las comisiones de las reglas. La venta
+directa no cobra envío: el cliente se lleva la mercadería en el momento.
 
 ## Ventas (entregas)
 
@@ -514,6 +541,52 @@ flowchart LR
 ```
 
 En el ejemplo, la venta V0101 tiene dos ítems (las dos primeras cajas) y la V0108 completa el maní.
+
+## Envíos
+
+Lo dijo el dueño: "si es por compras menores a $150.000 cobro $5.000 el envío; si es mayor, es sin cargo. El
+envío que se cobra va para quien hace la entrega, sumando también la comisión".
+
+- El costo y el mínimo se configuran en la pantalla **Precios** (hoja *Envíos*), con su fecha `desde`, como los
+  precios de lista.
+- Al registrar una entrega, la app propone el `costo` de la regla vigente si el **importe del pedido** (lo
+  pedido, no solo lo que se entrega ahora) es menor que `minimo`. Se cobra **una vez por pedido**: si una
+  entrega anterior del pedido ya tiene fila en *Ventas envíos* (aunque sea con costo 0), las siguientes
+  proponen 0.
+- El costo se puede cambiar en la entrega (por ejemplo, 0 para no cobrarlo). La fila guarda los dos valores.
+  Si no se propuso ni se cobró nada, no se agrega fila.
+- El envío es para quien hizo la entrega: la app propone el primer vendedor del pedido; si el pedido no tiene
+  vendedores, el negocio. Se puede elegir otro vendedor del pedido o el negocio.
+
+Efectos:
+
+- **Importe a cobrar de la venta**: suma el envío (ver [Saldo a cobrar](#saldo-a-cobrar-de-una-venta)).
+- **Cuenta del socio**: el envío de un vendedor se le acredita a su socio, como la comisión (ver
+  [Cuenta de un socio](#cuenta-de-un-socio-con-el-dueño)).
+- **Ganancia del pedido**: el envío de un vendedor entra (lo paga el cliente) y sale (es del vendedor): no la
+  cambia. El que queda para el negocio la aumenta.
+- **Ventas y Análisis** (por producto) no incluyen el envío: no es de ningún producto.
+
+```mermaid
+flowchart TD
+    E["Registrar entrega<br/>del pedido"] --> R{"¿Hay regla vigente y el<br/>importe del pedido &lt; mínimo?"}
+    R -- no --> C0["Propone $0"]
+    R -- sí --> Y{"¿Otra entrega del pedido<br/>ya registró el envío?"}
+    Y -- sí --> C0
+    Y -- no --> CR["Propone el costo de la regla"]
+    C0 & CR --> U["El usuario lo confirma o lo cambia<br/>y elige para quién es"]
+    U --> G{"¿Se propuso o<br/>se cobró algo?"}
+    G -- sí --> F["Fila en Ventas envíos:<br/>venta_id, vendedor_id, costo_regla, costo"]
+    G -- no --> N["Sin fila"]
+```
+
+| Caso (regla: $5.000 por menos de $150.000) | Propuesto | Fila en *Ventas envíos* |
+|---|---|---|
+| Pedido de $8.000 de avena de Guada/Hernán, entregado entero | $5.000 | `V0101`, `VEN02`, 5000, 5000 |
+| Pedido de $180.000, entregado entero | $0 | ninguna |
+| Pedido de $100.000 de Leo, entregado en dos partes | 1.ª: $5.000 · 2.ª: $0 | solo en la 1.ª: `V0102`, `VEN01`, 5000, 5000 |
+| Pedido de $8.000 en que no se cobra el envío (se pone 0) | $5.000 | `V0103`, `VEN02`, 5000, 0 |
+| Pedido de $8.000 sin vendedores | $5.000, para el negocio | `V0104`, vacío, 5000, 5000 |
 
 ## Comisiones
 
@@ -688,7 +761,7 @@ venta para saber cómo repartirla.
 ### Saldo a cobrar de una venta
 
 ```
-importe(venta) = Σ importe de sus Ventas ítems
+importe(venta) = Σ importe de sus Ventas ítems + costo de su fila en Ventas envíos
 cobrado(venta) = Σ importe de sus Cobros
 a cobrar(venta) = importe(venta) − cobrado(venta)
 ```
@@ -706,6 +779,7 @@ Para cada socio que no es el dueño:
 ```
 saldo(socio) =   Σ cobros que recibió el socio
                − Σ comisiones de sus vendedores (de todas las ventas, las cobre quien las cobre)
+               − Σ envíos de sus vendedores (ídem)
                − Σ rendiciones que el socio entregó
                + Σ rendiciones que el socio recibió
 ```
@@ -713,8 +787,8 @@ saldo(socio) =   Σ cobros que recibió el socio
 - **Positivo**: el socio tiene plata del dueño; le debe ese saldo.
 - **Negativo**: el dueño le debe al socio (por ejemplo, comisiones de ventas que cobró el dueño).
 
-El dueño no tiene cuenta: es la contraparte de las demás. Las comisiones de un vendedor sin socio, o del
-propio dueño (Leo), no entran en ninguna cuenta.
+El dueño no tiene cuenta: es la contraparte de las demás. Las comisiones y envíos de un vendedor sin socio, o
+del propio dueño (Leo), no entran en ninguna cuenta.
 
 ```mermaid
 flowchart LR
@@ -723,6 +797,7 @@ flowchart LR
     GH -- "rendición" --> SA
     SA -- "pago de comisiones" --> GH
     VC["Ventas comisiones<br/>de VEN01"] -. "se acreditan a" .-> GH
+    VE["Ventas envíos<br/>de VEN01"] -. "se acreditan a" .-> GH
 ```
 
 ### Ejemplo
@@ -735,6 +810,7 @@ Guada/Hernán (vendedor `VEN01`, socio `SOC02`) tiene 3% de comisión en avena y
 | 2. Le rinde $7.000 en efectivo a Sampatti. | Rendiciones: 16/10, `SOC02`, `SOC01`, $7.000, `efectivo` | 7.760 − 7.000 = **$760** |
 | 3. Entrega `V0102`: 5 kg de almendras × $3.000 = $15.000. La cobra Sampatti por transferencia. | Ventas comisiones: `V0102`, `VEN01`, 7%, $1.050 · Cobros: 16/10, `V0102`, $15.000, `transferencia`, `SOC01` | 760 − 1.050 = **−$290** (Sampatti le debe) |
 | 4. Sampatti le transfiere $290. | Rendiciones: 16/10, `SOC01`, `SOC02`, $290, `transferencia` | −290 + 290 = **$0** (al día) |
+| 5. Entrega `V0103`: otro pedido de $8.000 de avena, por menos del mínimo: $5.000 de envío para Guada/Hernán. Cobra $13.000 en efectivo. | Ventas comisiones: `V0103`, `VEN01`, 3%, $240 · Ventas envíos: `V0103`, `VEN01`, 5000, 5000 · Cobros: 16/10, `V0103`, $13.000, `efectivo`, `SOC02` | 13.000 − 240 − 5.000 = **$7.760** |
 
 Es lo que dijo el dueño: "si Guada/Hernán vendieron y se llevan comisión, pero además cobran en efectivo,
 le deben a Sampatti efectivo − comisión".
@@ -748,7 +824,8 @@ comisiones y los fletes:
 - **Comisiones** = Σ `monto` de las comisiones de sus ventas.
 - **Costo de mercadería** = Σ `cantidad × costo` de los ítems de sus ventas.
 - **Costo de fletes** = Σ `costo_asignado` de sus filas en *Pedidos fletes*.
-- **Ganancia** = importe − comisiones − costo de mercadería − costo de fletes.
+- **Envíos del negocio** = Σ `costo` de sus filas en *Ventas envíos* sin `vendedor_id`.
+- **Ganancia** = importe + envíos del negocio − comisiones − costo de mercadería − costo de fletes.
 
 Reparto del costo de un flete entre varios pedidos: la app propone repartir `costo` en proporción al
 importe pedido, y el usuario puede cambiarlo. Lo que no se asigna a ningún pedido (por ejemplo, una
@@ -775,7 +852,11 @@ La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e 
 - **Depósito por pedido o por línea.** Esta spec usa uno por pedido. Si un pedido puede entregarse en parte
   desde Bahía Blanca y en parte desde Rosario, el depósito pasa a la línea.
 - **Comisión o cobro de los fletes.** No se modelan; falta saber si el flete tiene una comisión o un cobro
-  al cliente.
+  al cliente. El envío al cliente final sí se cobra (ver [Envíos](#envíos)).
+- **Envío con varios vendedores.** Si el pedido tiene varios vendedores, el envío es de uno solo (el que se
+  elige en la entrega). Falta saber si en algún caso se reparte.
+- **Envío por entrega o por pedido.** El mínimo se compara con el importe del pedido y el envío se cobra una
+  vez. Si cada entrega parcial es un viaje que se cobra aparte, hay que comparar con el importe de la entrega.
 - **IDs con varios usuarios a la vez.** La app calcula el siguiente ID con lo último que leyó. Si dos
   personas cargan un pedido al mismo tiempo, pueden quedar dos con el mismo ID.
 - **Costo de las transferencias.** Esta spec lo trata como gasto de logística (o lo asigna a pedidos). La

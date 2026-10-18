@@ -44,6 +44,8 @@ export const ENCABEZADOS: Record<string, string[]> = {
   'Rendiciones': ['fecha', 'de_socio_id', 'a_socio_id', 'importe', 'medio', 'nota'],
   'Recetas': ['id', 'version', 'desde', 'producto_id', 'cantidad', 'activa'],
   'Recetas ítems': ['receta_id', 'version', 'producto_id', 'cantidad'],
+  'Envíos': ['minimo', 'costo', 'desde'],
+  'Ventas envíos': ['venta_id', 'vendedor_id', 'costo_regla', 'costo'],
 }
 
 // Filas de datos de cada hoja (sin el encabezado).
@@ -105,6 +107,8 @@ export function planillaInicial(): Record<string, Fila[]> {
     'Rendiciones': [],
     'Recetas': [],
     'Recetas ítems': [],
+    'Envíos': [],
+    'Ventas envíos': [],
   }
 }
 

@@ -32,6 +32,7 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
 | Compras, Ajustes | Entradas y correcciones de stock. |
 | Recetas, Recetas ítems | Recetas de productos de *Productos* (insumos por tanda y cuánto sale, con versiones). Cada fabricación se guarda en *Ajustes*. Si faltan, la app las lee vacías y la pantalla Recetas avisa. |
 | Fletes, Fletes ítems, Fletes estados, Pedidos fletes | Viajes con su costo; los que van entre depósitos mueven stock según su estado. |
+| Envíos, Ventas envíos | Costo de envío para los pedidos por menos de un mínimo (con fecha desde) y el envío que cobró cada entrega, para el vendedor que la hizo. Si faltan, la app las lee vacías y la pantalla Precios avisa. |
 | Socios, Cobros, Rendiciones | Quién cobró cada venta (efectivo o transferencia) y lo que los socios se rinden entre sí. Si faltan, la app las lee vacías y la pantalla Caja avisa. |
 
 Cada fila guarda los IDs de lo que referencia (producto, contacto, vendedor, socio), nunca sus nombres: el nombre
@@ -40,8 +41,8 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
 
 **Stock** = compras − entregas + ajustes (incluidas las fabricaciones) ± fletes entre depósitos (en camino: sale del origen; finalizado: entra en el destino).
 **Costo promedio** = promedio ponderado de todas las compras con precio del producto.
-**Ganancia de un pedido** = lo entregado − comisiones − cantidad × costo promedio − fletes asignados.
-**Saldo de un socio con el dueño** = lo que cobró − las comisiones de sus vendedores − lo que le rindió + lo que recibió del dueño.
+**Ganancia de un pedido** = lo entregado + envíos que quedan para el negocio − comisiones − cantidad × costo promedio − fletes asignados.
+**Saldo de un socio con el dueño** = lo que cobró − las comisiones y envíos de sus vendedores − lo que le rindió + lo que recibió del dueño.
 
 ## Archivos
 

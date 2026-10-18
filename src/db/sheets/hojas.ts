@@ -6,7 +6,7 @@
 import {
   type Ajuste, type Cobro, type Compra, type ContactoNuevo, type Datos, type Flete, type FleteItem, type Pedido,
   type PedidoFlete, type PedidoItem, type PedidoVendedor, type Precio, type Producto, type Receta, type RecetaItem, redondear,
-  type ReglaComision, type Rendicion, type Socio, type Venta, type VentaComision, type VentaItem,
+  type ReglaComision, type ReglaEnvio, type Rendicion, type Socio, type Venta, type VentaComision, type VentaEnvio, type VentaItem,
 } from '../../dominio/modelo';
 import type { AreaOpcional } from '../puerto';
 import { type Celda, deSerie, type Fila, type ValorCelda } from './celdas';
@@ -38,6 +38,8 @@ export const HOJAS = {
   rendiciones: ['Rendiciones', ['fecha', 'de_socio_id', 'a_socio_id', 'importe', 'medio', 'nota']],
   recetas: ['Recetas', ['id', 'version', 'desde', 'producto_id', 'cantidad', 'activa']],
   recetasItems: ['Recetas ítems', ['receta_id', 'version', 'producto_id', 'cantidad']],
+  envios: ['Envíos', ['minimo', 'costo', 'desde']],
+  ventasEnvios: ['Ventas envíos', ['venta_id', 'vendedor_id', 'costo_regla', 'costo']],
 } as const satisfies Record<string, readonly [string, readonly string[]]>;
 
 export type ClaveHoja = keyof typeof HOJAS;
@@ -51,6 +53,7 @@ export const encabezados = (k: ClaveHoja): readonly string[] => HOJAS[k][1];
 export const OPCIONALES = {
   socios: 'caja', cobros: 'caja', rendiciones: 'caja',
   recetas: 'recetas', recetasItems: 'recetas',
+  envios: 'envios', ventasEnvios: 'envios',
 } as const satisfies Partial<Record<ClaveHoja, AreaOpcional>>;
 type Opcional = keyof typeof OPCIONALES;
 
@@ -156,6 +159,10 @@ export function parsear(crudo: Fila[][]): Datos {
       activa: txt(f[5]) === '' || bool(f[5]),
     })),
     recetasItems: de('recetasItems', 0, (f) => ({ recetaId: txt(f[0]), version: num(f[1]) ?? 1, productoId: txt(f[2]), cantidad: num(f[3]) ?? 0 })),
+    envios: de('envios', 1, (f) => ({ minimo: num(f[0]) ?? 0, costo: num(f[1]) ?? 0, desde: fecha(f[2]) })),
+    ventasEnvios: de('ventasEnvios', 0, (f) => ({
+      ventaId: txt(f[0]), vendedorId: txt(f[1]), costoRegla: num(f[2]), costo: num(f[3]) ?? 0,
+    })),
   };
 }
 
@@ -205,6 +212,8 @@ export const filas = {
   rendicion: (r: Rendicion): ValorCelda[] => [r.fecha, r.deId, r.aId, r.importe, r.medio, r.nota],
   receta: (r: Receta): ValorCelda[] => [r.id, r.version, r.desde, r.productoId, r.cantidad, r.activa ? 'sí' : 'no'],
   recetaItem: (i: RecetaItem): ValorCelda[] => [i.recetaId, i.version, i.productoId, i.cantidad],
+  envio: (r: ReglaEnvio): ValorCelda[] => [r.minimo, r.costo, r.desde],
+  ventaEnvio: (e: VentaEnvio): ValorCelda[] => [e.ventaId, e.vendedorId, vacio(e.costoRegla), e.costo],
 };
 
 // Filas por hoja que se escriben juntas en una operación.

@@ -69,6 +69,21 @@ describe('socios, cobros y rendiciones', () => {
     expect(d.rendiciones[0]).toMatchObject({ deId: 'SOC02', aId: 'SOC01', importe: 5000, nota: 'Rendición semanal' });
   });
 
+  it('lee las reglas de envío (salteando las que no tienen costo) y los envíos de las ventas', () => {
+    const d = H.parsear(crudo({
+      envios: [[150000, 5000, 46023], [200000, '', 46327], [200000, 0, 46327]],
+      ventasEnvios: [['V0001', 'VEN02', 5000, 5000], ['V0002', '', '', 3000]],
+    }));
+
+    expect(d.envios).toStrictEqual([
+      { minimo: 150000, costo: 5000, desde: new Date(2026, 0, 1) }, { minimo: 200000, costo: 0, desde: new Date(2026, 10, 1) },
+    ]);
+    expect(d.ventasEnvios).toStrictEqual([
+      { ventaId: 'V0001', vendedorId: 'VEN02', costoRegla: 5000, costo: 5000 },
+      { ventaId: 'V0002', vendedorId: '', costoRegla: null, costo: 3000 },
+    ]);
+  });
+
   it('agrupa las hojas opcionales que faltan por área', () => {
     const titulos = H.CLAVES.map(H.nombreHoja).filter((t) => !['Cobros', 'Recetas', 'Recetas ítems'].includes(t));
 

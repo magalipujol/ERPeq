@@ -58,8 +58,8 @@ flowchart LR
 
 | Ficha | Datos | Vínculos y listas | Acción |
 |---|---|---|---|
-| **Pedido** | Cliente, fecha, depósito de entrega, estado, vendedores, nota; importe, entregado y ganancia | Productos (con lo entregado y pendiente), entregas (con lo que falta cobrar de cada una), fletes asignados (con su costo) y compras hechas para el pedido | *Registrar entrega* (si está abierto): abre Pedidos con ese pedido elegido |
-| **Venta** | Cliente, pedido, fecha, depósito, comisión por vendedor, nota; importe, cobrado, a cobrar y ganancia | Productos entregados (con costo y ganancia de cada uno) y cobros | — |
+| **Pedido** | Cliente, fecha, depósito de entrega, estado, vendedores, nota; importe, entregado, envío (si hubo) y ganancia | Productos (con lo entregado y pendiente), entregas (con lo que falta cobrar de cada una), fletes asignados (con su costo) y compras hechas para el pedido | *Registrar entrega* (si está abierto): abre Pedidos con ese pedido elegido |
+| **Venta** | Cliente, pedido, fecha, depósito, comisión por vendedor, envío (y para quién), nota; importe (con el envío), cobrado, a cobrar y ganancia | Productos entregados (con costo y ganancia de cada uno) y cobros | — |
 | **Producto** | Unidad, precio de lista vigente hoy, costo promedio, mínimo | Stock por depósito (en depósito, en camino, en fletes en preparación y comprometido), receta activa que lo fabrica, recetas activas que lo usan, pedidos abiertos con algo pendiente, ventas y compras | — |
 | **Contacto** | Tipo, teléfono, dirección, email, localidad, observaciones (los vacíos no se muestran) | Como cliente: cantidad de pedidos, lo comprado (entregado), lo que debe y sus pedidos. Como proveedor: sus compras. Como transporte: sus fletes | — |
 | **Flete** | Transporte, fecha, recorrido, estado, costo, guía, nota | Mercadería, pedidos (con el costo asignado) y los estados por los que pasó | *Ver en Fletes*: abre Fletes con la fila resaltada |
@@ -70,8 +70,8 @@ flowchart LR
 - El título del modal nombra lo que se ve sin IDs, como el resto de la app: "Pedido de Ana · 10/10/26", "Venta a
   Ana · 05/10/26", "Flete de Interprovincial · 08/10/26", "Producto: Almendras", "Cliente: Ana", "Compra a Prov A ·
   02/10/26". Una compra no tiene ID: la ficha la identifica por su número de fila en *Compras*.
-- La ganancia de una venta es importe − comisiones − cantidad × costo de cada ítem; si algún ítem no tiene costo, no
-  se muestra.
+- La ganancia de una venta es importe − comisiones − envío del vendedor − cantidad × costo de cada ítem (el envío
+  que queda para el negocio suma); si algún ítem no tiene costo, no se muestra.
 
 ## Ejemplo
 

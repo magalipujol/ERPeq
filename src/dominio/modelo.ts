@@ -47,6 +47,11 @@ export type Medio = 'efectivo' | 'transferencia';
 export const MEDIOS: readonly Medio[] = ['efectivo', 'transferencia'];
 export const NOMBRE_MEDIO: Record<Medio, string> = { efectivo: 'Efectivo', transferencia: 'Transferencia' };
 // `vendedores`: vendedores cuyas comisiones se le acreditan. `duenio`: el dueño de la mercadería.
+// Costo de envío vigente desde `desde`: las entregas de pedidos por menos de `minimo` le cobran `costo` al cliente.
+export interface ReglaEnvio { minimo: number; costo: number; desde: Date | null }
+// Envío que se le cobra al cliente en una entrega. `vendedorId`: quien hizo la entrega y se queda con el envío
+// (vacío si queda para el negocio). `costoRegla`: el que se propuso; `costo`: el que se cobró.
+export interface VentaEnvio { ventaId: string; vendedorId: string; costoRegla: number | null; costo: number }
 export interface Socio { id: string; nombre: string; vendedores: string[]; duenio: boolean }
 export interface Cobro { fecha: Date | null; ventaId: string; importe: number; medio: string; socioId: string; nota: string }
 export interface Rendicion { fecha: Date | null; deId: string; aId: string; importe: number; medio: string; nota: string }
@@ -63,7 +68,7 @@ export interface Datos {
   pedidosEstados: RegistroEstado[]; pedidosVendedores: PedidoVendedor[]; ventas: Venta[]; ventasItems: VentaItem[];
   ventasComisiones: VentaComision[]; fletes: Flete[]; fletesItems: FleteItem[]; fletesEstados: RegistroEstado[];
   pedidosFletes: PedidoFlete[]; ajustes: Ajuste[]; socios: Socio[]; cobros: Cobro[]; rendiciones: Rendicion[];
-  recetas: Receta[]; recetasItems: RecetaItem[];
+  recetas: Receta[]; recetasItems: RecetaItem[]; envios: ReglaEnvio[]; ventasEnvios: VentaEnvio[];
 }
 
 // Nombres de lo que las filas referencian por ID. Un ID que no existe se muestra tal cual.
@@ -156,6 +161,20 @@ export function porcentajeRegla(reglas: ReglaComision[], vendedorId: string, pro
 export const montoComision = (importe: number, porcentaje: number) =>
   redondear(importe * (Number.isFinite(porcentaje) ? porcentaje : 0) / 100);
 
+// Regla de envío vigente a una fecha (null si no hay ninguna).
+export const reglaEnvio = (reglas: ReglaEnvio[], fecha: Date | null) => vigente(reglas, fecha);
+
+// Envío que se propone para una entrega del pedido: el costo de la regla vigente si el pedido es por menos del
+// mínimo. Se cobra una vez por pedido: si una entrega anterior ya registró el envío (aunque haya sido 0), es 0.
+export function envioPropuesto(
+  datos: Pick<Datos, 'envios' | 'ventas' | 'ventasEnvios'>, pedidoId: string, importePedido: number, fecha: Date | null,
+) {
+  const regla = reglaEnvio(datos.envios, fecha);
+  if (!regla || importePedido >= regla.minimo) return 0;
+  const ventas = new Set(datos.ventas.filter((v) => v.pedidoId === pedidoId).map((v) => v.id));
+  return datos.ventasEnvios.some((e) => ventas.has(e.ventaId)) ? 0 : regla.costo;
+}
+
 // Costo promedio ponderado por producto, sobre todas las compras con precio (todos los depósitos).
 export function costosPromedio(compras: Compra[]) {
   const acum = new Map<string, { cant: number; total: number }>();
@@ -194,6 +213,7 @@ export interface ResumenPedido {
   pedido: Pedido; estado: EstadoPedido; lineas: LineaPedido[]; vendedores: string[];
   importePedido: number; importeEntregado: number; comisiones: number; costoMercaderia: number;
   sinCosto: boolean; fletes: number; ganancia: number; ventas: Venta[];
+  envios: number; // envío cobrado al cliente en sus entregas
 }
 
 export function resumirPedidos(datos: Datos): ResumenPedido[] {
@@ -212,6 +232,7 @@ export function resumirPedidos(datos: Datos): ResumenPedido[] {
   for (const it of datos.ventasItems) ventaItems.set(it.ventaId, [...(ventaItems.get(it.ventaId) ?? []), it]);
   const comisionDeVenta = new Map<string, number>();
   for (const c of datos.ventasComisiones) comisionDeVenta.set(c.ventaId, (comisionDeVenta.get(c.ventaId) ?? 0) + c.monto);
+  const envioDeVenta = new Map(datos.ventasEnvios.map((e) => [e.ventaId, e]));
 
   return datos.pedidos.map((pedido) => {
     const manual = estados.get(pedido.id);
@@ -230,13 +251,17 @@ export function resumirPedidos(datos: Datos): ResumenPedido[] {
     const comisiones = redondear(vs.reduce((s, v) => s + (comisionDeVenta.get(v.id) ?? 0), 0));
     const costoMercaderia = redondear(its.reduce((s, it) => s + it.cantidad * (it.costo ?? 0), 0));
     const costoFletes = redondear((fletes.get(pedido.id) ?? []).reduce((s, f) => s + (f.costoAsignado ?? 0), 0));
+    const envios = vs.flatMap((v) => envioDeVenta.get(v.id) ?? []);
+    // El envío que se queda el vendedor entra y sale: solo suma a la ganancia el que queda para el negocio.
+    const enviosNegocio = envios.reduce((s, e) => s + (e.vendedorId === '' ? e.costo : 0), 0);
     return {
       pedido, estado, lineas, ventas: vs,
       vendedores: (vendedores.get(pedido.id) ?? []).map((v) => v.vendedorId),
       importePedido: redondear(lineas.reduce((s, l) => s + l.cantidad * l.precio, 0)),
       importeEntregado, comisiones, costoMercaderia, fletes: costoFletes,
+      envios: redondear(envios.reduce((s, e) => s + e.costo, 0)),
       sinCosto: its.some((it) => it.costo === null),
-      ganancia: redondear(importeEntregado - comisiones - costoMercaderia - costoFletes),
+      ganancia: redondear(importeEntregado + enviosNegocio - comisiones - costoMercaderia - costoFletes),
     };
   });
 }
@@ -500,12 +525,15 @@ export interface LineaEntrega {
   comisiones: { vendedor: Vendedor; porcentajeRegla: number; porcentaje: number }[];
 }
 
-// Una entrega (venta) de un pedido con sus ítems y comisiones, lista para guardar.
-export interface Entrega { venta: Venta; items: VentaItem[]; comisiones: VentaComision[] }
+// Una entrega (venta) de un pedido con sus ítems, comisiones y envío, lista para guardar.
+export interface Entrega { venta: Venta; items: VentaItem[]; comisiones: VentaComision[]; envio: VentaEnvio | null }
+
+export type EnvioEntrega = Omit<VentaEnvio, 'ventaId'>;
 
 // Numera los ítems entregados (se saltean las líneas sin cantidad), calcula importes y una comisión
-// por vendedor y línea.
-export function armarEntrega(venta: Venta, lineas: LineaEntrega[]): Entrega {
+// por vendedor y línea. El envío se guarda si se propuso o se cobró: así las entregas siguientes del pedido
+// ya no lo proponen.
+export function armarEntrega(venta: Venta, lineas: LineaEntrega[], envio: EnvioEntrega | null = null): Entrega {
   const items: VentaItem[] = [];
   const comisiones: VentaComision[] = [];
   lineas.filter((l) => l.cantidad > 0).forEach((l, i) => {
@@ -520,7 +548,8 @@ export function armarEntrega(venta: Venta, lineas: LineaEntrega[]): Entrega {
       });
     }
   });
-  return { venta, items, comisiones };
+  const conEnvio = envio !== null && (envio.costo > 0 || (envio.costoRegla ?? 0) > 0);
+  return { venta, items, comisiones, envio: envio && conEnvio ? { ventaId: venta.id, ...envio } : null };
 }
 
 // Estados que se registran al dar de alta un flete: para uno ya despachado o terminado quedan también
@@ -542,10 +571,11 @@ export function socioDeVendedor(socios: Socio[]) {
   return res;
 }
 
-// Importe de cada venta: Σ importe de sus ítems.
-export function importePorVenta(datos: Pick<Datos, 'ventasItems'>) {
+// Importe de cada venta: Σ importe de sus ítems + envío.
+export function importePorVenta(datos: Pick<Datos, 'ventasItems' | 'ventasEnvios'>) {
   const res = new Map<string, number>();
   for (const it of datos.ventasItems) res.set(it.ventaId, redondear((res.get(it.ventaId) ?? 0) + it.importe));
+  for (const e of datos.ventasEnvios) res.set(e.ventaId, redondear((res.get(e.ventaId) ?? 0) + e.costo));
   return res;
 }
 
@@ -555,23 +585,27 @@ export function cobradoPorVenta(cobros: Cobro[]) {
   return res;
 }
 
-export interface CuentaVenta { venta: Venta; pedido: Pedido | undefined; importe: number; cobrado: number; saldo: number }
+// `importe` incluye el envío.
+export interface CuentaVenta {
+  venta: Venta; pedido: Pedido | undefined; importe: number; envio: VentaEnvio | undefined; cobrado: number; saldo: number;
+}
 
 // Todas las ventas con lo cobrado y lo que falta cobrar.
 export function cuentasVentas(datos: Datos): CuentaVenta[] {
   const importes = importePorVenta(datos);
   const cobrado = cobradoPorVenta(datos.cobros);
   const pedidos = new Map(datos.pedidos.map((p) => [p.id, p]));
+  const envios = new Map(datos.ventasEnvios.map((e) => [e.ventaId, e]));
   return datos.ventas.map((venta) => {
     const importe = importes.get(venta.id) ?? 0;
     const c = cobrado.get(venta.id) ?? 0;
-    return { venta, pedido: pedidos.get(venta.pedidoId), importe, cobrado: c, saldo: redondear(importe - c) };
+    return { venta, pedido: pedidos.get(venta.pedidoId), importe, envio: envios.get(venta.id), cobrado: c, saldo: redondear(importe - c) };
   });
 }
 
 export const ventasACobrar = (datos: Datos) => cuentasVentas(datos).filter((c) => c.saldo > 0);
 
-export type TipoMovimiento = 'cobro' | 'comision' | 'entrego' | 'recibio';
+export type TipoMovimiento = 'cobro' | 'comision' | 'envio' | 'entrego' | 'recibio';
 export interface MovimientoSocio {
   fecha: Date | null; tipo: TipoMovimiento; ref: string; detalle: string; medio: string;
   importe: number; // + suma a lo que el socio tiene del negocio; − resta
@@ -580,15 +614,15 @@ export interface MovimientoSocio {
 
 export interface CuentaSocio {
   socio: Socio;
-  cobradoEfectivo: number; cobradoTransferencia: number; comisiones: number; entregado: number; recibido: number;
+  cobradoEfectivo: number; cobradoTransferencia: number; comisiones: number; envios: number; entregado: number; recibido: number;
   // Positivo: el socio tiene plata del negocio y se la debe al dueño. Negativo: el dueño le debe.
   saldo: number;
   movimientos: MovimientoSocio[];
 }
 
 // Cuenta de cada socio que no es el dueño:
-//   saldo = cobros que recibió − comisiones de sus vendedores − rendiciones que entregó + rendiciones que recibió
-// Las comisiones cuentan todas, también las de ventas que cobró otro socio o que todavía no se cobraron.
+//   saldo = cobros que recibió − comisiones y envíos de sus vendedores − rendiciones que entregó + rendiciones que recibió
+// Las comisiones y los envíos cuentan todos, también los de ventas que cobró otro socio o que todavía no se cobraron.
 export function cuentasSocios(datos: Datos): CuentaSocio[] {
   const deVendedor = socioDeVendedor(datos.socios);
   const ventas = new Map(datos.ventas.map((v) => [v.id, v]));
@@ -597,7 +631,7 @@ export function cuentasSocios(datos: Datos): CuentaSocio[] {
   const cliente = (ventaId: string) => clientes.get(ventas.get(ventaId)?.pedidoId ?? '') ?? '';
 
   const cuentas = new Map(datos.socios.filter((s) => !s.duenio).map((socio) => [socio.id, {
-    socio, cobradoEfectivo: 0, cobradoTransferencia: 0, comisiones: 0, entregado: 0, recibido: 0, saldo: 0,
+    socio, cobradoEfectivo: 0, cobradoTransferencia: 0, comisiones: 0, envios: 0, entregado: 0, recibido: 0, saldo: 0,
     movimientos: [] as MovimientoSocio[],
   }]));
 
@@ -629,6 +663,17 @@ export function cuentasSocios(datos: Datos): CuentaSocio[] {
     });
   }
 
+  for (const e of datos.ventasEnvios) {
+    const socio = deVendedor.get(e.vendedorId);
+    const cu = socio && cuentas.get(socio.id);
+    if (!cu || e.costo === 0) continue;
+    cu.envios += e.costo;
+    cu.movimientos.push({
+      fecha: ventas.get(e.ventaId)?.fecha ?? null, tipo: 'envio', ref: e.ventaId, detalle: cliente(e.ventaId), medio: '',
+      importe: -e.costo, saldo: 0,
+    });
+  }
+
   for (const r of datos.rendiciones) {
     const de = cuentas.get(r.deId);
     if (de) {
@@ -645,14 +690,14 @@ export function cuentasSocios(datos: Datos): CuentaSocio[] {
   return [...cuentas.values()].map((cu) => ({
     ...cu,
     cobradoEfectivo: redondear(cu.cobradoEfectivo), cobradoTransferencia: redondear(cu.cobradoTransferencia),
-    comisiones: redondear(cu.comisiones), entregado: redondear(cu.entregado), recibido: redondear(cu.recibido),
-    saldo: redondear(cu.cobradoEfectivo + cu.cobradoTransferencia - cu.comisiones - cu.entregado + cu.recibido),
+    comisiones: redondear(cu.comisiones), envios: redondear(cu.envios), entregado: redondear(cu.entregado), recibido: redondear(cu.recibido),
+    saldo: redondear(cu.cobradoEfectivo + cu.cobradoTransferencia - cu.comisiones - cu.envios - cu.entregado + cu.recibido),
     movimientos: conSaldo(cu.movimientos),
   }));
 }
 
 // Ordena por fecha y agrega el saldo acumulado. El orden es estable: ante la misma fecha quedan los cobros,
-// después las comisiones y después las rendiciones.
+// después las comisiones y envíos y después las rendiciones.
 function conSaldo(movimientos: MovimientoSocio[]) {
   let saldo = 0;
   return movimientos.toSorted((x, y) => (x.fecha?.getTime() ?? 0) - (y.fecha?.getTime() ?? 0))

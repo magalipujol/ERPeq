@@ -59,6 +59,24 @@ describe('operaciones sobre la planilla', () => {
     expect(M.cuentasVentas(await db.leer()).find((c) => c.venta.id === 'V0001')).toMatchObject({ importe: 6000, cobrado: 2000, saldo: 4000 });
   });
 
+  it('una entrega con envío lo guarda junto con la venta y lo suma a lo que hay que cobrar', async () => {
+    expect.hasAssertions();
+
+    const db = crearPlanillaEnMemoria();
+    await db.registrarReglaEnvio({ minimo: 150000, costo: 5000, desde: dia });
+    const venta: M.Venta = { id: 'V0001', fecha: dia, pedidoId: 'PE0001', depositoId: 'BB', nota: '' };
+    await db.registrarEntrega(M.armarEntrega(venta, [], { vendedorId: 'VEN01', costoRegla: 5000, costo: 5000 }));
+
+    expect(db.escrituras).toHaveLength(2);
+    expect(db.escrituras[0]).toStrictEqual({ envios: [[150000, 5000, dia]] });
+    expect(db.escrituras[1].ventasEnvios).toStrictEqual([['V0001', 'VEN01', 5000, 5000]]);
+
+    const leidos = await db.leer();
+
+    expect(leidos.envios).toStrictEqual([{ minimo: 150000, costo: 5000, desde: new Date(2026, 9, 16) }]);
+    expect(M.cuentasVentas(leidos)[0]).toMatchObject({ importe: 5000, saldo: 5000 });
+  });
+
   it('un flete ya despachado guarda los estados anteriores y el reparto a pedidos', async () => {
     expect.hasAssertions();
 

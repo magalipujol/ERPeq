@@ -3,7 +3,7 @@
 // Ver spec/arquitectura.md.
 import type {
   Ajuste, Cobro, Compra, ContactoNuevo, Datos, Entrega, EstadoFlete, Flete, FleteItem, Pedido, PedidoFlete, PedidoItem,
-  Precio, Producto, Receta, RecetaItem, ReglaComision, Rendicion,
+  Precio, Producto, Receta, RecetaItem, ReglaComision, ReglaEnvio, Rendicion,
 } from '../dominio/modelo';
 
 export class SesionVencida extends Error {
@@ -13,9 +13,9 @@ export class SinAcceso extends Error {
   constructor() { super('Esta cuenta no tiene acceso a la planilla de ERPeq.'); }
 }
 
-// Áreas que funcionan solo si la base tiene sus datos: la caja (socios, cobros y rendiciones) y las recetas
-// (recetas y sus insumos).
-export type AreaOpcional = 'caja' | 'recetas';
+// Áreas que funcionan solo si la base tiene sus datos: la caja (socios, cobros y rendiciones), las recetas
+// (recetas y sus insumos) y los envíos (reglas de envío y envíos cobrados en las entregas).
+export type AreaOpcional = 'caja' | 'recetas' | 'envios';
 
 // Algo que la base todavía no tiene y hay que crear a mano (en Sheets, una hoja con sus encabezados).
 export interface Faltante { area: AreaOpcional; nombre: string; encabezados: string[] }
@@ -86,6 +86,7 @@ export interface Operaciones {
   registrarAjuste: (a: Ajuste) => Promise<void>;
   registrarPrecio: (p: Precio) => Promise<void>;
   registrarReglaComision: (r: ReglaComision) => Promise<void>;
+  registrarReglaEnvio: (r: ReglaEnvio) => Promise<void>;
   registrarCobro: (c: Cobro) => Promise<void>;
   registrarRendicion: (r: Rendicion) => Promise<void>;
   registrarReceta: (r: RecetaNueva) => Promise<void>;

@@ -66,7 +66,8 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
 
 - **Sesión:** `configurada`, `iniciar(alVencer)`, `ingresar()`, `salir()` y `abrir()`, que devuelve el
   título y la URL de la base y lo que le falta a cada área opcional (`faltantes`, cada uno con su `area`:
-  `caja` para *Socios*, *Cobros* y *Rendiciones*, `recetas` para *Recetas* y *Recetas ítems*;
+  `caja` para *Socios*, *Cobros* y *Rendiciones*, `recetas` para *Recetas* y *Recetas ítems*, `envios` para
+  *Envíos* y *Ventas envíos*;
   en Sheets, las hojas que no existen, con sus encabezados; la UI los filtra con `faltantesDe`), o lanza `SinAcceso` si la cuenta
   no puede abrirla. Una llamada con la sesión vencida lanza `SesionVencida` y avisa con `alVencer`.
   `iniciar` devuelve `true` si sigue vigente una sesión anterior (al recargar la página o en otra pestaña):
@@ -85,7 +86,7 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
 | Operación | Datos | Hojas donde agrega filas (adaptador Sheets) |
 |---|---|---|
 | `registrarPedido` | `pedido`, `items`, `vendedores`, `momento`, `preciosNuevos`, `entrega`, `cobros` (opcional) | *Pedidos*, *Pedidos ítems*, *Pedidos estados* (`abierto`), *Pedidos vendedores*, *Precios* (productos sin precio de lista) y, en una venta directa, las de `registrarEntrega`. |
-| `registrarEntrega` | `Entrega` (`venta`, `items`, `comisiones`) y `cobros` (opcional) | *Ventas*, *Ventas ítems*, *Ventas comisiones* (si hay), *Cobros* (si hay). |
+| `registrarEntrega` | `Entrega` (`venta`, `items`, `comisiones`, `envio`) y `cobros` (opcional) | *Ventas*, *Ventas ítems*, *Ventas comisiones* (si hay), *Ventas envíos* (si hay), *Cobros* (si hay). |
 | `cambiarEstadoPedido` | `pedidoId`, `cancelado` o `cerrado`, `momento` | *Pedidos estados*. |
 | `registrarFlete` | `flete`, `items`, `estados`, `momento`, `pedidos`, `transporteNuevo` | *Contactos* (si el transporte es nuevo), *Fletes*, *Fletes ítems*, *Fletes estados* (uno por estado), *Pedidos fletes*. |
 | `cambiarEstadoFlete` | `fleteId`, estado, `momento` | *Fletes estados*. |
@@ -93,6 +94,7 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
 | `registrarAjuste` | `Ajuste` | *Ajustes*. |
 | `registrarPrecio` | `Precio` | *Precios*. |
 | `registrarReglaComision` | `ReglaComision` | *Reglas de comisión*. |
+| `registrarReglaEnvio` | `ReglaEnvio` | *Envíos*. |
 | `registrarCobro` | `Cobro` | *Cobros*. |
 | `registrarRendicion` | `Rendicion` | *Rendiciones*. |
 | `registrarReceta` | `receta` (una versión), `items` | *Recetas*, *Recetas ítems* (si hay). |

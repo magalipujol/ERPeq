@@ -41,7 +41,7 @@ function datos(): M.Datos {
       { pedidoId: 'PE2', fleteId: 'F2', costoAsignado: null },
       { pedidoId: 'PE3', fleteId: 'F2', costoAsignado: null },
     ],
-    ajustes: [], socios: [], cobros: [], rendiciones: [], recetas: [], recetasItems: [],
+    ajustes: [], socios: [], cobros: [], rendiciones: [], recetas: [], recetasItems: [], envios: [], ventasEnvios: [],
   };
 }
 
