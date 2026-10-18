@@ -1,9 +1,9 @@
-import { Alert, Button, Code, Grid, Group, NativeSelect, NumberInput, Paper, ScrollArea, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Button, Code, Grid, Group, NativeSelect, NumberInput, ScrollArea, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { type Etiquetas, useBase, useGuardar } from '../base';
 import { faltantesDe } from '../db/puerto';
 import { CamposCobro, type DatosCobro } from '../componentes/Cobro';
-import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
+import { Encabezado, Kpis, Mensaje, Resumen, Seccion } from '../componentes/comunes';
 import { Vinculo } from '../componentes/Fichas';
 import { useFila } from '../ficha';
 import { aNumero, deISO, fmtFecha, fmtMoney, hoyISO, porFechaDesc } from '../formato';
@@ -26,7 +26,7 @@ export function Caja() {
 
   return (
     <Stack gap="md">
-      <Title order={2}>Caja</Title>
+      <Title order={2} className="titulo-pantalla">Caja</Title>
       {faltan.length > 0 && (
         <Alert color="yellow" title="Faltan hojas en la planilla">
           <Text size="sm" mb="xs">Para registrar cobros y rendiciones, creá estas hojas con estos encabezados en la fila 1:</Text>
@@ -102,7 +102,7 @@ function FormCobro({ aCobrar, ventaId, onVenta, deshabilitado }: {
   }
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Registrar cobro" />
       <form onSubmit={enviar} noValidate aria-label="Registrar cobro">
         <Stack gap="sm">
@@ -117,7 +117,7 @@ function FormCobro({ aCobrar, ventaId, onVenta, deshabilitado }: {
           <Mensaje msg={msg} />
         </Stack>
       </form>
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -156,7 +156,7 @@ function FormRendicion({ cuentas, duenio, deshabilitado }: { cuentas: M.CuentaSo
   }
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Rendición entre socios" />
       <form onSubmit={enviar} noValidate aria-label="Rendición entre socios">
         <Stack gap="sm">
@@ -179,7 +179,7 @@ function FormRendicion({ cuentas, duenio, deshabilitado }: { cuentas: M.CuentaSo
           <Mensaje msg={msg} />
         </Stack>
       </form>
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -188,7 +188,7 @@ function ListaACobrar({ aCobrar, onCobrar }: { aCobrar: M.CuentaVenta[]; onCobra
   const fila = useFila();
   const filas = aCobrar.toSorted((a, b) => porFechaDesc(a.venta, b.venta));
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Ventas a cobrar" />
       <ScrollArea.Autosize mah={420} type="auto">
         <Table stickyHeader highlightOnHover fz="sm" aria-label="Ventas a cobrar" style={{ opacity: cargando ? 0.5 : 1, whiteSpace: 'nowrap' }}>
@@ -217,7 +217,7 @@ function ListaACobrar({ aCobrar, onCobrar }: { aCobrar: M.CuentaVenta[]; onCobra
         </Table>
       </ScrollArea.Autosize>
       {filas.length === 0 && <Text c="dimmed" mt="xs">No hay ventas por cobrar.</Text>}
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -237,10 +237,10 @@ function CuentaSocio({ cuenta, duenio }: { cuenta: M.CuentaSocio; duenio: M.Soci
   const medio = (m: string) => (M.MEDIOS as readonly string[]).includes(m) ? M.NOMBRE_MEDIO[m as M.Medio] : m;
 
   return (
-    <Paper role="region" aria-label={`Cuenta de ${nombre}`}>
+    <Seccion role="region" aria-label={`Cuenta de ${nombre}`}>
       <Encabezado titulo={`Cuenta de ${nombre} con ${duenio.nombre}`} />
       <Text fw={600} mb="xs" c={cuenta.saldo > 0 ? 'red' : undefined}>{textoSaldo(cuenta, duenio.nombre)}</Text>
-      <Group className="suave" px="md" py="xs" gap="xl" mb="sm">
+      <Group className="suave" px="md" py="xs" gap="xl" mb="sm" style={{ rowGap: 'var(--mantine-spacing-xs)' }}>
         <Resumen label="Cobró en efectivo" valor={fmtMoney(cuenta.cobradoEfectivo)} />
         <Resumen label="Cobró por transferencia" valor={fmtMoney(cuenta.cobradoTransferencia)} />
         <Resumen label="Comisiones" valor={fmtMoney(cuenta.comisiones)} />
@@ -272,6 +272,6 @@ function CuentaSocio({ cuenta, duenio }: { cuenta: M.CuentaSocio; duenio: M.Soci
         </Table>
       </ScrollArea.Autosize>
       {filas.length === 0 && <Text c="dimmed" mt="xs" size="sm">Sin movimientos.</Text>}
-    </Paper>
+    </Seccion>
   );
 }

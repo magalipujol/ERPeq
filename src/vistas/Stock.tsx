@@ -6,7 +6,7 @@ import {
 import { IconArrowDown, IconArrowUp } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
-import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
+import { Encabezado, Kpis, Mensaje, Resumen, Seccion } from '../componentes/comunes';
 import { Vinculo } from '../componentes/Fichas';
 import { useFila } from '../ficha';
 import { aNumero, fmtMoney, fmtNum, unicos } from '../formato';
@@ -188,7 +188,7 @@ function StockPorDeposito({ deposito, onDeposito }: { deposito: string; onDeposi
   const faltan = (f: FilaDeposito) => (f.faltante > 0 ? `Faltan ${fmtNum(f.faltante)} ${f.unidad}` : undefined);
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Stock por depósito">
         <Group gap="xs">
           <TextInput type="search" w={{ base: '100%', sm: 200 }} placeholder="Buscar producto…" aria-label="Buscar producto"
@@ -247,7 +247,7 @@ function StockPorDeposito({ deposito, onDeposito }: { deposito: string; onDeposi
         </Stack>
       </Box>
       {visibles.length === 0 && <Text c="dimmed" mt="xs">No hay productos que coincidan.</Text>}
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -304,7 +304,7 @@ function StockTotal({ filas }: { filas: FilaStock[] }) {
     || (filtro === 'bajo' && bajoMinimo(f))), COLS_TOTAL, orden);
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Stock total">
         <Group gap="xs">
           <NativeSelect aria-label="Filtrar stock total" value={filtro} onChange={(e) => { setFiltro(e.currentTarget.value); }} data={[
@@ -343,7 +343,7 @@ function StockTotal({ filas }: { filas: FilaStock[] }) {
         ))}
       </Stack>
       {visibles.length === 0 && <Text c="dimmed" mt="xs">No hay productos que coincidan.</Text>}
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -377,7 +377,7 @@ function AjusteStock() {
   }
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Ajuste de stock" />
       <Text size="sm" c="dimmed" mt={-8} mb="sm">Para corregir diferencias. Para restar, usá un número negativo.</Text>
       <form onSubmit={enviar} noValidate aria-label="Ajuste de stock">
@@ -402,7 +402,7 @@ function AjusteStock() {
           <Mensaje msg={msg} />
         </Stack>
       </form>
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -423,7 +423,7 @@ function GraficoStock({ filas, deposito }: { filas: FilaStock[]; deposito: strin
     .map((f) => ({ producto: f.producto, ...Object.fromEntries(deps.map((d) => [d.nombre, Math.max(0, f.s[d.id] ?? 0)])) }));
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Productos con más stock">
         {unidades.length > 1 && <SegmentedControl size="xs" value={unidad} onChange={setElegida} data={unidades} aria-label="Unidad" />}
       </Encabezado>
@@ -441,6 +441,6 @@ function GraficoStock({ filas, deposito }: { filas: FilaStock[]; deposito: strin
         gridAxis="x"
         aria-label="Stock por producto y depósito"
       />
-    </Paper>
+    </Seccion>
   );
 }

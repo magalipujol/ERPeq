@@ -176,7 +176,6 @@ export function App({ db }: { db: BaseDeDatos }) {
               <Box miw={0}>
                 <Title order={1} size="h3">ERPeq</Title>
                 <Text size="xs" c={estado.error ? 'red' : 'dimmed'} lineClamp={1}>
-                  {info && <Text span inherit c="dimmed" hiddenFrom="md">{info.titulo} · </Text>}
                   <span>{estado.texto}</span>
                 </Text>
               </Box>
@@ -224,7 +223,7 @@ export function App({ db }: { db: BaseDeDatos }) {
             </Container>
           </Alert>
         )}
-        <Container size="xl" py="lg" pb={56}>
+        <Container size="xl" px={{ base: 'sm', sm: 'md' }} pt={{ base: 'sm', sm: 'lg' }} pb={56}>
           {pantalla === 'config' && (
             <Puerta titulo="Falta configurar ERPeq">
               <Text>Esta copia todavía no tiene cargados los datos del proyecto de Google ni la planilla.

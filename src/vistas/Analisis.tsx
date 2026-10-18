@@ -1,9 +1,9 @@
 import { BarChart } from '@mantine/charts';
-import { Grid, Group, Paper, ScrollArea, SegmentedControl, Stack, Table, Text, Title, useMatches } from '@mantine/core';
+import { Grid, Group, ScrollArea, SegmentedControl, Stack, Table, Text, Title, useMatches } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import * as A from '../dominio/analisis';
 import { useBase } from '../base';
-import { Encabezado, Kpis } from '../componentes/comunes';
+import { Encabezado, Kpis, Seccion } from '../componentes/comunes';
 import { Vinculo } from '../componentes/Fichas';
 import { useFila } from '../ficha';
 import { fmtFecha, fmtMoney, fmtNum } from '../formato';
@@ -31,7 +31,7 @@ export function Analisis({ visible }: { visible: boolean }) {
   return (
     <Stack gap="md">
       <Group justify="space-between">
-        <Title order={2}>Análisis</Title>
+        <Title order={2} className="titulo-pantalla">Análisis</Title>
         <SegmentedControl aria-label="Período" size={tamPeriodo} value={periodo} onChange={(v) => { setPeriodo(v); }}
           data={[...A.PERIODOS]} />
       </Group>
@@ -87,7 +87,7 @@ function MasVendidos({ productos }: { productos: A.AnalisisProducto[] }) {
   const top = A.masVendidoPorUnidad(productos);
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Productos más vendidos">
         <SegmentedControl size="xs" aria-label="Ordenar más vendidos por" value={porImporte ? 'importe' : criterio} onChange={setCriterio}
           data={[{ value: 'importe', label: 'Importe' }, ...unidades.map((u) => ({ value: u, label: `Cantidad (${u})` }))]} />
@@ -105,7 +105,7 @@ function MasVendidos({ productos }: { productos: A.AnalisisProducto[] }) {
           data={lista.map((p) => ({ producto: p.producto, Vendido: p.importe }))} />
         : <Barras label={`Productos más vendidos en ${criterio}`} serie="Cantidad" color="var(--c3)" formato={(v) => `${fmtNum(v)} ${criterio}`}
           data={lista.map((p) => ({ producto: p.producto, Cantidad: p.cantidad }))} />}
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -118,7 +118,7 @@ function MayorGanancia({ productos }: { productos: A.AnalisisProducto[] }) {
     .slice(0, 10);
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Productos con mayor ganancia">
         <SegmentedControl size="xs" aria-label="Ordenar ganancia por" value={criterio} onChange={setCriterio}
           data={[{ value: 'total', label: 'Total' }, { value: 'margen', label: 'Margen %' }]} />
@@ -128,7 +128,7 @@ function MayorGanancia({ productos }: { productos: A.AnalisisProducto[] }) {
           data={lista.map((p) => ({ producto: p.producto, Ganancia: p.ganancia }))} />
         : <Barras label="Productos con mayor margen" serie="Margen" color="var(--c2)" formato={(v) => fmtPct(v / 100)}
           data={lista.map((p) => ({ producto: p.producto, Margen: Math.round((p.margen ?? 0) * 1000) / 10 }))} />}
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -137,7 +137,7 @@ function GananciaPorProducto({ productos, fletes }: { productos: A.AnalisisProdu
   const filas = [...productos].sort((a, b) => b.ganancia - a.ganancia);
   const sinCosto = productos.filter((p) => p.lineasSinCosto > 0).length;
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Ganancia por producto" />
       <ScrollArea.Autosize mah={480} type="auto">
         <Table stickyHeader highlightOnHover fz="sm" style={{ whiteSpace: 'nowrap' }} aria-label="Ganancia por producto">
@@ -172,14 +172,14 @@ function GananciaPorProducto({ productos, fletes }: { productos: A.AnalisisProdu
         {fmtMoney(fletes.total)} ({fmtMoney(fletes.asignados)} asignados a pedidos y {fmtMoney(fletes.sinAsignar)} de logística).
         {sinCosto > 0 && ' Las ventas sin costo no cuentan para la ganancia ni el margen.'}
       </Text>
-    </Paper>
+    </Seccion>
   );
 }
 
 function ClientesActivos({ clientes }: { clientes: A.AnalisisCliente[] }) {
   const fila = useFila();
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Clientes más activos" />
       <ScrollArea.Autosize mah={420} type="auto">
         <Table stickyHeader highlightOnHover fz="sm" style={{ whiteSpace: 'nowrap' }} aria-label="Clientes más activos">
@@ -202,7 +202,7 @@ function ClientesActivos({ clientes }: { clientes: A.AnalisisCliente[] }) {
         </Table>
       </ScrollArea.Autosize>
       {clientes.length === 0 && <Text c="dimmed" mt="xs" size="sm">No hay pedidos en el período.</Text>}
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -210,7 +210,7 @@ function ClientesInactivos({ clientes }: { clientes: A.ClienteInactivo[] }) {
   const fila = useFila();
   const { minimoPedidos, factor, minimoDias } = A.INACTIVO;
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Clientes que dejaron de comprar" />
       <Text size="xs" c="dimmed" mb="xs">
         Con {minimoPedidos} compras o más y sin comprar hace más de {factor} veces su intervalo habitual (y más
@@ -240,6 +240,6 @@ function ClientesInactivos({ clientes }: { clientes: A.ClienteInactivo[] }) {
         </Table>
       </ScrollArea.Autosize>
       {clientes.length === 0 && <Text c="dimmed" mt="xs" size="sm">No hay clientes inactivos.</Text>}
-    </Paper>
+    </Seccion>
   );
 }

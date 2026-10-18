@@ -1,10 +1,10 @@
 import {
-  Alert, Autocomplete, Badge, Button, Code, Grid, Group, NativeSelect, NumberInput, Paper, ScrollArea, SegmentedControl, Stack,
+  Alert, Autocomplete, Badge, Button, Code, Grid, Group, NativeSelect, NumberInput, ScrollArea, SegmentedControl, Stack,
   Table, Text, TextInput, Title,
 } from '@mantine/core';
 import { useMemo, useRef, useState } from 'react';
 import { useBase, useGuardar } from '../base';
-import { Encabezado, Kpis, Mensaje } from '../componentes/comunes';
+import { Encabezado, Kpis, Mensaje, Seccion } from '../componentes/comunes';
 import { Vinculo } from '../componentes/Fichas';
 import { useFila } from '../ficha';
 import { type Item, itemVacio } from '../componentes/item';
@@ -33,7 +33,7 @@ export function Recetas() {
 
   return (
     <Stack gap="md">
-      <Title order={2}>Recetas</Title>
+      <Title order={2} className="titulo-pantalla">Recetas</Title>
       {faltan.length > 0 && (
         <Alert color="yellow" title="Faltan hojas en la planilla">
           <Text size="sm" mb="xs">Para cargar recetas y fabricar, creá estas hojas con estos encabezados en la fila 1:</Text>
@@ -107,7 +107,7 @@ function Fabricar({ activas, hechas, deshabilitado }: { activas: M.VersionReceta
   }
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Fabricar" />
       <form onSubmit={enviar} noValidate aria-label="Fabricar">
         <Stack gap="xs">
@@ -161,7 +161,7 @@ function Fabricar({ activas, hechas, deshabilitado }: { activas: M.VersionReceta
           <Mensaje msg={msg} />
         </Stack>
       </form>
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -242,7 +242,7 @@ function EditorReceta({ vigentes, recetaId, aviso, onListo, deshabilitado }: {
   }
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo={actual ? `Editar receta de ${nombres.producto(actual.receta.productoId)}` : 'Nueva receta'}>
         <Group gap="xs">
           <SegmentedControl size="xs" value={gramos ? 'g' : 'kg'} onChange={(v) => { cambiarGramos(v === 'g'); }} aria-label="Cantidades en"
@@ -271,7 +271,7 @@ function EditorReceta({ vigentes, recetaId, aviso, onListo, deshabilitado }: {
           <Mensaje msg={msg ?? (aviso === undefined ? null : { texto: aviso, error: false })} />
         </Stack>
       </form>
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -303,7 +303,7 @@ function ListaRecetas({ vigentes, onEditar, deshabilitado }:
   const [hoy] = useState(() => new Date());
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Recetas">
         <SegmentedControl size="xs" value={filtro} onChange={setFiltro} aria-label="Mostrar recetas"
           data={[{ value: 'activas', label: 'Activas' }, { value: 'todas', label: 'Todas' }]} />
@@ -359,7 +359,7 @@ function ListaRecetas({ vigentes, onEditar, deshabilitado }:
         </Table>
       </ScrollArea>
       {filas.length === 0 && <Text c="dimmed" mt="xs" size="sm">No hay recetas{filtro === 'activas' ? ' activas' : ''}.</Text>}
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -368,7 +368,7 @@ function ListaFabricaciones({ hechas }: { hechas: M.Fabricacion[] }) {
   const filas = [...hechas].sort(porFechaDesc).slice(0, 30);
   if (filas.length === 0) return null;
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Últimas fabricaciones" />
       <ScrollArea type="auto">
         <Table highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }} aria-label="Últimas fabricaciones">
@@ -394,6 +394,6 @@ function ListaFabricaciones({ hechas }: { hechas: M.Fabricacion[] }) {
           </Table.Tbody>
         </Table>
       </ScrollArea>
-    </Paper>
+    </Seccion>
   );
 }

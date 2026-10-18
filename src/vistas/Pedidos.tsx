@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import { faltantesDe } from '../db/puerto';
 import { CamposCobro, type DatosCobro } from '../componentes/Cobro';
-import { Encabezado, Kpis, Mensaje, Resumen } from '../componentes/comunes';
+import { Encabezado, Kpis, Mensaje, Resumen, Seccion } from '../componentes/comunes';
 import { EstadoPedido } from '../componentes/estados';
 import { Vinculo } from '../componentes/Fichas';
 import { useFila } from '../ficha';
@@ -34,7 +34,7 @@ export function Pedidos({ nuevo = 0, abrir = null }: { nuevo?: number; abrir?: P
 
   return (
     <Stack gap="md">
-      <Title order={2}>Pedidos</Title>
+      <Title order={2} className="titulo-pantalla">Pedidos</Title>
       <Kpis label="Resumen de pedidos" items={[
         { label: 'Pedidos abiertos', valor: abiertos.length },
         { label: 'Pendiente de entregar', valor: fmtMoney(pendiente) },
@@ -48,7 +48,8 @@ export function Pedidos({ nuevo = 0, abrir = null }: { nuevo?: number; abrir?: P
           {sel
             ? <Entrega key={sel.pedido.id} resumen={sel} onCerrar={() => { setElegido(null); }} />
             : (
-              <Paper>
+              // En el celular, la explicación solo ocupa lugar: se ve cuando hay algo que contar del pedido elegido.
+              <Seccion visibleFrom={elegidoRes ? undefined : 'sm'}>
                 <Encabezado titulo="Registrar entrega" />
                 {elegidoRes && (
                   <Text size="sm" mb="xs">
@@ -56,7 +57,7 @@ export function Pedidos({ nuevo = 0, abrir = null }: { nuevo?: number; abrir?: P
                   </Text>
                 )}
                 <Text c="dimmed" size="sm">Elegí un pedido abierto de la lista para registrar una entrega, cerrarlo o cancelarlo.</Text>
-              </Paper>
+              </Seccion>
             )}
         </Grid.Col>
       </Grid>
@@ -164,7 +165,7 @@ function FormPedido({ nuevo }: { nuevo: number }) {
   const especiales = lineas.filter((l) => l.lista !== null && !Number.isNaN(l.precio) && l.precio !== l.lista).length;
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Nuevo pedido" />
       <form onSubmit={enviar} noValidate aria-label="Nuevo pedido">
         <Stack gap="sm">
@@ -193,7 +194,7 @@ function FormPedido({ nuevo }: { nuevo: number }) {
           <Mensaje msg={msg} />
         </Stack>
       </form>
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -283,7 +284,7 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
   }
 
   return (
-    <Paper ref={ref} className="ancla">
+    <Seccion ref={ref} className="ancla">
       <Encabezado titulo={`Entregar pedido de ${etiquetas.pedido(pedido.id)}`}>
         <Button size="xs" variant="default" onClick={onCerrar}>Cerrar</Button>
       </Encabezado>
@@ -358,7 +359,7 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
         </Group>
         <Mensaje msg={msg} />
       </Stack>
-    </Paper>
+    </Seccion>
   );
 }
 
@@ -377,7 +378,7 @@ function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir:
     .sort((a, b) => porFechaDesc(a.pedido, b.pedido));
 
   return (
-    <Paper>
+    <Seccion>
       <Encabezado titulo="Pedidos">
         <Group gap="xs">
           <TextInput type="search" w={{ base: 260, xs: 220 }} placeholder="Buscar cliente o producto…" aria-label="Buscar pedidos"
@@ -435,7 +436,7 @@ function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir:
       </ScrollArea.Autosize>
       {filas.length === 0 && <Text c="dimmed" mt="xs">No hay pedidos {filtro === 'abiertos' ? 'abiertos' : ''}.</Text>}
       {filas.some((r) => r.sinCosto) && <Text size="xs" c="dimmed" mt="xs">* Hay productos sin costo de compra: la ganancia no los descuenta.</Text>}
-    </Paper>
+    </Seccion>
   );
 }
 
