@@ -66,16 +66,16 @@ Merma real: 1 − 1,85 / 2 = 7,5 %.
 ## Costo
 
 El precio de venta del producto fabricado es su precio de lista. La fabricación **no guarda costo**: el costo
-promedio sigue saliendo solo de las compras, así que un producto que solo se fabrica no tiene costo y sus ventas
+sigue saliendo solo de las compras (el precio de la última), así que un producto que solo se fabrica no tiene costo y sus ventas
 quedan sin costo (la ganancia no lo descuenta, como pasa hoy con cualquier producto sin compras).
 
 Como referencia, la pantalla muestra el **costo de los insumos** por unidad de lo que sale, con los costos
-promedio de hoy (`costoInsumos`):
+de hoy (`costoInsumos`):
 
 ```
-costo de los insumos = Σ (cantidad del insumo × costo promedio del insumo) / cantidad que sale
+costo de los insumos = Σ (cantidad del insumo × costo del insumo) / cantidad que sale
 ```
 
-Con almendras a $1.500 y avena a $500, las 2 tandas del ejemplo cuestan 1,2 × $1.500 + 0,8 × $500 = $2.200: con
-1,85 kg, $1.189,19 el kg. En la lista de recetas se ve junto al precio de lista ($2.500), para comparar. Si algún
-insumo no tiene costo promedio, no se muestra.
+Con almendras a $1.000 y avena a $500, las 2 tandas del ejemplo cuestan 1,2 × $1.000 + 0,8 × $500 = $1.600: con
+1,85 kg, $864,86 el kg. En la lista de recetas se ve junto al precio de lista ($2.500), para comparar. Si algún
+insumo no tiene costo, no se muestra.

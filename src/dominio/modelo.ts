@@ -210,19 +210,16 @@ export function envioPropuesto(
   return datos.ventasEnvios.some((e) => ventas.has(e.ventaId)) ? 0 : regla.costo;
 }
 
-// Costo promedio ponderado por producto, sobre todas las compras con precio (todos los depósitos).
-export function costosPromedio(compras: Compra[]) {
-  const acum = new Map<string, { cant: number; total: number }>();
+// Costo de cada producto: el precio unitario de su última compra con precio, de cualquier depósito. La última es la
+// de fecha más reciente; a igual fecha, la fila agregada después. Una compra sin fecha cuenta como la más vieja.
+export function costosUltimaCompra(compras: Compra[]) {
+  const ultima = new Map<string, Compra>();
   for (const c of compras) {
     if (c.precio === null || c.cantidad <= 0) continue;
-    const a = acum.get(c.productoId) ?? { cant: 0, total: 0 };
-    a.cant += c.cantidad;
-    a.total += c.cantidad * c.precio;
-    acum.set(c.productoId, a);
+    const previa = ultima.get(c.productoId);
+    if (!previa || (c.fecha?.getTime() ?? 0) >= (previa.fecha?.getTime() ?? 0)) ultima.set(c.productoId, c);
   }
-  const res = new Map<string, number>();
-  for (const [id, a] of acum) res.set(id, redondear(a.total / a.cant));
-  return res;
+  return new Map([...ultima].map(([id, c]) => [id, c.precio ?? 0]));
 }
 
 // ---------- Pedidos ----------
@@ -544,7 +541,7 @@ export function fabricaciones(ajustes: Ajuste[]): Fabricacion[] {
   return [...res.values()];
 }
 
-// Costo de los insumos por unidad de lo que sale, con los costos promedio de hoy. Null si algún insumo no tiene
+// Costo de los insumos por unidad de lo que sale, con los costos de hoy (los de la última compra). Null si algún insumo no tiene
 // costo o no sale nada. Es una estimación: no se guarda.
 export function costoInsumos(insumos: Insumo[], sale: number, costos: Map<string, number>) {
   const usados = insumos.filter((i) => i.cantidad > 0);

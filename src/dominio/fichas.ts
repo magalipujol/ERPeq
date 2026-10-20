@@ -75,7 +75,7 @@ export interface VentaDeProducto { venta: M.Venta; pedido: M.Pedido | undefined;
 export interface FichaProducto {
   producto: M.Producto;
   precio: number | null; // de lista, vigente a la fecha
-  costo: number | null; // promedio de las compras
+  costo: number | null; // precio de la última compra
   stock: StockDeposito[];
   receta: M.VersionReceta | undefined; // receta activa que lo fabrica
   usadoEn: M.VersionReceta[]; // recetas activas que lo usan como insumo

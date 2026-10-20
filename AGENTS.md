@@ -92,7 +92,7 @@ Arquitectura hexagonal, con los límites controlados por ESLint (`no-restricted-
 ## Reglas del modelo de datos
 
 - Lo cargado se tiene que poder corregir desde la app. Los movimientos solo agregan filas (las correcciones son
-  ajustes o estados nuevos; el stock y el costo promedio se calculan a partir de ellos). Los datos maestros
+  ajustes o estados nuevos; el stock y el costo de cada producto se calculan a partir de ellos). Los datos maestros
   (contactos y productos) se corrigen reemplazando su fila, buscada por ID, y un pedido reemplazando sus filas y las
   de sus entregas (`corregir` en el adaptador). Una venta cargada por error se borra con todo lo que cuelga de ella.
 - Lo que tiene que quedar fijo al momento de una operación (costo, comisión, ganancia de una venta) se

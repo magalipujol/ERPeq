@@ -40,8 +40,8 @@ se corrige en *Productos*, *Contactos*, *Vendedores* o *Socios* (los dos primero
 encabezados de cada hoja y no abre una planilla con las columnas distintas a las que espera.
 
 **Stock** = compras − entregas + ajustes (incluidas las fabricaciones) ± fletes entre depósitos (en camino: sale del origen; finalizado: entra en el destino).
-**Costo promedio** = promedio ponderado de todas las compras con precio del producto.
-**Ganancia de un pedido** = lo entregado + envíos que quedan para el negocio − comisiones − cantidad × costo promedio (los fletes son gasto del mes).
+**Costo** = precio unitario de la última compra con precio del producto (cada venta guarda el del momento).
+**Ganancia de un pedido** = lo entregado + envíos que quedan para el negocio − comisiones − cantidad × costo guardado en cada venta (los fletes son gasto del mes).
 **Ganancia después de fletes** = ganancia de las ventas del período − costo de los fletes del período.
 **Saldo de un socio con el dueño** = lo que cobró − las comisiones y envíos de sus vendedores − lo que le rindió + lo que recibió del dueño.
 

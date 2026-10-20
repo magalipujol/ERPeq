@@ -68,11 +68,12 @@ describe('fichas', () => {
     expect(f?.cobros).toHaveLength(1);
   });
 
-  it('producto: precio vigente a la fecha, costo promedio y stock por depósito', () => {
-    const f = F.fichaProducto(datos, resumenes, stock, M.costosPromedio(datos.compras), 'P001', fecha(2026, 10, 17));
+  it('producto: precio vigente a la fecha, costo de la última compra y stock por depósito', () => {
+    const f = F.fichaProducto(datos, resumenes, stock, M.costosUltimaCompra(datos.compras), 'P001', fecha(2026, 10, 17));
 
     expect(f?.precio).toBe(1000);
-    expect(f?.costo).toBe(600);
+    // La última compra, del 02/10, fue a $ 800.
+    expect(f?.costo).toBe(800);
     // BB: 10 comprados − 2 en camino. ROS: 5 comprados − 4 vendidos; 2 llegando y 6 pendientes de PE1.
     expect(f?.stock).toStrictEqual([
       { depositoId: 'BB', enDeposito: 8, enTransito: 0, reservado: 0, comprometido: 0 },

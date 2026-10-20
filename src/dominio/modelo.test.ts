@@ -67,17 +67,22 @@ describe('porcentajeRegla', () => {
   });
 });
 
-describe('costosPromedio', () => {
-  it('pondera por cantidad y saltea compras sin precio o sin cantidad', () => {
-    const costos = M.costosPromedio([
-      compra({ cantidad: 10, precio: 2000 }),
-      compra({ cantidad: 30, precio: 1000 }),
-      compra({ cantidad: 50, precio: null }),
-      compra({ cantidad: 0, precio: 9999 }),
-      compra({ productoId: 'P002', cantidad: 3, precio: 100 }),
+describe('costosUltimaCompra', () => {
+  it('toma el precio de la compra más reciente y saltea las sin precio o sin cantidad', () => {
+    const costos = M.costosUltimaCompra([
+      compra({ fecha: fecha(2026, 10, 5), precio: 1000 }),
+      // Cargada después, pero de una fecha anterior.
+      compra({ fecha: fecha(2026, 9, 1), precio: 2000 }),
+      compra({ fecha: fecha(2026, 10, 9), precio: null }),
+      compra({ fecha: fecha(2026, 10, 9), cantidad: 0, precio: 9999 }),
+      compra({ productoId: 'P002', fecha: null, precio: 100 }),
     ]);
 
-    expect(costos).toStrictEqual(new Map([['P001', 1250], ['P002', 100]]));
+    expect(costos).toStrictEqual(new Map([['P001', 1000], ['P002', 100]]));
+  });
+
+  it('a igual fecha gana la compra cargada después', () => {
+    expect(M.costosUltimaCompra([compra({ precio: 1000 }), compra({ precio: 1200 })]).get('P001')).toBe(1200);
   });
 });
 

@@ -10,7 +10,7 @@ const formFlete = (page: Page) => page.getByRole('form', { name: 'Nuevo flete' }
 
 test('marca un flete en camino como recibido y el stock entra en el destino', async ({ page, google }) => {
   await expect(page.getByRole('group', { name: 'En camino', exact: true })).toContainText('1')
-  await expect(page.getByRole('group', { name: 'Mercadería en camino (a costo)' })).toContainText('9.000')
+  await expect(page.getByRole('group', { name: 'Mercadería en camino (a costo)' })).toContainText('6.000')
   await page.getByRole('button', { name: 'Recibido flete de Interprovincial · 08/10/26' }).click()
   await expect(page.getByText('✓ Flete de Interprovincial · 08/10/26: finalizado.')).toBeVisible()
   expect(google.escrituras).toEqual([{ 'Fletes estados': [['F0001', AHORA, 'finalizado']] }])

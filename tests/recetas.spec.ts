@@ -44,8 +44,8 @@ test('crea una receta de un producto que ya existe y la guarda en kg', async ({ 
   await expect(fila).toContainText('0,6 kg Almendras')
   await expect(fila).toContainText('merma 5 %')
   await expect(fila).toContainText(/\$\s2\.500\/kg/)
-  // Una tanda: 0,6 × $1.500 + 0,4 × $500 = $1.100 por 0,95 kg → $1.157,89 el kg (se muestra sin centavos).
-  await expect(fila).toContainText(/\$\s1\.158\/kg/)
+  // Una tanda: 0,6 × $1.000 + 0,4 × $500 = $800 por 0,95 kg → $842,11 el kg (se muestra sin centavos).
+  await expect(fila).toContainText(/\$\s842\/kg/)
 })
 
 test('editar una receta agrega una versión y darla de baja la saca de Fabricar', async ({ page, google }) => {

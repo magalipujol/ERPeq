@@ -356,7 +356,7 @@ function FichaProducto({ id }: { id: string }) {
         <Datos items={[
           ['Unidad', p.unidad],
           ['Precio de lista', f.precio === null ? 'Sin precio' : fmtMoney(f.precio)],
-          ['Costo promedio', f.costo === null ? 'Sin compras con precio' : fmtMoney(f.costo)],
+          ['Último costo', f.costo === null ? 'Sin compras con precio' : fmtMoney(f.costo)],
           ['Mínimo', p.minimo !== null && p.minimo > 0 ? unidad(p.minimo) : ''],
         ]} />
       </Corregible>

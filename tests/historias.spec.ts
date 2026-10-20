@@ -1,7 +1,8 @@
 // Historias de usuario de punta a punta: cada prueba recorre un caso real de varias pantallas, con la
 // planilla de google-falso.ts como punto de partida. Ahí está el estado inicial:
-//   Almendras: 10 kg en General (BB), 0 en Rosario, 6 en camino a Rosario (F0001, de Interprovincial, del 08/10). Costo promedio $1.500.
-//   Avena: 25 kg en Rosario; PE0002 (Ana, del 10/10, Guada/Hernán) pide 10 kg sin entregar. Costo promedio $500.
+//   Almendras: 10 kg en General (BB), 0 en Rosario, 6 en camino a Rosario (F0001, de Interprovincial, del 08/10).
+//     Costo $1.000 (la última compra, del 02/10; la anterior fue a $2.000).
+//   Avena: 25 kg en Rosario; PE0002 (Ana, del 10/10, Guada/Hernán) pide 10 kg sin entregar. Costo $500.
 //   Mix europeo: sin stock ni compras (se fabrica con una receta).
 //   Precios de lista: Almendras $3.000, Avena $800, Mix europeo $2.500. Miel sin precio.
 //   Reglas: Leo 10% general; Guada/Hernán 3% general y 7% en Almendras.
@@ -120,16 +121,16 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
   await expect(comision).toHaveValue('7')
   await comision.fill('6')
   await expect(entrega.getByText('Guada/Hernán (regla 7%)')).toBeVisible()
-  // 10 × 2.900 = 29.000; comisión 6% = 1.740; ganancia 29.000 − 1.740 − 10 × 1.500 = 12.260.
+  // 10 × 2.900 = 29.000; comisión 6% = 1.740; ganancia 29.000 − 1.740 − 10 × 1.000 (última compra) = 17.260.
   await expect(entrega.getByRole('group', { name: 'Importe' })).toContainText('29.000')
   await expect(entrega.getByRole('group', { name: 'Comisión' })).toContainText('1.740')
-  await expect(entrega.getByRole('group', { name: 'Ganancia' })).toContainText('12.260')
+  await expect(entrega.getByRole('group', { name: 'Ganancia' })).toContainText('17.260')
   await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
   await confirmarEntrega(page)
   await expect(entrega.getByText(/✓ Entrega a Ana registrada \(\$\s29\.000\)/)).toBeVisible()
-  // La ganancia del pedido no descuenta el flete: es la de la entrega, 12.260.
+  // La ganancia del pedido no descuenta el flete: es la de la entrega, 17.260.
   await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText('Parcial')
-  await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText(/12\.260/)
+  await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText(/17\.260/)
 
   // 8. Segunda entrega: 1 kg (el último que quedó en Rosario) con la comisión de la regla.
   await expect(entrega.getByLabel('Entregar Almendras')).toHaveValue('2')
@@ -142,10 +143,10 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
   await entrega.getByRole('button', { name: 'Cerrar con pendientes' }).click()
   await expect(page.getByText('El pedido de Ana · 16/10/26 quedó cerrado.')).toBeVisible()
   await page.getByRole('radiogroup', { name: 'Mostrar' }).getByText('Todos').click()
-  // Entregado 31.900 − comisiones 1.943 − costo 11 × 1.500 = 13.457 (el flete de $ 8.000 es gasto del mes).
+  // Entregado 31.900 − comisiones 1.943 − costo 11 × 1.000 = 18.957 (el flete de $ 8.000 es gasto del mes).
   await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText('Cerrado')
   await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText(/31\.900/)
-  await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText(/13\.457/)
+  await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText(/18\.957/)
 
   // 10. El stock queda sin comprometer y la liquidación muestra el porcentaje cambiado.
   await ir(page, 'Stock')
@@ -165,7 +166,7 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
   expect(google.escrituras[5]).toEqual({ 'Ajustes': [[HOY_SERIE, 'ROS', 'P001', -1, 'Bolsa rota en flete F0002']] })
   expect(google.escrituras[6]).toEqual({
     'Ventas': [['V0002', HOY_SERIE, 'PE0003', 'ROS', '']],
-    'Ventas ítems': [['V0002', 1, 1, 'P001', 10, 2900, 29000, 1500]],
+    'Ventas ítems': [['V0002', 1, 1, 'P001', 10, 2900, 29000, 1000]],
     'Ventas comisiones': [['V0002', 1, 'VEN02', 7, 6, 1740]],
   })
   expect(google.escrituras[7]['Ventas comisiones']).toEqual([['V0003', 1, 'VEN02', 7, 7, 203]])
@@ -399,7 +400,7 @@ test.describe('desde el celular', () => {
     await expect(fila).toBeHidden()
     expect(google.escrituras[1]).toEqual({
       'Ventas': [['V0002', HOY_SERIE, 'PE0003', 'BB', '']],
-      'Ventas ítems': [['V0002', 1, 1, 'P001', 2, 3000, 6000, 1500]],
+      'Ventas ítems': [['V0002', 1, 1, 'P001', 2, 3000, 6000, 1000]],
       'Ventas comisiones': [['V0002', 1, 'VEN01', 10, 10, 600]],
     })
   })
@@ -649,7 +650,7 @@ test('llegan las almendras a Rosario, se arma la receta del mix europeo y se fab
   await expect(receta.getByText('✓ Receta de Mix europeo guardada.')).toBeVisible()
 
   // 3. Se fabrican 2 tandas en Rosario: usa 1,2 kg de almendras y 0,8 de avena. Se esperaban 1,9 kg pero salen 1,85
-  //    (7,5 % de merma). Los insumos cuestan 1,2 × $1.500 + 0,8 × $500 = $2.200 / 1,85 kg = $1.189,19 el kg.
+  //    (7,5 % de merma). Los insumos cuestan 1,2 × $1.000 + 0,8 × $500 = $1.600 / 1,85 kg = $864,86 el kg.
   const fabricar = page.getByRole('form', { name: 'Fabricar' })
   await fabricar.getByLabel('Depósito').selectOption('Rosario')
   await fabricar.getByLabel('Tandas').fill('2')
@@ -658,7 +659,7 @@ test('llegan las almendras a Rosario, se arma la receta del mix europeo y se fab
   await expect(insumos.getByRole('row', { name: /Almendras/ })).toContainText('1,2 kg')
   await expect(insumos.getByRole('row', { name: /Almendras/ })).toContainText('6')
   await fabricar.getByLabel('Salió').fill('1.85')
-  await expect(fabricar.getByText(/Merma: 7,5 % · Insumos: \$\s1\.189 por kg/)).toBeVisible()
+  await expect(fabricar.getByText(/Merma: 7,5 % · Insumos: \$\s865 por kg/)).toBeVisible()
   await fabricar.getByRole('button', { name: 'Registrar fabricación' }).click()
   await expect(fabricar.getByText('✓ Fabricado: 1,85 kg de Mix europeo en Rosario.')).toBeVisible()
 
@@ -707,7 +708,7 @@ test('desde una venta se recorre lo relacionado en fichas y se termina entregand
   const abierto = page.getByRole('dialog', { name: 'Pedido de Ana · 10/10/26' })
   await abierto.getByRole('button', { name: 'Avena' }).click()
   const avena = page.getByRole('dialog', { name: 'Producto: Avena' })
-  await expect(avena.getByRole('group', { name: 'Costo promedio' })).toContainText(/500/)
+  await expect(avena.getByRole('group', { name: 'Último costo' })).toContainText(/500/)
   const rosario = avena.getByRole('table', { name: 'Stock por depósito' }).getByRole('row').filter({ hasText: 'Rosario' })
   await expect(rosario.getByRole('cell').nth(1)).toHaveText('25')
   await expect(rosario.getByRole('cell').nth(4)).toHaveText('10')
@@ -774,7 +775,7 @@ test('una venta directa cargada desde el depósito y con el precio equivocados s
   await expect(pedido.getByText(/✓ Pedido de Ana registrado y entregado/)).toBeVisible()
   expect(google.escrituras[0]).toMatchObject({
     'Ventas': [['V0002', HOY_SERIE, 'PE0003', 'ROS', '']],
-    'Ventas ítems': [['V0002', 1, 1, 'P001', 2, 3000, 6000, 1500]],
+    'Ventas ítems': [['V0002', 1, 1, 'P001', 2, 3000, 6000, 1000]],
     'Ventas comisiones': [['V0002', 1, 'VEN02', 7, 7, 420]],
   })
 
@@ -791,9 +792,9 @@ test('una venta directa cargada desde el depósito y con el precio equivocados s
   await form.getByRole('button', { name: 'Guardar cambios' }).click()
   await expect(ficha.getByText('✓ Pedido de Ana corregido, con su entrega.')).toBeVisible()
 
-  // 3. La venta sale de General: 2 × $ 2.800 = $ 5.600, y Guada/Hernán conserva su 7%: $ 392. El costo ($ 1.500) no cambia.
+  // 3. La venta sale de General: 2 × $ 2.800 = $ 5.600, y Guada/Hernán conserva su 7%: $ 392. El costo ($ 1.000) no cambia.
   expect(google.hojas.Ventas.at(-1)).toEqual(['V0002', HOY_SERIE, 'PE0003', 'BB', ''])
-  expect(google.hojas['Ventas ítems'].at(-1)).toEqual(['V0002', 1, 1, 'P001', 2, 2800, 5600, 1500])
+  expect(google.hojas['Ventas ítems'].at(-1)).toEqual(['V0002', 1, 1, 'P001', 2, 2800, 5600, 1000])
   expect(google.hojas['Ventas comisiones'].at(-1)).toEqual(['V0002', 1, 'VEN02', 7, 7, 392])
   await expect(ficha.getByRole('table', { name: 'Entregas del pedido' })).toContainText('General')
   await expect(ficha.getByRole('group', { name: 'Importe' })).toContainText(/5\.600/)

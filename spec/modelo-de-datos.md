@@ -64,9 +64,9 @@ sequenceDiagram
   - **Movimientos** (compras, ajustes, estados): las correcciones son filas nuevas (un ajuste, un nuevo
     estado), así el stock se puede recalcular siempre. La corrección de fletes, compras y cobros ya
     cargados todavía no está en la app (ver [Preguntas abiertas](#preguntas-abiertas)).
-- **Lo derivado se calcula.** El stock, lo pendiente de un pedido, el estado actual de un flete y el costo
-  promedio salen de los movimientos. Lo único que se guarda calculado es lo que tiene que quedar fijo al
-  momento de la operación (precio, costo, porcentaje de comisión): si después cambia el costo promedio o una
+- **Lo derivado se calcula.** El stock, lo pendiente de un pedido, el estado actual de un flete y el costo de cada
+  producto salen de los movimientos. Lo único que se guarda calculado es lo que tiene que quedar fijo al
+  momento de la operación (precio, costo, porcentaje de comisión): si después se compra a otro precio o cambia una
   regla de comisión, las ventas pasadas no cambian.
 - **Valores por defecto que se pueden sobreescribir.** *Precios* y *Reglas de comisión* guardan los valores
   por defecto. Cada pedido o entrega guarda el valor por defecto que se propuso y el que se usó (ver
@@ -229,7 +229,7 @@ erDiagram
         number cantidad
         number precio "copia del pedido"
         number importe
-        number costo "costo promedio al entregar"
+        number costo "costo de la última compra al entregar"
     }
     VENTA_COMISION {
         string venta_id FK
@@ -347,7 +347,7 @@ columnas corridas guardaría cada dato en otra columna.
 | **Pedidos estados** | `pedido_id`, `fecha`, `estado` | `abierto` al crearlo; después solo los estados que se deciden a mano (ver [Estados del pedido](#estados-del-pedido)). |
 | **Pedidos vendedores** | `pedido_id`, `vendedor_id` | Quiénes comisionan por este pedido. Comisionan por todas sus líneas. |
 | **Ventas** | `id`, `fecha`, `pedido_id`, `deposito_id`, `nota` | Una entrega. El cliente sale del pedido. |
-| **Ventas ítems** | `venta_id`, `linea`, `pedido_linea`, `producto_id`, `cantidad`, `precio` (c), `importe`, `costo` (c) | Lo entregado de cada línea del pedido. `costo` es el costo promedio unitario al entregar. |
+| **Ventas ítems** | `venta_id`, `linea`, `pedido_linea`, `producto_id`, `cantidad`, `precio` (c), `importe`, `costo` (c) | Lo entregado de cada línea del pedido. `costo` es el costo unitario al entregar: el precio de la última compra del producto (ver [Costo](#costo)). |
 | **Ventas comisiones** | `venta_id`, `linea`, `vendedor_id`, `porcentaje_regla` (c), `porcentaje`, `monto` | Una fila por ítem entregado y vendedor. `porcentaje_regla` es el que propone la regla; `porcentaje` el que se usó. `monto = importe × porcentaje / 100`. |
 
 ### Stock y logística
@@ -568,7 +568,7 @@ directa no cobra envío: el cliente se lleva la mercadería en el momento.
 La venta es la entrega al cliente en la ciudad de destino. Es el momento en que:
 
 - **sale el stock** del depósito de la venta;
-- **se fija el costo** de la mercadería (costo promedio a esa fecha);
+- **se fija el costo** de la mercadería (el de su última compra, ver [Costo](#costo));
 - **se genera la comisión**.
 
 Un pedido puede entregarse en varias ventas (entregas parciales). Cada ítem de venta apunta a la línea del
@@ -797,9 +797,23 @@ flowchart LR
     PE[Pedidos abiertos] -. "comprometen<br/>(no mueven)" .-> D2
 ```
 
-El **costo promedio** se sigue calculando con todas las compras con precio, sumando los dos depósitos. Un producto
-que solo se fabrica no tiene costo promedio (ver [recetas.md](recetas.md#costo)). Una
-transferencia no cambia el costo de la mercadería: su costo es un gasto de logística (ver abajo).
+### Costo
+
+El **costo** de un producto es el precio unitario de su **última compra** con precio, de cualquier depósito
+(`costosUltimaCompra`): la de fecha más reciente y, a igual fecha, la agregada después. Las compras sin precio o sin
+cantidad no cuentan. Cada entrega guarda el costo del momento en *Ventas ítems*, así que una compra posterior a otro
+precio no cambia la ganancia de las ventas ya hechas. El mismo costo valúa el stock y la mercadería en camino, y da el
+costo de los insumos de las recetas.
+
+| Compras de almendras | Costo | Venta de 4 kg a $3.000 con 10% de comisión |
+|---|---|---|
+| 10/09: 10 kg a $2.000 | $2.000 | $12.000 − $1.200 − 4 × $2.000 = $2.800 |
+| 02/10: 10 kg a $1.000 | $1.000 | $12.000 − $1.200 − 4 × $1.000 = $6.800 |
+| 20/10: 10 kg a $4.000 | $4.000 | las ventas anteriores conservan su costo |
+
+Un producto sin compras con precio no tiene costo y sus ventas no lo descuentan; un producto que solo se fabrica
+tampoco tiene (ver [recetas.md](recetas.md#costo)). Una transferencia no cambia el costo de la mercadería: su costo
+es un gasto de logística (ver abajo).
 
 ### Flete para cubrir faltantes
 
@@ -906,7 +920,7 @@ precios o el mínimo para no cobrar envío.
 | Comisión por vendedor | Σ `monto` por vendedor y mes de la venta |
 | Costo de flete sobre ventas | Σ costo de fletes del mes / Σ importe de ventas del mes |
 | Ganancia después de fletes | Σ ganancia de las ventas del período − Σ costo de los fletes del período |
-| Mercadería en tránsito | `en_transito(p) × costo promedio` |
+| Mercadería en tránsito | `en_transito(p) × costo` (el de la última compra) |
 | Faltante por depósito | `faltante(p, d)` para los pedidos abiertos |
 | Tiempo de entrega | fecha de la última venta − fecha del pedido |
 
@@ -933,7 +947,7 @@ La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e 
   personas cargan un pedido al mismo tiempo, pueden quedar dos con el mismo ID.
 - **Costo de las transferencias.** Esta spec lo trata como gasto de logística (o lo asigna a pedidos). La
   alternativa es sumarlo al costo de la mercadería en el depósito de destino, pero eso exige un costo
-  promedio por depósito.
+  por depósito.
 - **Comisiones de ventas sin cobrar.** La cuenta de un socio descuenta sus comisiones desde la entrega,
   aunque el cliente todavía no haya pagado. La alternativa es acreditarlas recién cuando se cobra la venta
   (o en proporción a lo cobrado).
@@ -948,7 +962,7 @@ La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e 
 - **Fabricar sin stock.** La app avisa si un insumo no alcanza en el depósito pero deja fabricar igual (el stock
   queda negativo, como con una venta). Falta decidir si se bloquea.
 - **Costo de lo fabricado.** Las fabricaciones no guardan costo: un producto que solo se fabrica no tiene costo
-  promedio y sus ventas quedan sin costo (la ganancia no lo descuenta). Si hace falta, se puede guardar el costo
+  y sus ventas quedan sin costo (la ganancia no lo descuenta). Si hace falta, se puede guardar el costo
   de los insumos en el momento de fabricar.
 - **Volver de "en camino" a "preparación".** Está en el diagrama para el caso de un flete que vuelve sin
   entregar; si no pasa nunca, se saca.

@@ -58,7 +58,8 @@ test('KPIs de stock', async ({ page }) => {
   await expect(kpi('Bajo el mínimo')).toContainText('1')
   await expect(kpi('Stock negativo')).toContainText('0')
   await expect(kpi('Faltan para pedidos')).toContainText('0')
-  await expect(kpi('Valor del stock (a costo)')).toContainText('36.500')
+  // 10 kg de almendras en General y 6 en camino a $ 1.000 (la última compra) + 25 kg de avena a $ 500.
+  await expect(kpi('Valor del stock (a costo)')).toContainText('28.500')
 })
 
 test('busca, filtra y ordena el stock por depósito', async ({ page }) => {
