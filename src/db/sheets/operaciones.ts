@@ -1,8 +1,8 @@
 // Cada operación del puerto se traduce en las filas que agrega a cada hoja (una Escritura), que el
 // adaptador guarda de una sola vez.
-import type { Cobro, Entrega } from '../../dominio/modelo';
+import type { Cobro, CorreccionPedido, Entrega } from '../../dominio/modelo';
 import type { CompraNueva, FleteNuevo, Operaciones, PedidoNuevo } from '../puerto';
-import { type Escritura, filas, type Reemplazo, unir } from './hojas';
+import { type Correccion, type Escritura, filas, type Reemplazo, unir } from './hojas';
 
 export function escrituraEntrega({ venta, items, comisiones, envio }: Entrega, cobros: Cobro[] = []): Escritura {
   return {
@@ -26,6 +26,28 @@ export function escrituraPedido(p: PedidoNuevo): Escritura {
   return p.entrega ? unir(escritura, escrituraEntrega(p.entrega, p.cobros)) : escritura;
 }
 
+// La cabecera del pedido y las de sus ventas se reemplazan en el lugar; sus ítems, vendedores y comisiones, que no
+// tienen ID propio, se borran y se vuelven a agregar. Los estados, envíos y cobros no se tocan.
+export function correccionPedido(c: CorreccionPedido): Correccion {
+  const { id } = c.pedido;
+  const ventas = c.entregas.map((e) => e.venta.id);
+  return {
+    reemplazos: [
+      { hoja: 'pedidos', id, fila: filas.pedido(c.pedido) },
+      ...c.entregas.map((e): Reemplazo => ({ hoja: 'ventas', id: e.venta.id, fila: filas.venta(e.venta) })),
+    ],
+    recambios: [
+      { hoja: 'pedidosItems', ids: [id], filas: c.items.map(filas.pedidoItem) },
+      { hoja: 'pedidosVendedores', ids: [id], filas: c.vendedores.map((v) => filas.pedidoVendedor({ pedidoId: id, vendedorId: v })) },
+      ...(ventas.length > 0 ? [
+        { hoja: 'ventasItems' as const, ids: ventas, filas: c.entregas.flatMap((e) => e.items.map(filas.ventaItem)) },
+        { hoja: 'ventasComisiones' as const, ids: ventas, filas: c.entregas.flatMap((e) => e.comisiones.map(filas.ventaComision)) },
+      ] : []),
+    ],
+    agregados: c.preciosNuevos.length > 0 ? { precios: c.preciosNuevos.map(filas.precio) } : {},
+  };
+}
+
 export function escrituraFlete(f: FleteNuevo): Escritura {
   return {
     ...(f.transporteNuevo ? { contactos: [filas.contacto(f.transporteNuevo)] } : {}),
@@ -44,14 +66,16 @@ export function escrituraCompra(c: CompraNueva): Escritura {
 }
 
 // Implementa las operaciones del puerto sobre una función que agrega filas en una sola escritura atómica y otra
-// que reemplaza una fila.
-export function operaciones(escribir: (e: Escritura) => Promise<void>, reemplazar: (r: Reemplazo) => Promise<void>): Operaciones {
+// que corrige filas ya guardadas, también de una sola vez.
+export function operaciones(escribir: (e: Escritura) => Promise<void>, corregir: (c: Correccion) => Promise<void>): Operaciones {
+  const reemplazar = async (r: Reemplazo) => corregir({ reemplazos: [r], recambios: [], agregados: {} });
   return {
     registrarContacto: async (c) => escribir({ contactos: [filas.contacto(c)] }),
     corregirContacto: async (c) => reemplazar({ hoja: 'contactos', id: c.id, fila: filas.contacto(c) }),
     registrarProducto: async (p, precio) => escribir({ productos: [filas.producto(p)], ...(precio ? { precios: [filas.precio(precio)] } : {}) }),
     corregirProducto: async (p) => reemplazar({ hoja: 'productos', id: p.id, fila: filas.producto(p) }),
     registrarPedido: async (p) => escribir(escrituraPedido(p)),
+    corregirPedido: async (c) => corregir(correccionPedido(c)),
     registrarEntrega: async (e, cobros) => escribir(escrituraEntrega(e, cobros)),
     cambiarEstadoPedido: async (id, estado, momento) => escribir({ pedidosEstados: [filas.estado(id, estado, momento)] }),
     registrarFlete: async (f) => escribir(escrituraFlete(f)),

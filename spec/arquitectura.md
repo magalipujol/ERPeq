@@ -82,9 +82,11 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
   dominio.
 - **Operaciones:** una por caso de uso. **Cada una es atómica**: se guarda entera o no se guarda. En Sheets
   es un solo `batchUpdate` con un `appendCells` por hoja. Las correcciones (`corregirContacto`,
-  `corregirProducto`) reemplazan una fila: el adaptador busca el ID en la columna A justo antes de escribir
-  (la hoja pudo ordenarse a mano desde la última lectura) y manda un `updateCells` sobre esa fila. Si el ID no
-  está, o está en más de una fila, falla sin escribir.
+  `corregirProducto`, `corregirPedido`) son una `Correccion` del adaptador: filas que se reemplazan en el lugar
+  (`updateCells`), filas sin ID propio que se borran (`deleteDimension`, de abajo hacia arriba) y se vuelven a agregar
+  al final, y filas nuevas, todo en un solo `batchUpdate`. El adaptador busca los IDs en la columna A justo antes de
+  escribir (la hoja pudo ordenarse a mano desde la última lectura). Si un ID a reemplazar no está, o está en más de
+  una fila, falla sin escribir.
 
 | Operación | Datos | Hojas donde agrega filas (adaptador Sheets) |
 |---|---|---|
@@ -92,6 +94,7 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
 | `corregirContacto` | `Contacto` | Reemplaza su fila en *Contactos*. |
 | `registrarProducto` | `Producto`, `precio` (o `null`) | *Productos*, *Precios* (si hay precio). |
 | `corregirProducto` | `Producto` | Reemplaza su fila en *Productos*. |
+| `corregirPedido` | `CorreccionPedido` (`pedido`, `items`, `vendedores`, `preciosNuevos`, `entregas`; de `corregirPedido` del dominio) | Reemplaza su fila en *Pedidos* y las de sus entregas en *Ventas*; borra y vuelve a agregar sus filas de *Pedidos ítems*, *Pedidos vendedores*, *Ventas ítems* y *Ventas comisiones*; agrega *Precios* (productos nuevos sin precio de lista). |
 | `registrarPedido` | `pedido`, `items`, `vendedores`, `momento`, `preciosNuevos`, `entrega`, `cobros` (opcional) | *Pedidos*, *Pedidos ítems*, *Pedidos estados* (`abierto`), *Pedidos vendedores*, *Precios* (productos sin precio de lista) y, en una venta directa, las de `registrarEntrega`. |
 | `registrarEntrega` | `Entrega` (`venta`, `items`, `comisiones`, `envio`) y `cobros` (opcional) | *Ventas*, *Ventas ítems*, *Ventas comisiones* (si hay), *Ventas envíos* (si hay), *Cobros* (si hay). |
 | `cambiarEstadoPedido` | `pedidoId`, `cancelado` o `cerrado`, `momento` | *Pedidos estados*. |

@@ -6,7 +6,7 @@
 import type { Config } from '../../config';
 import { SesionVencida, SinAcceso } from '../puerto';
 import { celda, type Fila, type ValorCelda } from './celdas';
-import { type ClaveHoja, type Escritura, nombreHoja, type Reemplazo } from './hojas';
+import { type ClaveHoja, type Correccion, type Escritura, nombreHoja } from './hojas';
 
 const SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -173,40 +173,52 @@ export async function info() {
 // Agrega filas al final de varias hojas en un solo batchUpdate: Google aplica todo o nada, así una
 // operación (por ejemplo, un pedido con sus ítems) nunca queda a medias.
 export async function escribir(planilla: InfoPlanilla, escritura: Escritura) {
-  const requests = (Object.entries(escritura) as [ClaveHoja, ValorCelda[][]][])
-    .filter(([, filas]) => filas.length > 0)
-    .map(([clave, filas]) => ({
-      appendCells: {
-        sheetId: idHoja(planilla, clave),
-        rows: filas.map((f) => ({ values: f.map(celda) })),
-        fields: CAMPOS,
-      },
-    }));
+  const requests = agregar(planilla, escritura);
   if (requests.length === 0) return;
   await req(url(':batchUpdate'), { method: 'POST', body: JSON.stringify({ requests }) });
 }
 
-// Reemplaza la fila que tiene el ID en la columna A. La busca justo antes de escribir, porque desde la última
-// lectura alguien pudo ordenar la hoja o agregarle filas a mano. Las celdas vacías de la fila nueva borran las que
-// había; las columnas que la app no usa, a la derecha, no se tocan.
-export async function reemplazar(planilla: InfoPlanilla, { hoja: clave, id, fila }: Reemplazo) {
-  const titulo = nombreHoja(clave);
-  const sheetId = idHoja(planilla, clave);
-  const [columna = []] = await leer([`'${titulo}'!A:A`]);
+const agregar = (planilla: InfoPlanilla, escritura: Escritura) => (Object.entries(escritura) as [ClaveHoja, ValorCelda[][]][])
+  .filter(([, filas]) => filas.length > 0)
+  .map(([clave, filas]) => ({
+    appendCells: { sheetId: idHoja(planilla, clave), rows: filas.map((f) => ({ values: f.map(celda) })), fields: CAMPOS },
+  }));
+
+// Corrige filas ya guardadas en un solo batchUpdate. Busca las filas por el ID de la columna A justo antes de
+// escribir, porque desde la última lectura alguien pudo ordenar la hoja o agregarle filas a mano. Primero
+// reemplaza en el lugar (las celdas vacías de la fila nueva borran las que había; las columnas que la app no usa,
+// a la derecha, no se tocan), después borra las filas de los recambios, de abajo hacia arriba para que no se
+// corran las que faltan, y al final agrega las filas nuevas.
+export async function corregir(planilla: InfoPlanilla, { reemplazos, recambios, agregados }: Correccion) {
+  const claves = [...new Set([...reemplazos, ...recambios].map((r) => r.hoja))];
+  const columnas = await leer(claves.map((k) => `'${nombreHoja(k)}'!A:A`));
   // La fila 0 es el encabezado.
-  const indices = columna.flatMap((f, i) => (i > 0 && String(f[0] ?? '').trim() === id ? [i] : []));
-  if (indices.length === 0) throw new Error(`No está en la hoja "${titulo}". Tocá "Refrescar" y probá de nuevo.`);
-  if (indices.length > 1) {
-    throw new Error(`En la hoja "${titulo}" las filas ${indices.map((i) => i + 1).join(' y ')} tienen el mismo ID: dejá una sola.`);
-  }
-  await req(url(':batchUpdate'), {
-    method: 'POST',
-    body: JSON.stringify({
-      requests: [{
-        updateCells: { start: { sheetId, rowIndex: indices[0], columnIndex: 0 }, rows: [{ values: fila.map(celda) }], fields: CAMPOS },
-      }],
-    }),
+  const filasCon = (clave: ClaveHoja, ids: string[]) => (columnas[claves.indexOf(clave)] ?? [])
+    .flatMap((f, i) => (i > 0 && ids.includes(String(f[0] ?? '').trim()) ? [i] : []));
+
+  const actualizar = reemplazos.map(({ hoja: clave, id, fila }) => {
+    const titulo = nombreHoja(clave);
+    const indices = filasCon(clave, [id]);
+    if (indices.length === 0) throw new Error(`No está en la hoja "${titulo}". Tocá "Refrescar" y probá de nuevo.`);
+    if (indices.length > 1) {
+      throw new Error(`En la hoja "${titulo}" las filas ${indices.map((i) => i + 1).join(' y ')} tienen el mismo ID: dejá una sola.`);
+    }
+    return {
+      updateCells: {
+        start: { sheetId: idHoja(planilla, clave), rowIndex: indices[0], columnIndex: 0 }, rows: [{ values: fila.map(celda) }], fields: CAMPOS,
+      },
+    };
   });
+  const borrar = claves.flatMap((clave) => {
+    const ids = recambios.filter((r) => r.hoja === clave).flatMap((r) => r.ids);
+    const sheetId = idHoja(planilla, clave);
+    return filasCon(clave, ids).sort((a, b) => b - a)
+      .map((i) => ({ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: i, endIndex: i + 1 } } }));
+  });
+  const nuevas = recambios.reduce<Escritura>((e, r) => ({ ...e, [r.hoja]: [...(e[r.hoja] ?? []), ...r.filas] }), {});
+  const requests = [...actualizar, ...borrar, ...agregar(planilla, nuevas), ...agregar(planilla, agregados)];
+  if (requests.length === 0) return;
+  await req(url(':batchUpdate'), { method: 'POST', body: JSON.stringify({ requests }) });
 }
 
 const CAMPOS = 'userEnteredValue,userEnteredFormat.numberFormat';

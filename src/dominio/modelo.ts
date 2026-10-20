@@ -586,6 +586,80 @@ export function armarEntrega(venta: Venta, lineas: LineaEntrega[], envio: EnvioE
   return { venta, items, comisiones, envio: envio && conEnvio ? { ventaId: venta.id, ...envio } : null };
 }
 
+// ---------- Corrección de un pedido ----------
+
+// Línea del pedido corregido. `linea` es el número que tenía en el pedido, o null si se agrega.
+export interface LineaCorregida { linea: number | null; productoId: string; cantidad: number; precio: number }
+
+// Un pedido corregido y sus entregas ya registradas, rehechas con el depósito, los precios y los vendedores nuevos.
+export interface CorreccionPedido {
+  pedido: Pedido; items: PedidoItem[]; vendedores: string[];
+  preciosNuevos: Precio[]; // productos sin precio de lista, que quedan con el precio del pedido
+  entregas: Omit<Entrega, 'envio'>[];
+}
+
+// Por qué no se puede corregir así el pedido, o null si se puede. Lo ya entregado de una línea no se deshace: la
+// línea no se quita, no cambia de producto y su cantidad no baja de lo entregado.
+export function problemaCorreccionPedido(resumen: ResumenPedido, lineas: LineaCorregida[]): string | null {
+  if (lineas.length === 0) return 'El pedido tiene que tener al menos un producto.';
+  if (lineas.some((l) => !(l.cantidad > 0))) return 'Todas las cantidades tienen que ser mayores a 0.';
+  if (lineas.some((l) => !(l.precio >= 0))) return 'Falta el precio de algún producto.';
+  for (const l of resumen.lineas.filter((x) => x.entregado > 0)) {
+    const nueva = lineas.find((x) => x.linea === l.linea);
+    if (!nueva) return 'No se puede quitar un producto que ya se entregó.';
+    if (nueva.productoId !== l.productoId) return 'No se puede cambiar un producto que ya se entregó.';
+    if (nueva.cantidad < l.entregado) return 'La cantidad no puede ser menor que lo ya entregado.';
+  }
+  return null;
+}
+
+// Arma el pedido corregido. Las líneas que siguen con el mismo producto conservan su número y su precio de lista;
+// las nuevas (o con otro producto) toman el precio de lista vigente a la fecha del pedido y, si no hay, el precio del
+// pedido pasa a la lista, como al registrarlo. Las entregas del pedido
+// toman el depósito nuevo si salían del anterior, el precio nuevo de su línea (con su importe y sus comisiones) y
+// los vendedores nuevos: el que sigue conserva su porcentaje y el que se agrega cobra el de la regla vigente a la
+// fecha de la entrega. El costo, las cantidades, los envíos y los cobros no cambian.
+export function corregirPedido(
+  datos: Pick<Datos, 'precios' | 'reglas' | 'vendedores' | 'ventasItems' | 'ventasComisiones'>,
+  anterior: ResumenPedido, pedido: Pedido, lineas: LineaCorregida[], vendedores: string[],
+): CorreccionPedido {
+  const { id } = anterior.pedido;
+  let siguiente = Math.max(0, ...anterior.lineas.map((l) => l.linea));
+  const conservadas = new Set<number>();
+  const items: PedidoItem[] = lineas.map((l) => {
+    const previa = anterior.lineas.find((x) => x.linea === l.linea && x.productoId === l.productoId);
+    if (previa) conservadas.add(previa.linea);
+    return {
+      pedidoId: id, linea: l.linea ?? ++siguiente, productoId: l.productoId, cantidad: l.cantidad,
+      precioLista: previa ? previa.precioLista : precioVigente(datos.precios, l.productoId, pedido.fecha), precio: l.precio,
+    };
+  });
+  const preciosNuevos = unicosPor(items.filter((it) => !conservadas.has(it.linea) && it.precioLista === null), (it) => it.productoId)
+    .map((it) => ({ productoId: it.productoId, precio: it.precio, desde: pedido.fecha }));
+
+  const precioDe = new Map(items.map((it) => [it.linea, it.precio]));
+  const conocidos = new Set(datos.vendedores.map((v) => v.id));
+  const entregas = anterior.ventas.map((v) => {
+    const venta = { ...v, depositoId: v.depositoId === anterior.pedido.depositoId ? pedido.depositoId : v.depositoId };
+    const previas = datos.ventasComisiones.filter((c) => c.ventaId === v.id);
+    const ventaItems = datos.ventasItems.filter((it) => it.ventaId === v.id).map((it) => {
+      const precio = precioDe.get(it.pedidoLinea) ?? it.precio;
+      return { ...it, precio, importe: redondear(it.cantidad * precio) };
+    });
+    const comisiones = ventaItems.flatMap((it) => vendedores.flatMap((vendedorId) => {
+      const previa = previas.find((c) => c.linea === it.linea && c.vendedorId === vendedorId);
+      if (!previa && !conocidos.has(vendedorId)) return [];
+      const regla = previa ? previa.porcentajeRegla : porcentajeRegla(datos.reglas, vendedorId, it.productoId, v.fecha);
+      const porcentaje = previa ? previa.porcentaje : regla ?? 0;
+      return [{ ventaId: v.id, linea: it.linea, vendedorId, porcentajeRegla: regla, porcentaje, monto: montoComision(it.importe, porcentaje) }];
+    }));
+    return { venta, items: ventaItems, comisiones };
+  });
+  return { pedido: { ...pedido, id }, items, vendedores, preciosNuevos, entregas };
+}
+
+const unicosPor = <T>(lista: T[], clave: (x: T) => string) => [...new Map(lista.map((x) => [clave(x), x])).values()];
+
 // Estados que se registran al dar de alta un flete: para uno ya despachado o terminado quedan también
 // los anteriores.
 export const caminoFlete = (estadoInicial: EstadoFlete): EstadoFlete[] =>

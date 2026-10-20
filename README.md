@@ -27,7 +27,7 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
 |---|---|
 | Depósitos, Productos, Contactos, Tipos de cliente, Vendedores | Datos maestros. Contactos y productos se dan de alta y se corrigen en sus pantallas (o en su ficha); los demás, a mano en la planilla. El pedido propone los vendedores y el depósito de la localidad del cliente. |
 | Precios, Reglas de comisión | Valores por defecto (precio de lista y % de comisión por vendedor y producto), con fecha desde. |
-| Pedidos, Pedidos ítems, Pedidos estados, Pedidos vendedores | Lo que pide el cliente, con el precio fijado al crearlo. Reserva stock. |
+| Pedidos, Pedidos ítems, Pedidos estados, Pedidos vendedores | Lo que pide el cliente, con el precio fijado al crearlo. Reserva stock. Se corrige desde su ficha, junto con sus entregas. |
 | Ventas, Ventas ítems, Ventas comisiones | Cada entrega de un pedido: descuenta stock y genera la comisión. |
 | Compras, Ajustes | Entradas y correcciones de stock. |
 | Recetas, Recetas ítems | Recetas de productos de *Productos* (insumos por tanda y cuánto sale, con versiones). Cada fabricación se guarda en *Ajustes*. Si faltan, la app las lee vacías y la pantalla Recetas avisa. |
@@ -62,8 +62,8 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
     `vistas/`: Inicio (pantalla por defecto: acceso directo a un pedido nuevo, mapa con depósitos, pedidos
     pendientes —con el flete para cubrir lo que les falta— y fletes en curso, y sus listas), Stock, Pedidos, Ventas, Compras, Recetas, Fletes, Precios, Contactos, Productos, Caja y Análisis.
   - `componentes/`: piezas compartidas (carga de ítems, navegación entre pantallas, KPIs, el mapa de Inicio y
-    `Fichas.tsx`, el modal que muestra lo que se toca en una tabla con sus vínculos, y `Maestros.tsx`, los
-    formularios de alta y corrección de contactos y productos); `ficha.ts`: el contexto para abrirlas.
+    `Fichas.tsx`, el modal que muestra lo que se toca en una tabla con sus vínculos, `Maestros.tsx`, los
+    formularios de alta y corrección de contactos y productos, y `CorregirPedido.tsx`, el que corrige un pedido); `ficha.ts`: el contexto para abrirlas.
   - `celular.css`: ajustes para pantallas de menos de 768 px (barra inferior con menú *Más*, campos de 44 px).
   - `fuentes/`: la tipografía OpenDyslexic (regular y negrita) y su licencia (SIL Open Font License).
   - `whatsapp.ts`: arma el mensaje con los pedidos para mandar a un grupo de WhatsApp (botón *Exportar a WhatsApp* en Pedidos).

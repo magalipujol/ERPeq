@@ -7,6 +7,7 @@ import * as M from '../dominio/modelo';
 import { FichaContext, useFicha } from '../ficha';
 import { fmtFecha, fmtFechaHora, fmtMoney, fmtNum, lugar } from '../formato';
 import { Mensaje, Resumen } from './comunes';
+import { FormCorregirPedido } from './CorregirPedido';
 import { FormContacto, FormProducto } from './Maestros';
 import { EstadoFlete, EstadoPedido, Recorrido } from './estados';
 
@@ -129,16 +130,17 @@ const nombreEstadoFlete = (e: string) =>
 
 const NoEsta = () => <Text c="dimmed">No está en la planilla.</Text>;
 
-// Datos de la ficha con un botón "Corregir datos" que los reemplaza por el formulario de `editor`.
-function Corregible({ children, editor }:
-  { children: React.ReactNode; editor: (listo: (texto: string) => void, cancelar: () => void) => React.JSX.Element }) {
+// Datos de la ficha con un botón "Corregir datos" (o `etiqueta`) que los reemplaza por el formulario de `editor`.
+function Corregible({ children, editor, etiqueta = 'Corregir datos' }: {
+  children: React.ReactNode; editor: (listo: (texto: string) => void, cancelar: () => void) => React.JSX.Element; etiqueta?: string;
+}) {
   const [editando, setEditando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   if (editando) return editor((texto) => { setEditando(false); setAviso(texto); }, () => { setEditando(false); });
   return (
     <Stack gap="xs">
       {children}
-      <Group><Button size="xs" variant="light" onClick={() => { setAviso(null); setEditando(true); }}>Corregir datos</Button></Group>
+      <Group><Button size="xs" variant="light" onClick={() => { setAviso(null); setEditando(true); }}>{etiqueta}</Button></Group>
       {aviso !== null && <Mensaje msg={{ texto: aviso, error: false }} />}
     </Stack>
   );
@@ -214,14 +216,17 @@ function FichaPedido({ id, acciones }: { id: string; acciones: Acciones }) {
   const { resumen: r } = f;
   return (
     <Stack gap="md">
-      <Datos items={[
-        ['Cliente', <Vinculo key="c" a={{ tipo: 'contacto', id: r.pedido.contactoId }}>{nombres.contacto(r.pedido.contactoId)}</Vinculo>],
-        ['Fecha', fmtFecha(r.pedido.fecha)],
-        ['Entrega desde', nombres.deposito(r.pedido.depositoId)],
-        ['Estado', <EstadoPedido key="e" estado={r.estado} />],
-        ['Vendedores', r.vendedores.map(nombres.vendedor).join(', ') || 'Sin comisión'],
-        ['Nota', r.pedido.nota],
-      ]} />
+      <Corregible etiqueta="Corregir pedido"
+        editor={(listo, cancelar) => <FormCorregirPedido resumen={r} onListo={listo} onCancelar={cancelar} />}>
+        <Datos items={[
+          ['Cliente', <Vinculo key="c" a={{ tipo: 'contacto', id: r.pedido.contactoId }}>{nombres.contacto(r.pedido.contactoId)}</Vinculo>],
+          ['Fecha', fmtFecha(r.pedido.fecha)],
+          ['Entrega desde', nombres.deposito(r.pedido.depositoId)],
+          ['Estado', <EstadoPedido key="e" estado={r.estado} />],
+          ['Vendedores', r.vendedores.map(nombres.vendedor).join(', ') || 'Sin comisión'],
+          ['Nota', r.pedido.nota],
+        ]} />
+      </Corregible>
       {M.pedidoAbierto(r.estado) && (
         <Group><Button size="xs" variant="light" onClick={() => { acciones.entregar(id); }}>Registrar entrega</Button></Group>
       )}

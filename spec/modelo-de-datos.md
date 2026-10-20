@@ -57,8 +57,10 @@ sequenceDiagram
   la hoja:
   - **Datos maestros** (*Contactos* y *Productos*): corregir uno reemplaza su fila en el lugar, buscándola por
     `id`. El ID no cambia, así que los pedidos, compras y fletes que lo nombran muestran el dato corregido.
-  - **Movimientos** (compras, ventas, ajustes, estados): las correcciones son filas nuevas (un ajuste, un nuevo
-    estado), así el stock se puede recalcular siempre. La corrección de pedidos, fletes, ventas y compras ya
+  - **Pedidos**: corregir uno reemplaza sus filas y las de sus entregas ya registradas, en una sola operación (ver
+    [Corregir un pedido](#corregir-un-pedido)). El stock, las comisiones y lo que falta cobrar se recalculan solos.
+  - **Movimientos** (compras, ajustes, estados): las correcciones son filas nuevas (un ajuste, un nuevo
+    estado), así el stock se puede recalcular siempre. La corrección de fletes, compras y cobros ya
     cargados todavía no está en la app (ver [Preguntas abiertas](#preguntas-abiertas)).
 - **Lo derivado se calcula.** El stock, lo pendiente de un pedido, el estado actual de un flete y el costo
   promedio salen de los movimientos. Lo único que se guarda calculado es lo que tiene que quedar fijo al
@@ -77,7 +79,8 @@ sequenceDiagram
 - **Una operación, un `batchUpdate`.** Un pedido o una venta escribe cabecera, ítems y filas relacionadas en
   varias hojas (y, si hace falta, el contacto o el producto nuevo). Se manda todo en un solo
   `spreadsheets.batchUpdate` con `appendCells`, que la API aplica completo o no aplica nada, así no quedan
-  operaciones a medio escribir. Corregir un contacto o un producto es un `updateCells` sobre su fila. Los textos se guardan como texto, las fechas como fecha (`dd/mm/aaaa`) y los
+  operaciones a medio escribir. Corregir un contacto o un producto es un `updateCells` sobre su fila; corregir
+  un pedido, un `batchUpdate` que reemplaza sus cabeceras y vuelve a escribir sus ítems. Los textos se guardan como texto, las fechas como fecha (`dd/mm/aaaa`) y los
   estados con fecha y hora.
 - **Estado actual = última fila.** En *Pedidos estados* y *Fletes estados*, el estado vigente es el de la
   última fila agregada para ese ID.
@@ -508,6 +511,49 @@ stateDiagram-v2
 | cancelado | fila en *Pedidos estados* | no |
 | cerrado | fila en *Pedidos estados* | no |
 
+### Corregir un pedido
+
+Desde la ficha del pedido (*Corregir pedido*) se corrigen la fecha, el cliente, el depósito de entrega, los vendedores,
+los productos con sus cantidades y precios, y la nota. Sirve para un pedido abierto o ya entregado: si tiene
+entregas, se corrigen con él (`corregirPedido` del dominio):
+
+- **Depósito**: las entregas que salieron del depósito anterior pasan a salir del nuevo. El stock se recalcula: vuelve
+  al depósito equivocado y sale del correcto.
+- **Precio**: cada ítem entregado toma el precio nuevo de su línea, con su importe y sus comisiones.
+- **Vendedores**: el que sigue conserva el porcentaje que se usó en cada entrega; el que se agrega cobra el de la regla
+  vigente a la fecha de la entrega; el que se quita deja de comisionar.
+- No cambian las cantidades entregadas, el costo, el envío ni los cobros. Si el importe baja de lo cobrado, la venta
+  queda con saldo a favor del cliente.
+
+Lo ya entregado no se deshace: una línea con entregas no se quita, no cambia de producto y su cantidad no baja de lo
+entregado. Las líneas que se agregan siguen la numeración del pedido y proponen el precio de lista vigente a la fecha
+del pedido (si el producto no tiene, el precio pasa a *Precios*, como al registrarlo). Las que siguen con el mismo
+producto conservan su `precio_lista`.
+
+En la planilla, las cabeceras (*Pedidos* y *Ventas*) se reemplazan en el lugar, buscadas por ID. Las filas sin ID
+propio (*Pedidos ítems*, *Pedidos vendedores*, *Ventas ítems* y *Ventas comisiones*) se borran y se vuelven a agregar
+al final. *Pedidos estados*, *Ventas envíos* y *Cobros* no se tocan.
+
+Ejemplo: una venta directa a Ana de 2 kg de almendras se cargó desde Rosario a $3.000 (lista), con 7% para
+Guada/Hernán. La mercadería salió de Bahía Blanca a $2.800:
+
+| Hoja | Antes | Después |
+|---|---|---|
+| Pedidos | `PE0003`, 16/10, `C0001`, `ROS` | `PE0003`, 16/10, `C0001`, `BB` |
+| Pedidos ítems | `PE0003`, 1, almendras, 2, 3000, 3000 | `PE0003`, 1, almendras, 2, 3000, 2800 |
+| Ventas | `V0002`, 16/10, `PE0003`, `ROS` | `V0002`, 16/10, `PE0003`, `BB` |
+| Ventas ítems | `V0002`, 1, 1, almendras, 2, 3000, 6000, 1500 | `V0002`, 1, 1, almendras, 2, 2800, 5600, 1500 |
+| Ventas comisiones | `V0002`, 1, `VEN02`, 7, 7, 420 | `V0002`, 1, `VEN02`, 7, 7, 392 |
+
+```mermaid
+flowchart LR
+    F["Corregir pedido<br/>(ficha)"] --> V{"¿Lo entregado<br/>se respeta?"}
+    V -- no --> E["No guarda"]
+    V -- sí --> P["Pedido, ítems<br/>y vendedores"]
+    V -- sí --> D["Cada entrega: depósito,<br/>precios, importes, comisiones"]
+    P & D --> B["Un solo batchUpdate"]
+```
+
 ### Ventas directas
 
 Una venta siempre pertenece a un pedido, así todos los análisis (fletes, ganancia por pedido) funcionan
@@ -855,10 +901,9 @@ La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e 
 
 ## Preguntas abiertas
 
-- **Corregir movimientos.** Contactos y productos se corrigen en el lugar. Falta decidir cómo se corrigen un
-  pedido, un flete, una venta, una compra, un cobro, una rendición o una fabricación ya cargados: reemplazar sus
-  filas, o anularlos y cargarlos de nuevo en una sola operación. Lo que cuelga de ellos (cobros de una venta,
-  ventas de un pedido) también tiene que quedar resuelto.
+- **Corregir movimientos.** Contactos y productos se corrigen en el lugar, y un pedido reemplazando sus filas y las
+  de sus entregas. Falta decidir cómo se corrigen un flete, una compra, un cobro, una rendición o una fabricación ya
+  cargados, y si una entrega se puede corregir sola (la fecha, las cantidades entregadas, el envío) o anular.
 - **Depósitos, vendedores, socios y tipos de cliente** todavía se cargan y se corrigen a mano en la planilla.
 
 - **Depósito por pedido o por línea.** Esta spec usa uno por pedido. Si un pedido puede entregarse en parte

@@ -2,7 +2,7 @@
 // conoce esta interfaz; cómo se guarda (hojas, columnas, celdas, API) es asunto de cada adaptador.
 // Ver spec/arquitectura.md.
 import type {
-  Ajuste, Cobro, Compra, Contacto, ContactoNuevo, Datos, Entrega, EstadoFlete, Flete, FleteItem, Pedido, PedidoItem,
+  Ajuste, Cobro, Compra, Contacto, ContactoNuevo, CorreccionPedido, Datos, Entrega, EstadoFlete, Flete, FleteItem, Pedido, PedidoItem,
   Precio, Producto, Receta, RecetaItem, ReglaComision, ReglaEnvio, Rendicion,
 } from '../dominio/modelo';
 
@@ -75,7 +75,7 @@ export interface Sesion {
 }
 
 // Operaciones de escritura. Cada una es atómica: se guarda todo o nada.
-// Los contactos y productos se dan de alta y se corrigen: `corregir…` reemplaza los datos del que tiene ese ID.
+// Los contactos, productos y pedidos se dan de alta y se corrigen: `corregir…` reemplaza los datos del que tiene ese ID.
 export interface Operaciones {
   registrarContacto: (c: Contacto) => Promise<void>;
   corregirContacto: (c: Contacto) => Promise<void>;
@@ -83,6 +83,8 @@ export interface Operaciones {
   registrarProducto: (p: Producto, precio: Precio | null) => Promise<void>;
   corregirProducto: (p: Producto) => Promise<void>;
   registrarPedido: (p: PedidoNuevo) => Promise<void>;
+  // Reemplaza el pedido, sus ítems y vendedores, y sus entregas ya registradas (corregirPedido del dominio).
+  corregirPedido: (c: CorreccionPedido) => Promise<void>;
   // Los cobros opcionales se guardan junto con la venta.
   registrarEntrega: (e: Entrega, cobros?: Cobro[]) => Promise<void>;
   cambiarEstadoPedido: (pedidoId: string, estado: 'cancelado' | 'cerrado', momento: Date) => Promise<void>;

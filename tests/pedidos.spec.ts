@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { AHORA, expect, HOY_SERIE, test } from './google-falso'
+import { AHORA, expect, HOY_SERIE, serie, test } from './google-falso'
 
 test.beforeEach(async ({ page, ingresar }) => {
   await page.goto('/#pedidos')
@@ -175,4 +175,49 @@ test('cancela un pedido sin entregas', async ({ page, google }) => {
   await expect(page.getByText('El pedido de Ana · 10/10/26 quedó cancelado.')).toBeVisible()
   expect(google.escrituras).toEqual([{ 'Pedidos estados': [['PE0002', AHORA, 'cancelado']] }])
   await expect(filaPedido(page, 'Ana · 10/10/26')).toBeHidden()
+})
+
+test('corrige un pedido sin entregas desde su ficha: reemplaza sus filas', async ({ page, google }) => {
+  await filaPedido(page, 'Ana · 10/10/26').getByRole('button', { name: 'Ana' }).click()
+  const ficha = page.getByRole('dialog', { name: 'Pedido de Ana · 10/10/26' })
+  await ficha.getByRole('button', { name: 'Corregir pedido' }).click()
+
+  // Eran 10 kg de avena desde Rosario: son 12 a $ 750 desde General, más 2 kg de almendras a precio de lista.
+  const form = ficha.getByRole('form', { name: 'Corregir pedido' })
+  await expect(form.getByText('entregas ya registradas')).toBeHidden()
+  await form.getByLabel('Entrega desde', { exact: true }).selectOption({ label: 'General' })
+  await form.getByLabel('Cantidad', { exact: true }).fill('12')
+  await form.getByLabel('Precio unitario', { exact: true }).fill('750')
+  await form.getByRole('button', { name: '+ Agregar producto' }).click()
+  await form.getByLabel('Producto', { exact: true }).nth(1).fill('Almendras')
+  await form.getByLabel('Cantidad', { exact: true }).nth(1).fill('2')
+  await form.getByRole('button', { name: 'Guardar cambios' }).click()
+
+  await expect(ficha.getByText('✓ Pedido de Ana corregido.')).toBeVisible()
+  await expect(ficha.getByRole('group', { name: 'Entrega desde' })).toHaveText(/General/)
+  // La cabecera se reemplaza en el lugar; los ítems y vendedores se borran y se vuelven a agregar, en un solo batchUpdate.
+  expect(google.reemplazos).toEqual([{ hoja: 'Pedidos', fila: 3, valores: ['PE0002', serie('2026-10-10'), 'C0001', 'BB', ''] }])
+  expect(google.borrados).toEqual([
+    { hoja: 'Pedidos ítems', fila: 3, valores: ['PE0002', 1, 'P002', 10, 800, 800] },
+    { hoja: 'Pedidos vendedores', fila: 3, valores: ['PE0002', 'VEN02'] },
+  ])
+  expect(google.escrituras).toEqual([{
+    'Pedidos ítems': [['PE0002', 1, 'P002', 12, 800, 750], ['PE0002', 2, 'P001', 2, 3000, 3000]],
+    'Pedidos vendedores': [['PE0002', 'VEN02']],
+  }])
+})
+
+test('no deja corregir un pedido por debajo de lo ya entregado', async ({ page, google }) => {
+  await page.getByRole('radiogroup', { name: 'Mostrar' }).getByText('Todos').click()
+  await filaPedido(page, 'Ana · 05/10/26').getByRole('button', { name: 'Ana' }).click()
+  const ficha = page.getByRole('dialog', { name: 'Pedido de Ana · 05/10/26' })
+  await ficha.getByRole('button', { name: 'Corregir pedido' }).click()
+
+  const form = ficha.getByRole('form', { name: 'Corregir pedido' })
+  await expect(form.getByText('Ya entregado: 4 Almendras.')).toBeVisible()
+  await expect(form.getByText(/La entrega ya registrada se corrige también/)).toBeVisible()
+  await form.getByLabel('Cantidad', { exact: true }).fill('3')
+  await form.getByRole('button', { name: 'Guardar cambios' }).click()
+  await expect(form.getByText('La cantidad no puede ser menor que lo ya entregado.')).toBeVisible()
+  expect(google.reemplazos).toEqual([])
 })

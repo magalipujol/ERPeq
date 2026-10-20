@@ -202,6 +202,39 @@ describe('operaciones sobre la planilla', () => {
     expect(M.precioVigente(leidos.precios, 'P002', dia)).toBe(4000);
   });
 
+  it('corregir un pedido reemplaza su cabecera y la de sus ventas, y rehace ítems, vendedores y comisiones', async () => {
+    expect.hasAssertions();
+
+    const db = crearPlanillaEnMemoria();
+    await db.registrarPedido({ pedido, items: [item], vendedores: ['VEN01'], momento: dia, entrega: entrega(), preciosNuevos: [] });
+    // Otro pedido en las mismas hojas, que no se toca.
+    await db.registrarPedido({
+      pedido: { ...pedido, id: 'PE0002' }, items: [{ ...item, pedidoId: 'PE0002' }], vendedores: ['VEN01'], momento: dia, preciosNuevos: [],
+      entrega: M.armarEntrega({ id: 'V0002', fecha: dia, pedidoId: 'PE0002', depositoId: 'BB', nota: '' }, [{
+        linea: { ...item, pedidoId: 'PE0002', entregado: 0, pendiente: 2 }, cantidad: 2, costo: 1500,
+        comisiones: [{ vendedor: leo, porcentajeRegla: 10, porcentaje: 10 }],
+      }]),
+    });
+    const datos = await db.leer();
+    const anterior = M.resumirPedidos(datos)[0];
+    // Salía de Rosario a $2500 y se agrega un producto sin precio de lista.
+    await db.corregirPedido(M.corregirPedido({ ...datos, vendedores: [leo] }, anterior, { ...pedido, depositoId: 'ROS' }, [
+      { linea: 1, productoId: 'P001', cantidad: 2, precio: 2500 }, { linea: null, productoId: 'P002', cantidad: 1, precio: 800 },
+    ], ['VEN01']));
+
+    expect(db.escrituras).toHaveLength(2);
+    expect(db.hojas).toMatchObject({
+      pedidos: [['PE0001', DIA, 'C0001', 'ROS', ''], ['PE0002', DIA, 'C0001', 'BB', '']],
+      pedidosItems: [['PE0002', 1, 'P001', 2, '', 3000], ['PE0001', 1, 'P001', 2, '', 2500], ['PE0001', 2, 'P002', 1, '', 800]],
+      pedidosVendedores: [['PE0002', 'VEN01'], ['PE0001', 'VEN01']],
+      ventas: [['V0001', DIA, 'PE0001', 'ROS', ''], ['V0002', DIA, 'PE0002', 'BB', '']],
+      ventasItems: [['V0002', 1, 1, 'P001', 2, 3000, 6000, 1500], ['V0001', 1, 1, 'P001', 2, 2500, 5000, 1500]],
+      ventasComisiones: [['V0002', 1, 'VEN01', 10, 10, 600], ['V0001', 1, 'VEN01', 10, 10, 500]],
+      precios: [['P002', 800, DIA]],
+      pedidosEstados: [['PE0001', MOMENTO, 'abierto'], ['PE0002', MOMENTO, 'abierto']],
+    });
+  });
+
   it('corregir algo que no está en la hoja falla sin escribir', async () => {
     expect.hasAssertions();
 

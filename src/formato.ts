@@ -9,10 +9,10 @@ export const fmtMes = (k: string) => {
   const t = new Date(a, m - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
   return t.charAt(0).toUpperCase() + t.slice(1);
 };
-export const hoyISO = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+// Fecha → valor de un <input type="date"> ("2026-10-18"); vacío si no hay fecha.
+export const aISO = (d: Date | null) =>
+  (d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : '');
+export const hoyISO = () => aISO(new Date());
 export const deISO = (s: string) => {
   const [a, m, d] = s.split('-').map(Number);
   return new Date(a, m - 1, d, 12);

@@ -222,6 +222,13 @@ export type Escritura = Partial<Record<ClaveHoja, ValorCelda[][]>>;
 // Fila que reemplaza a la que tiene `id` en la primera columna de su hoja.
 export interface Reemplazo { hoja: ClaveHoja; id: string; fila: ValorCelda[] }
 
+// Filas que ocupan el lugar de todas las que tienen alguno de los `ids` en la primera columna de su hoja: las de
+// antes se borran y estas se agregan al final (pueden ser más o menos).
+export interface Recambio { hoja: ClaveHoja; ids: string[]; filas: ValorCelda[][] }
+
+// Corrección de filas ya guardadas, que se escribe de una sola vez: reemplazos en el lugar, recambios y filas nuevas.
+export interface Correccion { reemplazos: Reemplazo[]; recambios: Recambio[]; agregados: Escritura }
+
 // Une varias escrituras en una.
 export function unir(...escrituras: Escritura[]): Escritura {
   const res: Escritura = {};

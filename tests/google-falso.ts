@@ -113,13 +113,18 @@ export function planillaInicial(): Record<string, Fila[]> {
 // Filas agregadas por hoja en un mismo batchUpdate (una operación de la app).
 export type Escritura = Record<string, Fila[]>
 
-// Fila reemplazada en un batchUpdate (la corrección de un contacto o un producto): `fila` cuenta desde 1, como en Sheets.
+// Fila reemplazada en un batchUpdate (la corrección de un contacto, un producto o un pedido): `fila` cuenta desde 1,
+// como en Sheets.
 export interface Reemplazo { hoja: string; fila: number; valores: Fila }
+
+// Fila borrada en un batchUpdate (los ítems de un pedido que se corrige), con lo que tenía.
+export interface Borrado { hoja: string; fila: number; valores: Fila }
 
 export interface GoogleFalso {
   hojas: Record<string, Fila[]>
   escrituras: Escritura[]
   reemplazos: Reemplazo[]
+  borrados: Borrado[]
   // Respuesta forzada para la próxima petición a la Sheets API (403, 401, ...).
   fallarProxima: (status: number, veces?: number) => void
 }
@@ -138,6 +143,7 @@ interface Celda { userEnteredValue?: { stringValue?: string; numberValue?: numbe
 interface Pedido {
   appendCells?: { sheetId: number; rows: { values: Celda[] }[] }
   updateCells?: { start: { sheetId: number; rowIndex: number; columnIndex: number }; rows: { values: Celda[] }[] }
+  deleteDimension?: { range: { sheetId: number; dimension: 'ROWS'; startIndex: number; endIndex: number } }
 }
 
 const valor = (c: Celda) => c.userEnteredValue?.stringValue ?? c.userEnteredValue?.numberValue ?? c.userEnteredValue?.boolValue ?? ''
@@ -152,6 +158,7 @@ export async function instalarGoogleFalso(page: Page): Promise<GoogleFalso> {
   const hojas = planillaInicial()
   const escrituras: Escritura[] = []
   const reemplazos: Reemplazo[] = []
+  const borrados: Borrado[] = []
   let falla: { status: number; veces: number } | null = null
 
   await page.clock.setFixedTime(HOY)
@@ -190,7 +197,7 @@ export async function instalarGoogleFalso(page: Page): Promise<GoogleFalso> {
       const { requests } = req.postDataJSON() as { requests: Pedido[] }
       const titulos = Object.keys(hojas)
       const escritura: Escritura = {}
-      for (const { appendCells, updateCells } of requests) {
+      for (const { appendCells, updateCells, deleteDimension } of requests) {
         if (appendCells) {
           const hoja = titulos[appendCells.sheetId - 100]
           const filas = appendCells.rows.map((r) => r.values.map(valor))
@@ -204,6 +211,12 @@ export async function instalarGoogleFalso(page: Page): Promise<GoogleFalso> {
           hojas[hoja][updateCells.start.rowIndex - 1] = valores
           reemplazos.push({ hoja, fila: updateCells.start.rowIndex + 1, valores })
         }
+        if (deleteDimension) {
+          const { sheetId, startIndex, endIndex } = deleteDimension.range
+          const hoja = titulos[sheetId - 100]
+          const quitadas = hojas[hoja].splice(startIndex - 1, endIndex - startIndex)
+          borrados.push(...quitadas.map((valores, i) => ({ hoja, fila: startIndex + i + 1, valores })))
+        }
       }
       if (Object.keys(escritura).length > 0) escrituras.push(escritura)
       return json({ replies: requests.map(() => ({})) })
@@ -215,6 +228,7 @@ export async function instalarGoogleFalso(page: Page): Promise<GoogleFalso> {
     hojas,
     escrituras,
     reemplazos,
+    borrados,
     fallarProxima: (status, veces = 1) => { falla = { status, veces } },
   }
 }

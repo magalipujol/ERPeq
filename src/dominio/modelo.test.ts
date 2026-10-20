@@ -625,3 +625,68 @@ describe('contactos y productos', () => {
     expect(M.contactoEnUso(movimientos, 'C0002')).toBe(false);
   });
 });
+
+describe('corregirPedido', () => {
+  // Pedido de Mar del Plata (MDP) entregado en parte: 10 de P001 a $100 (entregó 4) y 5 de P002 a $200 (sin entregar).
+  // Leo cobra 10% de P001 (porcentaje editado a 12 en la entrega); Guada, 5% general.
+  const base = datos({
+    depositos: [{ id: 'BB', nombre: 'General', localidad: '' }, { id: 'MDP', nombre: 'Mar del Plata', localidad: '' }],
+    vendedores: [
+      { id: 'VEN01', nombre: 'Leo', activo: true, localidad: '' }, { id: 'VEN02', nombre: 'Guada', activo: true, localidad: '' },
+    ],
+    reglas: [{ vendedorId: 'VEN02', productoId: '', porcentaje: 5, desde: null }],
+    precios: [{ productoId: 'P003', precio: 300, desde: null }],
+    pedidos: [pedido('PE1', 'MDP')],
+    pedidosItems: [item('PE1', 1, 'P001', 10), item('PE1', 2, 'P002', 5, 200)],
+    pedidosVendedores: [{ pedidoId: 'PE1', vendedorId: 'VEN01' }],
+    ventas: [venta('V1', 'PE1', 'MDP')],
+    ventasItems: [ventaItem('V1', 1, 1, 'P001', 4)],
+    ventasComisiones: [{ ventaId: 'V1', linea: 1, vendedorId: 'VEN01', porcentajeRegla: 10, porcentaje: 12, monto: 48 }],
+  });
+  const [anterior] = M.resumirPedidos(base);
+  const lineas = (...ls: M.LineaCorregida[]) => ls;
+
+  it('rehace las entregas con el depósito, el precio y los vendedores nuevos', () => {
+    // Salía de Bahía Blanca a $90, y también comisiona Guada; P002 se cambia por 2 de P003, que tiene lista $300.
+    const c = M.corregirPedido(base, anterior, { ...anterior.pedido, depositoId: 'BB' },
+      lineas({ linea: 1, productoId: 'P001', cantidad: 10, precio: 90 }, { linea: 2, productoId: 'P003', cantidad: 2, precio: 300 }),
+      ['VEN01', 'VEN02']);
+
+    expect(c).toMatchObject({ pedido: { depositoId: 'BB' }, preciosNuevos: [] });
+    expect(c.items).toStrictEqual([
+      { pedidoId: 'PE1', linea: 1, productoId: 'P001', cantidad: 10, precioLista: 100, precio: 90 },
+      { pedidoId: 'PE1', linea: 2, productoId: 'P003', cantidad: 2, precioLista: 300, precio: 300 },
+    ]);
+    // 4 × $90 = $360, desde Bahía Blanca; el costo no cambia. Leo conserva su 12% (360 × 12% = 43,20); Guada entra con
+    // su regla, 5% (18).
+    expect(c.entregas).toStrictEqual([{
+      venta: venta('V1', 'PE1', 'BB'),
+      items: [{ ...ventaItem('V1', 1, 1, 'P001', 4), precio: 90, importe: 360 }],
+      comisiones: [
+        { ventaId: 'V1', linea: 1, vendedorId: 'VEN01', porcentajeRegla: 10, porcentaje: 12, monto: 43.2 },
+        { ventaId: 'V1', linea: 1, vendedorId: 'VEN02', porcentajeRegla: 5, porcentaje: 5, monto: 18 },
+      ],
+    }]);
+  });
+
+  it('numera las líneas nuevas después de la última y agrega su precio de lista si no tiene', () => {
+    const c = M.corregirPedido(base, anterior, anterior.pedido,
+      lineas({ linea: 1, productoId: 'P001', cantidad: 4, precio: 100 }, { linea: null, productoId: 'P004', cantidad: 1, precio: 50 }), []);
+
+    expect(c.items.map((x) => [x.linea, x.productoId, x.precioLista])).toStrictEqual([[1, 'P001', 100], [3, 'P004', null]]);
+    expect(c.preciosNuevos).toStrictEqual([{ productoId: 'P004', precio: 50, desde: anterior.pedido.fecha }]);
+    // Sin vendedores, la entrega queda sin comisiones; el depósito sigue igual.
+    expect(c.entregas[0]).toMatchObject({ comisiones: [], venta: { depositoId: 'MDP' } });
+  });
+
+  it('no deja deshacer lo entregado', () => {
+    const p1 = { linea: 1, productoId: 'P001', cantidad: 10, precio: 100 };
+
+    expect(M.problemaCorreccionPedido(anterior, lineas(p1, { linea: null, productoId: 'P003', cantidad: 1, precio: 1 }))).toBeNull();
+    expect(M.problemaCorreccionPedido(anterior, lineas({ linea: 2, productoId: 'P002', cantidad: 5, precio: 200 })))
+      .toBe('No se puede quitar un producto que ya se entregó.');
+    expect(M.problemaCorreccionPedido(anterior, lineas({ ...p1, productoId: 'P009' }))).toBe('No se puede cambiar un producto que ya se entregó.');
+    expect(M.problemaCorreccionPedido(anterior, lineas({ ...p1, cantidad: 3 }))).toBe('La cantidad no puede ser menor que lo ya entregado.');
+    expect(M.problemaCorreccionPedido(anterior, lineas({ ...p1, cantidad: 0 }))).toBe('Todas las cantidades tienen que ser mayores a 0.');
+  });
+});

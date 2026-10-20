@@ -755,3 +755,45 @@ test('un pedido por menos del mínimo paga envío, que es para el vendedor que e
   await expect(cuenta).toContainText(/Guada\/Hernán le debe \$\s7\.760 a Sampatti\./)
   await expect(cuenta.getByRole('row').filter({ hasText: 'Envío de la venta a Ana · 16/10/26' })).toContainText(/-\$\s5\.000/)
 })
+
+test('una venta directa cargada desde el depósito y con el precio equivocados se corrige desde el pedido', async ({ page, google }) => {
+  // 1. Ana se lleva 2 kg de almendras. El pedido propone Rosario (el depósito de su último pedido) y el precio de lista,
+  //    y así queda: 2 × $ 3.000 = $ 6.000, con 7% para Guada/Hernán ($ 420). Rosario queda en −2.
+  const pedido = formPedido(page)
+  await elegirCliente(page, 'Ana')
+  await pedido.getByLabel('Producto', { exact: true }).fill('Almendras')
+  await pedido.getByLabel('Cantidad', { exact: true }).fill('2')
+  await pedido.getByLabel('Se entrega ahora (venta directa)').check()
+  await pedido.getByRole('button', { name: 'Registrar pedido' }).click()
+  await expect(pedido.getByText(/✓ Pedido de Ana registrado y entregado/)).toBeVisible()
+  expect(google.escrituras[0]).toMatchObject({
+    'Ventas': [['V0002', HOY_SERIE, 'PE0003', 'ROS', '']],
+    'Ventas ítems': [['V0002', 1, 1, 'P001', 2, 3000, 6000, 1500]],
+    'Ventas comisiones': [['V0002', 1, 'VEN02', 7, 7, 420]],
+  })
+
+  // 2. La mercadería salió de General y a $ 2.800. Se corrige el pedido desde su ficha: avisa que la entrega también
+  //    se corrige.
+  await page.getByRole('radiogroup', { name: 'Mostrar' }).getByText('Todos').click()
+  await filaPedido(page, 'Ana · 16/10/26').getByRole('button', { name: 'Ana' }).click()
+  const ficha = page.getByRole('dialog', { name: 'Pedido de Ana · 16/10/26' })
+  await ficha.getByRole('button', { name: 'Corregir pedido' }).click()
+  const form = ficha.getByRole('form', { name: 'Corregir pedido' })
+  await expect(form.getByText(/La entrega ya registrada se corrige también/)).toBeVisible()
+  await form.getByLabel('Entrega desde', { exact: true }).selectOption({ label: 'General' })
+  await form.getByLabel('Precio unitario', { exact: true }).fill('2800')
+  await form.getByRole('button', { name: 'Guardar cambios' }).click()
+  await expect(ficha.getByText('✓ Pedido de Ana corregido, con su entrega.')).toBeVisible()
+
+  // 3. La venta sale de General: 2 × $ 2.800 = $ 5.600, y Guada/Hernán conserva su 7%: $ 392. El costo ($ 1.500) no cambia.
+  expect(google.hojas.Ventas.at(-1)).toEqual(['V0002', HOY_SERIE, 'PE0003', 'BB', ''])
+  expect(google.hojas['Ventas ítems'].at(-1)).toEqual(['V0002', 1, 1, 'P001', 2, 2800, 5600, 1500])
+  expect(google.hojas['Ventas comisiones'].at(-1)).toEqual(['V0002', 1, 'VEN02', 7, 7, 392])
+  await expect(ficha.getByRole('table', { name: 'Entregas del pedido' })).toContainText('General')
+  await expect(ficha.getByRole('group', { name: 'Importe' })).toContainText(/5\.600/)
+
+  // 4. El stock se recalcula: General pasa de 10 a 8 kg y Rosario vuelve a 0 (con los 6 que vienen en camino).
+  await page.keyboard.press('Escape')
+  await ir(page, 'Stock')
+  await esperarStock(page, 'Almendras', { general: ['8', '–', '–'], rosario: ['0', '6', '–'] })
+})
