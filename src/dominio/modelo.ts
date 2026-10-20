@@ -101,6 +101,40 @@ export function redondear(n: number | null, d = 2) {
   return n === null ? null : Math.round(n * 10 ** d) / 10 ** d;
 }
 
+// ---------- Contactos y productos ----------
+
+export const ROLES: readonly Rol[] = ['cliente', 'proveedor', 'transporte'];
+export const NOMBRE_ROL: Record<Rol, string> = { cliente: 'Cliente', proveedor: 'Proveedor', transporte: 'Transporte' };
+export const UNIDADES = ['kg', 'unid.'] as const;
+// Un rol que no es de la lista se muestra como está escrito en la planilla.
+export const nombreRol = (rol: string) => ((ROLES as readonly string[]).includes(rol) ? NOMBRE_ROL[rol as Rol] : rol);
+
+const mismoNombre = (a: string, b: string) => a.trim().toLowerCase().replace(/\s+/g, ' ') === b.trim().toLowerCase().replace(/\s+/g, ' ');
+
+// Por qué no se puede guardar un contacto nuevo o corregido, o null si se puede. Los formularios eligen un contacto
+// por su nombre, así que no puede haber dos con el mismo nombre y rol.
+export function problemaContacto(contactos: Contacto[], c: Contacto): string | null {
+  if (!c.nombre.trim()) return 'Ingresá el nombre.';
+  if (!(ROLES as readonly string[]).includes(c.rol)) return 'Elegí si es cliente, proveedor o transporte.';
+  const otro = contactos.find((x) => x.id !== c.id && x.rol === c.rol && mismoNombre(x.nombre, c.nombre));
+  return otro ? `Ya hay un ${nombreRol(c.rol).toLowerCase()} que se llama ${otro.nombre}.` : null;
+}
+
+// Lo mismo para un producto: los formularios lo eligen por su nombre.
+export function problemaProducto(productos: Producto[], p: Producto): string | null {
+  if (!p.producto.trim()) return 'Ingresá el nombre del producto.';
+  if (!p.unidad) return 'Elegí la unidad.';
+  if (p.minimo !== null && !(p.minimo >= 0)) return 'El mínimo no puede ser negativo.';
+  const otro = productos.find((x) => x.id !== p.id && mismoNombre(x.producto, p.producto));
+  return otro ? `Ya hay un producto que se llama ${otro.producto}.` : null;
+}
+
+// Si un contacto tiene pedidos, compras o fletes: su rol ya no se cambia, porque esas filas dejarían de cuadrar
+// (un pedido a un proveedor, una compra a un cliente).
+export const contactoEnUso = (datos: Pick<Datos, 'pedidos' | 'compras' | 'fletes'>, id: string) =>
+  datos.pedidos.some((p) => p.contactoId === id) || datos.compras.some((c) => c.contactoId === id)
+  || datos.fletes.some((f) => f.contactoId === id);
+
 // ---------- Estados ----------
 
 // El estado actual es el de la última fila agregada para esa referencia.

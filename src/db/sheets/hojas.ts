@@ -219,6 +219,9 @@ export const filas = {
 // Filas por hoja que se escriben juntas en una operación.
 export type Escritura = Partial<Record<ClaveHoja, ValorCelda[][]>>;
 
+// Fila que reemplaza a la que tiene `id` en la primera columna de su hoja.
+export interface Reemplazo { hoja: ClaveHoja; id: string; fila: ValorCelda[] }
+
 // Une varias escrituras en una.
 export function unir(...escrituras: Escritura[]): Escritura {
   const res: Escritura = {};

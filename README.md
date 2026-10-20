@@ -25,7 +25,7 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
 
 | Hojas | Contenido |
 |---|---|
-| Depósitos, Productos, Contactos, Tipos de cliente, Vendedores | Datos maestros. Los clientes se cargan a mano en *Contactos*; el pedido propone los vendedores y el depósito de la localidad del cliente. |
+| Depósitos, Productos, Contactos, Tipos de cliente, Vendedores | Datos maestros. Contactos y productos se dan de alta y se corrigen en sus pantallas (o en su ficha); los demás, a mano en la planilla. El pedido propone los vendedores y el depósito de la localidad del cliente. |
 | Precios, Reglas de comisión | Valores por defecto (precio de lista y % de comisión por vendedor y producto), con fecha desde. |
 | Pedidos, Pedidos ítems, Pedidos estados, Pedidos vendedores | Lo que pide el cliente, con el precio fijado al crearlo. Reserva stock. |
 | Ventas, Ventas ítems, Ventas comisiones | Cada entrega de un pedido: descuenta stock y genera la comisión. |
@@ -36,7 +36,7 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
 | Socios, Cobros, Rendiciones | Quién cobró cada venta (efectivo o transferencia) y lo que los socios se rinden entre sí. Si faltan, la app las lee vacías y la pantalla Caja avisa. |
 
 Cada fila guarda los IDs de lo que referencia (producto, contacto, vendedor, socio), nunca sus nombres: el nombre
-se corrige en *Productos*, *Contactos*, *Vendedores* o *Socios* y cambia en toda la app. La app revisa los
+se corrige en *Productos*, *Contactos*, *Vendedores* o *Socios* (los dos primeros, también desde la app) y cambia en toda la app. La app revisa los
 encabezados de cada hoja y no abre una planilla con las columnas distintas a las que espera.
 
 **Stock** = compras − entregas + ajustes (incluidas las fabricaciones) ± fletes entre depósitos (en camino: sale del origen; finalizado: entra en el destino).
@@ -60,9 +60,10 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
     planilla en memoria para las pruebas.
   - `main.tsx`: arranca la app con la base de Google Sheets; `App.tsx`: pantallas de acceso y navegación;
     `vistas/`: Inicio (pantalla por defecto: acceso directo a un pedido nuevo, mapa con depósitos, pedidos
-    pendientes —con el flete para cubrir lo que les falta— y fletes en curso, y sus listas), Stock, Pedidos, Ventas, Compras, Recetas, Fletes, Precios, Caja y Análisis.
+    pendientes —con el flete para cubrir lo que les falta— y fletes en curso, y sus listas), Stock, Pedidos, Ventas, Compras, Recetas, Fletes, Precios, Contactos, Productos, Caja y Análisis.
   - `componentes/`: piezas compartidas (carga de ítems, navegación entre pantallas, KPIs, el mapa de Inicio y
-    `Fichas.tsx`, el modal que muestra lo que se toca en una tabla con sus vínculos); `ficha.ts`: el contexto para abrirlas.
+    `Fichas.tsx`, el modal que muestra lo que se toca en una tabla con sus vínculos, y `Maestros.tsx`, los
+    formularios de alta y corrección de contactos y productos); `ficha.ts`: el contexto para abrirlas.
   - `celular.css`: ajustes para pantallas de menos de 768 px (barra inferior con menú *Más*, campos de 44 px).
   - `fuentes/`: la tipografía OpenDyslexic (regular y negrita) y su licencia (SIL Open Font License).
   - `whatsapp.ts`: arma el mensaje con los pedidos para mandar a un grupo de WhatsApp (botón *Exportar a WhatsApp* en Pedidos).

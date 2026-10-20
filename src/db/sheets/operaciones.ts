@@ -2,7 +2,7 @@
 // adaptador guarda de una sola vez.
 import type { Cobro, Entrega } from '../../dominio/modelo';
 import type { CompraNueva, FleteNuevo, Operaciones, PedidoNuevo } from '../puerto';
-import { type Escritura, filas, unir } from './hojas';
+import { type Escritura, filas, type Reemplazo, unir } from './hojas';
 
 export function escrituraEntrega({ venta, items, comisiones, envio }: Entrega, cobros: Cobro[] = []): Escritura {
   return {
@@ -43,9 +43,14 @@ export function escrituraCompra(c: CompraNueva): Escritura {
   };
 }
 
-// Implementa las operaciones del puerto sobre una función que agrega filas en una sola escritura atómica.
-export function operaciones(escribir: (e: Escritura) => Promise<void>): Operaciones {
+// Implementa las operaciones del puerto sobre una función que agrega filas en una sola escritura atómica y otra
+// que reemplaza una fila.
+export function operaciones(escribir: (e: Escritura) => Promise<void>, reemplazar: (r: Reemplazo) => Promise<void>): Operaciones {
   return {
+    registrarContacto: async (c) => escribir({ contactos: [filas.contacto(c)] }),
+    corregirContacto: async (c) => reemplazar({ hoja: 'contactos', id: c.id, fila: filas.contacto(c) }),
+    registrarProducto: async (p, precio) => escribir({ productos: [filas.producto(p)], ...(precio ? { precios: [filas.precio(precio)] } : {}) }),
+    corregirProducto: async (p) => reemplazar({ hoja: 'productos', id: p.id, fila: filas.producto(p) }),
     registrarPedido: async (p) => escribir(escrituraPedido(p)),
     registrarEntrega: async (e, cobros) => escribir(escrituraEntrega(e, cobros)),
     cambiarEstadoPedido: async (id, estado, momento) => escribir({ pedidosEstados: [filas.estado(id, estado, momento)] }),

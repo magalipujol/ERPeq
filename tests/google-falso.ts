@@ -113,9 +113,13 @@ export function planillaInicial(): Record<string, Fila[]> {
 // Filas agregadas por hoja en un mismo batchUpdate (una operación de la app).
 export type Escritura = Record<string, Fila[]>
 
+// Fila reemplazada en un batchUpdate (la corrección de un contacto o un producto): `fila` cuenta desde 1, como en Sheets.
+export interface Reemplazo { hoja: string; fila: number; valores: Fila }
+
 export interface GoogleFalso {
   hojas: Record<string, Fila[]>
   escrituras: Escritura[]
+  reemplazos: Reemplazo[]
   // Respuesta forzada para la próxima petición a la Sheets API (403, 401, ...).
   fallarProxima: (status: number, veces?: number) => void
 }
@@ -131,7 +135,10 @@ window.google = { accounts: { oauth2: {
 } } };`
 
 interface Celda { userEnteredValue?: { stringValue?: string; numberValue?: number; boolValue?: boolean } }
-interface AppendCells { appendCells: { sheetId: number; rows: { values: Celda[] }[] } }
+interface Pedido {
+  appendCells?: { sheetId: number; rows: { values: Celda[] }[] }
+  updateCells?: { start: { sheetId: number; rowIndex: number; columnIndex: number }; rows: { values: Celda[] }[] }
+}
 
 const valor = (c: Celda) => c.userEnteredValue?.stringValue ?? c.userEnteredValue?.numberValue ?? c.userEnteredValue?.boolValue ?? ''
 
@@ -144,6 +151,7 @@ const hojaDeRango = (rango: string) => {
 export async function instalarGoogleFalso(page: Page): Promise<GoogleFalso> {
   const hojas = planillaInicial()
   const escrituras: Escritura[] = []
+  const reemplazos: Reemplazo[] = []
   let falla: { status: number; veces: number } | null = null
 
   await page.clock.setFixedTime(HOY)
@@ -179,16 +187,25 @@ export async function instalarGoogleFalso(page: Page): Promise<GoogleFalso> {
       })
     }
     if (ruta === ':batchUpdate' && req.method() === 'POST') {
-      const { requests } = req.postDataJSON() as { requests: AppendCells[] }
+      const { requests } = req.postDataJSON() as { requests: Pedido[] }
       const titulos = Object.keys(hojas)
       const escritura: Escritura = {}
-      for (const { appendCells } of requests) {
-        const hoja = titulos[appendCells.sheetId - 100]
-        const filas = appendCells.rows.map((r) => r.values.map(valor))
-        escritura[hoja] = [...(escritura[hoja] ?? []), ...filas]
-        hojas[hoja].push(...filas)
+      for (const { appendCells, updateCells } of requests) {
+        if (appendCells) {
+          const hoja = titulos[appendCells.sheetId - 100]
+          const filas = appendCells.rows.map((r) => r.values.map(valor))
+          escritura[hoja] = [...(escritura[hoja] ?? []), ...filas]
+          hojas[hoja].push(...filas)
+        }
+        if (updateCells) {
+          // rowIndex 0 es el encabezado, que no está en `hojas`.
+          const hoja = titulos[updateCells.start.sheetId - 100]
+          const valores = updateCells.rows[0].values.map(valor)
+          hojas[hoja][updateCells.start.rowIndex - 1] = valores
+          reemplazos.push({ hoja, fila: updateCells.start.rowIndex + 1, valores })
+        }
       }
-      escrituras.push(escritura)
+      if (Object.keys(escritura).length > 0) escrituras.push(escritura)
       return json({ replies: requests.map(() => ({})) })
     }
     return json({ error: { message: `ruta no simulada: ${req.method()} ${ruta}` } }, 500)
@@ -197,6 +214,7 @@ export async function instalarGoogleFalso(page: Page): Promise<GoogleFalso> {
   return {
     hojas,
     escrituras,
+    reemplazos,
     fallarProxima: (status, veces = 1) => { falla = { status, veces } },
   }
 }
@@ -214,10 +232,11 @@ export const test = base.extend<{ google: GoogleFalso; ingresar: () => Promise<v
 
 export { expect } from '@playwright/test'
 
-export type Pantalla = 'Inicio' | 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | 'Recetas' | 'Fletes' | 'Precios' | 'Caja' | 'Análisis'
+export type Pantalla = 'Inicio' | 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | 'Recetas' | 'Fletes' | 'Precios' | 'Contactos'
+  | 'Productos' | 'Caja' | 'Análisis'
 
 // En celular, estas pantallas están en el menú «Más» de la barra inferior.
-const EN_MAS: readonly Pantalla[] = ['Compras', 'Recetas', 'Fletes', 'Precios', 'Caja', 'Análisis']
+const EN_MAS: readonly Pantalla[] = ['Compras', 'Recetas', 'Fletes', 'Precios', 'Contactos', 'Productos', 'Caja', 'Análisis']
 
 // Menos de 768 px: el breakpoint `sm` de Mantine.
 export const esCelular = (page: Page) => (page.viewportSize()?.width ?? 0) < 768

@@ -80,19 +80,36 @@ test('venta directa: crea el pedido y la entrega juntos', async ({ page, google 
   await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText('Entregado')
 })
 
-test('el pedido no da de alta clientes: solo elige uno de Contactos', async ({ page, google }) => {
+test('un cliente que no está en la lista se da de alta sin salir del pedido', async ({ page, google }) => {
   const form = formPedido(page)
-  await expect(form.getByLabel('Tipo de cliente')).toHaveCount(0)
-  await expect(form.getByLabel('Localidad')).toHaveCount(0)
-  await expect(form.getByLabel('Provincia')).toHaveCount(0)
-
+  await form.getByLabel('Entrega desde', { exact: true }).selectOption({ label: 'General' })
   await form.getByLabel('Cliente', { exact: true }).fill('Bruno')
   await form.getByLabel('Producto', { exact: true }).fill('Almendras')
   await form.getByLabel('Cantidad', { exact: true }).fill('1')
   await form.getByRole('button', { name: 'Registrar pedido' }).click()
-  await expect(form.getByText('Bruno no está en la lista de clientes. Los clientes se agregan en la hoja Contactos de la planilla.'))
-    .toBeVisible()
+  await expect(form.getByText('Bruno no está en la lista de clientes. Tocá "Dar de alta" para agregarlo.')).toBeVisible()
   expect(google.escrituras).toEqual([])
+
+  // El alta trae el nombre escrito en el pedido. Bruno es de Rosario, como Guada/Hernán y el depósito de Rosario.
+  await form.getByRole('button', { name: 'Dar de alta' }).click()
+  const alta = page.getByRole('dialog', { name: 'Nuevo cliente' })
+  await expect(alta.getByLabel('Nombre', { exact: true })).toHaveValue('Bruno')
+  await alta.getByLabel('Tipo de cliente').selectOption('Revendedor')
+  await alta.getByLabel('Localidad', { exact: true }).fill('Rosario')
+  await alta.getByLabel('Provincia', { exact: true }).fill('Santa Fe')
+  await alta.getByRole('button', { name: 'Dar de alta' }).click()
+  await expect(alta).toBeHidden()
+  expect(google.escrituras).toEqual([
+    { 'Contactos': [['C0005', 'cliente', 'Bruno', 'Revendedor', '', '', '', 'Rosario', 'Santa Fe', '']] },
+  ])
+
+  // Ya es cliente: se le proponen vendedor y depósito de su localidad, y el pedido se registra.
+  await expect(form.getByText('Rosario, Santa Fe')).toBeVisible()
+  await expect(form.getByLabel('Entrega desde', { exact: true })).toHaveValue('ROS')
+  await expect(form.getByText('Guada/Hernán')).toBeVisible()
+  await form.getByRole('button', { name: 'Registrar pedido' }).click()
+  await expect(form.getByText(/✓ Pedido de Bruno registrado/)).toBeVisible()
+  expect(google.escrituras[1].Pedidos).toEqual([['PE0003', HOY_SERIE, 'C0005', 'ROS', '']])
 })
 
 test('propone el vendedor y el depósito de la localidad del cliente', async ({ page, google }) => {

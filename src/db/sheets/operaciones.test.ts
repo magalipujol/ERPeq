@@ -167,4 +167,47 @@ describe('operaciones sobre la planilla', () => {
       { rendiciones: [[dia, 'SOC02', 'SOC01', 5000, 'transferencia', 'semanal']] },
     ]);
   });
+
+  it('un contacto o producto nuevo se agrega; corregirlo reemplaza su fila en el lugar', async () => {
+    expect.hasAssertions();
+
+    const db = crearPlanillaEnMemoria({
+      contactos: [['C0001', 'cliente', 'Ana', 'Minorista', '', '', '', 'Funes', 'Santa Fe', ''], ['C0002', 'proveedor', 'Prov A']],
+      productos: [['P001', 'Almendras', 'kg', '']],
+    });
+    const beto: M.Contacto = {
+      id: 'C0003', rol: 'cliente', nombre: 'Beto', tipo: '', telefono: '341 555', direccion: '', email: '',
+      localidad: 'Rosario', provincia: 'Santa Fe', observaciones: '',
+    };
+    await db.registrarContacto(beto);
+    await db.registrarProducto({ id: 'P002', producto: 'Nueces', unidad: 'kg', minimo: 5 }, { productoId: 'P002', precio: 4000, desde: dia });
+    await db.registrarProducto({ id: 'P003', producto: 'Miel', unidad: 'unid.', minimo: null }, null);
+    // Ana se mudó y perdió el tipo; las almendras pasan a tener mínimo.
+    await db.corregirContacto({ ...beto, id: 'C0001', nombre: 'Ana', tipo: '', telefono: '', localidad: 'Rosario' });
+    await db.corregirProducto({ id: 'P001', producto: 'Almendras peladas', unidad: 'kg', minimo: 10 });
+
+    expect(db.escrituras).toStrictEqual([
+      { contactos: [['C0003', 'cliente', 'Beto', '', '341 555', '', '', 'Rosario', 'Santa Fe', '']] },
+      { productos: [['P002', 'Nueces', 'kg', 5]], precios: [['P002', 4000, dia]] },
+      { productos: [['P003', 'Miel', 'unid.', '']] },
+    ]);
+    expect(db.hojas.contactos.map((f) => f.slice(0, 3))).toStrictEqual([['C0001', 'cliente', 'Ana'], ['C0002', 'proveedor', 'Prov A'], ['C0003', 'cliente', 'Beto']]);
+
+    const leidos = await db.leer();
+
+    expect(leidos.contactos[0]).toMatchObject({ id: 'C0001', tipo: '', telefono: '', localidad: 'Rosario' });
+    expect(leidos.productos).toMatchObject([
+      { id: 'P001', producto: 'Almendras peladas', minimo: 10 }, { id: 'P002', producto: 'Nueces' }, { id: 'P003', unidad: 'unid.' },
+    ]);
+    expect(M.precioVigente(leidos.precios, 'P002', dia)).toBe(4000);
+  });
+
+  it('corregir algo que no está en la hoja falla sin escribir', async () => {
+    expect.hasAssertions();
+
+    const db = crearPlanillaEnMemoria({ productos: [['P001', 'Almendras', 'kg', '']] });
+
+    await expect(db.corregirProducto({ id: 'P009', producto: 'Otro', unidad: 'kg', minimo: null })).rejects.toThrow('No está en la hoja "Productos"');
+    expect(db.reemplazos).toStrictEqual([]);
+  });
 });

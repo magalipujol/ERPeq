@@ -12,10 +12,12 @@ import { hora, mensajeDeError } from './formato';
 import { Analisis } from './vistas/Analisis';
 import { Caja } from './vistas/Caja';
 import { Compras } from './vistas/Compras';
+import { Contactos } from './vistas/Contactos';
 import { type BorradorFlete, type FleteResaltado, Fletes } from './vistas/Fletes';
 import { Inicio } from './vistas/Inicio';
 import { type PedidoElegido, Pedidos } from './vistas/Pedidos';
 import { Precios } from './vistas/Precios';
+import { Productos } from './vistas/Productos';
 import { Recetas } from './vistas/Recetas';
 import { Stock } from './vistas/Stock';
 import { Ventas } from './vistas/Ventas';
@@ -24,7 +26,7 @@ type Pantalla = 'config' | 'login' | 'sin-acceso' | 'app';
 const NAV = [
   { value: 'inicio', label: 'Inicio' }, { value: 'stock', label: 'Stock' }, { value: 'pedidos', label: 'Pedidos' }, { value: 'ventas', label: 'Ventas' },
   { value: 'compras', label: 'Compras' }, { value: 'recetas', label: 'Recetas' }, { value: 'fletes', label: 'Fletes' }, { value: 'precios', label: 'Precios' },
-  { value: 'caja', label: 'Caja' },
+  { value: 'contactos', label: 'Contactos' }, { value: 'productos', label: 'Productos' }, { value: 'caja', label: 'Caja' },
   { value: 'analisis', label: 'Análisis' },
 ] as const;
 type Vista = (typeof NAV)[number]['value'];
@@ -272,6 +274,8 @@ export function App({ db }: { db: BaseDeDatos }) {
                 <Box display={vista === 'recetas' ? undefined : 'none'}><Recetas /></Box>
                 <Box display={vista === 'fletes' ? undefined : 'none'}><Fletes resaltar={fleteResaltado} borrador={borradorFlete} /></Box>
                 <Box display={vista === 'precios' ? undefined : 'none'}><Precios /></Box>
+                <Box display={vista === 'contactos' ? undefined : 'none'}><Contactos /></Box>
+                <Box display={vista === 'productos' ? undefined : 'none'}><Productos /></Box>
                 <Box display={vista === 'caja' ? undefined : 'none'}><Caja /></Box>
                 <Box display={vista === 'analisis' ? undefined : 'none'}><Analisis visible={vista === 'analisis'} /></Box>
               </FichaProvider>

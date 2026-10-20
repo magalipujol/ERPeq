@@ -41,7 +41,8 @@ const cifrasPartidas = async (page: Page) => page.evaluate(() => {
 // Cada pantalla y su dirección (`#stock`).
 const PANTALLAS: [Pantalla, string][] = [
   ['Inicio', 'inicio'], ['Stock', 'stock'], ['Pedidos', 'pedidos'], ['Ventas', 'ventas'], ['Compras', 'compras'],
-  ['Recetas', 'recetas'], ['Fletes', 'fletes'], ['Precios', 'precios'], ['Caja', 'caja'], ['Análisis', 'analisis'],
+  ['Recetas', 'recetas'], ['Fletes', 'fletes'], ['Precios', 'precios'], ['Contactos', 'contactos'], ['Productos', 'productos'],
+  ['Caja', 'caja'], ['Análisis', 'analisis'],
 ]
 
 // Con CAPTURAS=1 guarda cómo se ve la pantalla en .tmp/capturas/, para revisarla a ojo.

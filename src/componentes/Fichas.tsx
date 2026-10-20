@@ -6,7 +6,8 @@ import * as F from '../dominio/fichas';
 import * as M from '../dominio/modelo';
 import { FichaContext, useFicha } from '../ficha';
 import { fmtFecha, fmtFechaHora, fmtMoney, fmtNum, lugar } from '../formato';
-import { Resumen } from './comunes';
+import { Mensaje, Resumen } from './comunes';
+import { FormContacto, FormProducto } from './Maestros';
 import { EstadoFlete, EstadoPedido, Recorrido } from './estados';
 
 // Lo que la ficha puede pedirle a otra pantalla.
@@ -93,8 +94,6 @@ export function Vinculo({ a, children }: { a: F.RefFicha; children: React.ReactN
   );
 }
 
-const ROL: Record<string, string> = { cliente: 'Cliente', proveedor: 'Proveedor', transporte: 'Transporte' };
-
 function useTitulo() {
   const { datos, nombres, etiquetas, contacto } = useBase();
   return (r: F.RefFicha) => {
@@ -103,7 +102,7 @@ function useTitulo() {
       case 'venta': return `Venta a ${etiquetas.venta(r.id)}`;
       case 'flete': return `Flete de ${etiquetas.flete(r.id)}`;
       case 'producto': return `Producto: ${nombres.producto(r.id)}`;
-      case 'contacto': return `${ROL[contacto(r.id)?.rol ?? ''] ?? 'Contacto'}: ${nombres.contacto(r.id)}`;
+      case 'contacto': return `${M.nombreRol(contacto(r.id)?.rol ?? '') || 'Contacto'}: ${nombres.contacto(r.id)}`;
       case 'compra': {
         const c = F.fichaCompra(datos, r.id);
         return c ? `Compra a ${nombres.contacto(c.contactoId)} · ${fmtFecha(c.fecha)}` : 'Compra';
@@ -129,6 +128,21 @@ const nombreEstadoFlete = (e: string) =>
   ((M.ESTADOS_FLETE as readonly string[]).includes(e) ? M.NOMBRE_ESTADO_FLETE[e as M.EstadoFlete] : e);
 
 const NoEsta = () => <Text c="dimmed">No está en la planilla.</Text>;
+
+// Datos de la ficha con un botón "Corregir datos" que los reemplaza por el formulario de `editor`.
+function Corregible({ children, editor }:
+  { children: React.ReactNode; editor: (listo: (texto: string) => void, cancelar: () => void) => React.JSX.Element }) {
+  const [editando, setEditando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  if (editando) return editor((texto) => { setEditando(false); setAviso(texto); }, () => { setEditando(false); });
+  return (
+    <Stack gap="xs">
+      {children}
+      <Group><Button size="xs" variant="light" onClick={() => { setAviso(null); setEditando(true); }}>Corregir datos</Button></Group>
+      {aviso !== null && <Mensaje msg={{ texto: aviso, error: false }} />}
+    </Stack>
+  );
+}
 
 // Datos sueltos, en dos columnas: los vacíos no se muestran.
 function Datos({ items }: { items: [string, React.ReactNode][] }) {
@@ -291,12 +305,14 @@ function FichaProducto({ id }: { id: string }) {
   const unidad = (n: number) => `${fmtNum(n)} ${p.unidad}`;
   return (
     <Stack gap="md">
-      <Datos items={[
-        ['Unidad', p.unidad],
-        ['Precio de lista', f.precio === null ? 'Sin precio' : fmtMoney(f.precio)],
-        ['Costo promedio', f.costo === null ? 'Sin compras con precio' : fmtMoney(f.costo)],
-        ['Mínimo', p.minimo !== null && p.minimo > 0 ? unidad(p.minimo) : ''],
-      ]} />
+      <Corregible editor={(listo, cancelar) => <FormProducto producto={p} onListo={listo} onCancelar={cancelar} />}>
+        <Datos items={[
+          ['Unidad', p.unidad],
+          ['Precio de lista', f.precio === null ? 'Sin precio' : fmtMoney(f.precio)],
+          ['Costo promedio', f.costo === null ? 'Sin compras con precio' : fmtMoney(f.costo)],
+          ['Mínimo', p.minimo !== null && p.minimo > 0 ? unidad(p.minimo) : ''],
+        ]} />
+      </Corregible>
       <Seccion titulo="Stock">
         <Tabla label="Stock por depósito" columnas={[
           { titulo: 'Depósito' }, { titulo: 'En depósito', num: true }, { titulo: 'En camino', num: true },
@@ -362,10 +378,12 @@ function FichaContacto({ id }: { id: string }) {
   const { contacto: c } = f;
   return (
     <Stack gap="md">
-      <Datos items={[
-        ['Tipo de cliente', c.tipo], ['Teléfono', c.telefono], ['Dirección', c.direccion], ['Email', c.email],
-        ['Localidad', lugar(c)], ['Observaciones', c.observaciones],
-      ]} />
+      <Corregible editor={(listo, cancelar) => <FormContacto contacto={c} onListo={listo} onCancelar={cancelar} />}>
+        <Datos items={[
+          ['Tipo de cliente', c.tipo], ['Teléfono', c.telefono], ['Dirección', c.direccion], ['Email', c.email],
+          ['Localidad', lugar(c)], ['Observaciones', c.observaciones],
+        ]} />
+      </Corregible>
       {f.pedidos.length > 0 && (
         <>
           <Totales items={[

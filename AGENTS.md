@@ -54,13 +54,13 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 | `src/dominio/fichas.ts` | **Dominio**: qué muestra la ficha de un pedido, venta, producto, contacto, flete o compra y lo que tiene relacionado. Puro, se prueba con Vitest. Ver `spec/fichas.md`. |
 | `src/dominio/mapa.ts` | **Dominio**: qué va en el mapa de Inicio (depósitos, pedidos abiertos, fletes en curso) y en qué localidad. Puro, se prueba con Vitest. Ver `spec/mapa.md`. |
 | `src/mapa/` | Mapa de Argentina: `argentina.json` (provincias como paths SVG y localidades censales, ya proyectadas; lo genera `herramientas/mapa_argentina.py`) y `ubicar.ts` (ubica una localidad, junta lugares cercanos en sitios y fletes en tramos; se prueba con Vitest). Lo usa `componentes/Mapa.tsx`, que Inicio carga aparte (`lazy`). |
-| `src/db/puerto.ts` | **Puerto**: la interfaz `BaseDeDatos` que usa la UI (sesión, `leer()` y una operación atómica por caso de uso: `registrarPedido`, `registrarEntrega`, `registrarFlete`, `registrarCobro`, `registrarFabricacion`, …), los errores `SinAcceso` y `SesionVencida` y las hojas que faltan por área (`faltantesDe`). |
-| `src/db/sheets/` | **Adaptador Google Sheets**. `hojas.ts`: hojas y encabezados de sus columnas (`HOJAS`), hojas opcionales por área (`OPCIONALES`: caja, recetas y envíos, que se leen vacías si faltan), lectura (`leerHojas`, que verifica los encabezados, y `parsear`) y filas a escribir (`filas`). `operaciones.ts`: qué filas agrega cada operación. `celdas.ts`: valores de celda y fechas como número de serie. `google.ts`: login (Google Identity Services) y Sheets API (`escribir` agrega filas en varias hojas en un solo `batchUpdate`). `index.ts`: `crearBaseSheets`. `memoria.ts`: la misma planilla en memoria, para pruebas unitarias. |
+| `src/db/puerto.ts` | **Puerto**: la interfaz `BaseDeDatos` que usa la UI (sesión, `leer()` y una operación atómica por caso de uso: `registrarPedido`, `registrarEntrega`, `registrarFlete`, `registrarCobro`, `registrarFabricacion`, `corregirContacto`, …), los errores `SinAcceso` y `SesionVencida` y las hojas que faltan por área (`faltantesDe`). |
+| `src/db/sheets/` | **Adaptador Google Sheets**. `hojas.ts`: hojas y encabezados de sus columnas (`HOJAS`), hojas opcionales por área (`OPCIONALES`: caja, recetas y envíos, que se leen vacías si faltan), lectura (`leerHojas`, que verifica los encabezados, y `parsear`) y filas a escribir (`filas`). `operaciones.ts`: qué filas agrega cada operación. `celdas.ts`: valores de celda y fechas como número de serie. `google.ts`: login (Google Identity Services) y Sheets API (`escribir` agrega filas en varias hojas en un solo `batchUpdate`; `reemplazar` reescribe la fila de un ID). `index.ts`: `crearBaseSheets`. `memoria.ts`: la misma planilla en memoria, para pruebas unitarias. |
 | `src/main.tsx` | Raíz de composición: crea el adaptador y se lo pasa a `App`. |
 | `src/base.ts`, `src/BaseProvider.tsx` | Contexto de React con los datos cargados, los cálculos derivados y las operaciones del puerto (`db`). |
 | `src/ficha.ts` | Contexto para abrir fichas (`useFicha`) y `useFila`, que hace que tocar una fila de tabla abra su ficha. |
-| `src/vistas/` | Pantallas: Inicio (por defecto: pedido nuevo, mapa, pedidos pendientes —con el flete para cubrir sus faltantes— y fletes en curso), Stock, Pedidos (alta y entregas), Ventas, Compras, Recetas (recetas y fabricación), Fletes, Precios (precios, reglas de comisión y costo de envío), Caja (cobros y cuentas entre socios) y Análisis. |
-| `src/componentes/` | Componentes compartidos (carga de ítems, navegación: selector del header y barra inferior del celular, exportar pedidos a WhatsApp, estados de pedidos y fletes, etc.). `Fichas.tsx`: el modal de fichas (`FichaProvider`) y `Vinculo`. |
+| `src/vistas/` | Pantallas: Inicio (por defecto: pedido nuevo, mapa, pedidos pendientes —con el flete para cubrir sus faltantes— y fletes en curso), Stock, Pedidos (alta y entregas), Ventas, Compras, Recetas (recetas y fabricación), Fletes, Precios (precios, reglas de comisión y costo de envío), Contactos y Productos (alta y lista; se corrigen desde la ficha), Caja (cobros y cuentas entre socios) y Análisis. |
+| `src/componentes/` | Componentes compartidos (carga de ítems, navegación: selector del header y barra inferior del celular, exportar pedidos a WhatsApp, estados de pedidos y fletes, etc.). `Fichas.tsx`: el modal de fichas (`FichaProvider`) y `Vinculo`. `Maestros.tsx`: formularios de alta y corrección de contactos y productos. |
 | `src/estilos.css`, `src/celular.css` | Estilos globales (incluida la declaración de la fuente); `celular.css` tiene los ajustes para menos de 768 px (breakpoint `sm` de Mantine). |
 | `src/fuentes/` | OpenDyslexic 0.990 (regular y negrita, del repositorio del proyecto) y su licencia OFL. Ver `spec/legibilidad.md`. |
 | `src/whatsapp.ts` | Arma el mensaje de pedidos para WhatsApp (qué pedidos entran y el texto). Sin dependencias del navegador: se prueba con Vitest. |
@@ -91,8 +91,9 @@ Arquitectura hexagonal, con los límites controlados por ESLint (`no-restricted-
 
 ## Reglas del modelo de datos
 
-- **Solo se agregan filas** a la planilla. Las correcciones son filas nuevas (ajustes); el stock y el costo
-  promedio se calculan a partir de los movimientos.
+- Lo cargado se tiene que poder corregir desde la app. Los movimientos solo agregan filas (las correcciones son
+  ajustes o estados nuevos; el stock y el costo promedio se calculan a partir de ellos). Los datos maestros
+  (contactos y productos) se corrigen reemplazando su fila, buscada por ID (`reemplazar` en el adaptador).
 - Lo que tiene que quedar fijo al momento de una operación (costo, comisión, ganancia de una venta) se
   guarda en la fila. Lo demás se calcula.
 - Las filas guardan IDs, nunca copias de nombres: el nombre de un producto, contacto, vendedor o socio está

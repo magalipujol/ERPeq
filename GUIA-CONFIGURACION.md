@@ -100,7 +100,8 @@ Entrá a https://console.cloud.google.com con la cuenta del dueño.
 3. Cargá desde la fila 2 los datos fijos: *Depósitos* (por ejemplo `BB`, `General`, `Bahía Blanca`),
    *Productos*, *Tipos de cliente*, *Vendedores* (`activo` = `sí`; `localidad`, donde trabaja), los clientes,
    proveedores y transportes en *Contactos* y los socios en *Socios* (ver el paso 3 de "Agregar las hojas de
-   caja"). Los clientes se cargan solo acá: la app no los da de alta. Las demás hojas quedan con el
+   caja"). Los contactos y productos también se pueden cargar después desde la app, en *Contactos* y
+   *Productos*. Las demás hojas quedan con el
    encabezado solo: las llena la app.
 4. Copiá el **ID** de la URL: `https://docs.google.com/spreadsheets/d/`**`ESTE-ES-EL-ID`**`/edit`.
 

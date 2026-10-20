@@ -6,7 +6,7 @@
 import type { Config } from '../../config';
 import { SesionVencida, SinAcceso } from '../puerto';
 import { celda, type Fila, type ValorCelda } from './celdas';
-import { type ClaveHoja, type Escritura, nombreHoja } from './hojas';
+import { type ClaveHoja, type Escritura, nombreHoja, type Reemplazo } from './hojas';
 
 const SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -175,18 +175,45 @@ export async function info() {
 export async function escribir(planilla: InfoPlanilla, escritura: Escritura) {
   const requests = (Object.entries(escritura) as [ClaveHoja, ValorCelda[][]][])
     .filter(([, filas]) => filas.length > 0)
-    .map(([clave, filas]) => {
-      const titulo = nombreHoja(clave);
-      const hoja = planilla.sheets.find((s) => s.properties.title === titulo);
-      if (!hoja) throw new Error(`Falta la hoja "${titulo}" en la planilla.`);
-      return {
-        appendCells: {
-          sheetId: hoja.properties.sheetId,
-          rows: filas.map((f) => ({ values: f.map(celda) })),
-          fields: 'userEnteredValue,userEnteredFormat.numberFormat',
-        },
-      };
-    });
+    .map(([clave, filas]) => ({
+      appendCells: {
+        sheetId: idHoja(planilla, clave),
+        rows: filas.map((f) => ({ values: f.map(celda) })),
+        fields: CAMPOS,
+      },
+    }));
   if (requests.length === 0) return;
   await req(url(':batchUpdate'), { method: 'POST', body: JSON.stringify({ requests }) });
+}
+
+// Reemplaza la fila que tiene el ID en la columna A. La busca justo antes de escribir, porque desde la última
+// lectura alguien pudo ordenar la hoja o agregarle filas a mano. Las celdas vacías de la fila nueva borran las que
+// había; las columnas que la app no usa, a la derecha, no se tocan.
+export async function reemplazar(planilla: InfoPlanilla, { hoja: clave, id, fila }: Reemplazo) {
+  const titulo = nombreHoja(clave);
+  const sheetId = idHoja(planilla, clave);
+  const [columna = []] = await leer([`'${titulo}'!A:A`]);
+  // La fila 0 es el encabezado.
+  const indices = columna.flatMap((f, i) => (i > 0 && String(f[0] ?? '').trim() === id ? [i] : []));
+  if (indices.length === 0) throw new Error(`No está en la hoja "${titulo}". Tocá "Refrescar" y probá de nuevo.`);
+  if (indices.length > 1) {
+    throw new Error(`En la hoja "${titulo}" las filas ${indices.map((i) => i + 1).join(' y ')} tienen el mismo ID: dejá una sola.`);
+  }
+  await req(url(':batchUpdate'), {
+    method: 'POST',
+    body: JSON.stringify({
+      requests: [{
+        updateCells: { start: { sheetId, rowIndex: indices[0], columnIndex: 0 }, rows: [{ values: fila.map(celda) }], fields: CAMPOS },
+      }],
+    }),
+  });
+}
+
+const CAMPOS = 'userEnteredValue,userEnteredFormat.numberFormat';
+
+function idHoja(planilla: InfoPlanilla, clave: ClaveHoja) {
+  const titulo = nombreHoja(clave);
+  const hoja = planilla.sheets.find((s) => s.properties.title === titulo);
+  if (!hoja) throw new Error(`Falta la hoja "${titulo}" en la planilla.`);
+  return hoja.properties.sheetId;
 }

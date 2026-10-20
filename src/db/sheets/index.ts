@@ -29,6 +29,9 @@ export function crearBaseSheets(config: Config): BaseDeDatos {
     ...operaciones(async (escritura) => {
       if (!planilla) throw new Error('La planilla no está abierta.');
       await G.escribir(planilla, escritura);
+    }, async (reemplazo) => {
+      if (!planilla) throw new Error('La planilla no está abierta.');
+      await G.reemplazar(planilla, reemplazo);
     }),
   };
 }

@@ -53,8 +53,13 @@ sequenceDiagram
 
 ## Principios
 
-- **Solo se agregan filas.** Nada se edita ni se borra: las correcciones son filas nuevas (un ajuste, un
-  nuevo estado). Así la planilla funciona como un historial y el stock se puede recalcular siempre.
+- **Lo cargado se puede corregir.** Un dato mal cargado tiene que poder arreglarse desde la app. Cómo depende de
+  la hoja:
+  - **Datos maestros** (*Contactos* y *Productos*): corregir uno reemplaza su fila en el lugar, buscándola por
+    `id`. El ID no cambia, así que los pedidos, compras y fletes que lo nombran muestran el dato corregido.
+  - **Movimientos** (compras, ventas, ajustes, estados): las correcciones son filas nuevas (un ajuste, un nuevo
+    estado), así el stock se puede recalcular siempre. La corrección de pedidos, fletes, ventas y compras ya
+    cargados todavía no está en la app (ver [Preguntas abiertas](#preguntas-abiertas)).
 - **Lo derivado se calcula.** El stock, lo pendiente de un pedido, el estado actual de un flete y el costo
   promedio salen de los movimientos. Lo único que se guarda calculado es lo que tiene que quedar fijo al
   momento de la operación (precio, costo, porcentaje de comisión): si después cambia el costo promedio o una
@@ -72,7 +77,7 @@ sequenceDiagram
 - **Una operación, un `batchUpdate`.** Un pedido o una venta escribe cabecera, ítems y filas relacionadas en
   varias hojas (y, si hace falta, el contacto o el producto nuevo). Se manda todo en un solo
   `spreadsheets.batchUpdate` con `appendCells`, que la API aplica completo o no aplica nada, así no quedan
-  operaciones a medio escribir. Los textos se guardan como texto, las fechas como fecha (`dd/mm/aaaa`) y los
+  operaciones a medio escribir. Corregir un contacto o un producto es un `updateCells` sobre su fila. Los textos se guardan como texto, las fechas como fecha (`dd/mm/aaaa`) y los
   estados con fecha y hora.
 - **Estado actual = última fila.** En *Pedidos estados* y *Fletes estados*, el estado vigente es el de la
   última fila agregada para ese ID.
@@ -321,8 +326,8 @@ columnas corridas guardaría cada dato en otra columna.
 | Hoja | Columnas | Notas |
 |---|---|---|
 | **Depósitos** | `id`, `nombre`, `localidad` | `BB` General (Bahía Blanca) y `ROS` Rosario. |
-| **Productos** | `id`, `producto`, `unidad`, `minimo` | El stock no se guarda: lo calcula la app. |
-| **Contactos** | `id`, `rol`, `nombre`, `tipo_cliente`, `telefono`, `direccion`, `email`, `localidad`, `provincia`, `observaciones` | `rol`: `cliente`, `proveedor` o `transporte`. Los clientes se cargan a mano en la hoja: el pedido solo elige uno que ya existe. La app agrega el contacto cuando se carga un proveedor o transporte nuevo. |
+| **Productos** | `id`, `producto`, `unidad`, `minimo` | El stock no se guarda: lo calcula la app. Se dan de alta (con su precio de lista, si se da) y se corrigen en la pantalla **Productos** y en su ficha; la compra también agrega productos nuevos. No hay dos con el mismo nombre. Cambiar la unidad no convierte las cantidades ya cargadas. |
+| **Contactos** | `id`, `rol`, `nombre`, `tipo_cliente`, `telefono`, `direccion`, `email`, `localidad`, `provincia`, `observaciones` | `rol`: `cliente`, `proveedor` o `transporte`. Se dan de alta y se corrigen en la pantalla **Contactos** y en su ficha; un cliente que no existe también se puede dar de alta desde el pedido. La compra y el flete agregan el proveedor o el transporte nuevo con solo el nombre. No hay dos contactos con el mismo nombre y rol, y el rol de uno con pedidos, compras o fletes no se cambia. |
 | **Tipos de cliente** | `tipo` | Lista de tipos para la columna `tipo_cliente` de *Contactos*. |
 | **Vendedores** | `id`, `nombre`, `activo`, `localidad` | Quien consigue el pedido y cobra comisión. "Guada/Hernán" es **un** vendedor; "Leo" es otro. `activo` vacío o "sí" = se puede elegir. `localidad`: donde trabaja; se lo propone en los pedidos de clientes de esa localidad (ver [Pedidos](#pedidos)). |
 | **Precios** | `producto_id`, `precio`, `desde` | Precio por defecto, con historial. Un cambio de precio es una fila nueva; el vigente es el de `desde` más reciente. |
@@ -849,6 +854,12 @@ La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e 
 [analisis.md](analisis.md).
 
 ## Preguntas abiertas
+
+- **Corregir movimientos.** Contactos y productos se corrigen en el lugar. Falta decidir cómo se corrigen un
+  pedido, un flete, una venta, una compra, un cobro, una rendición o una fabricación ya cargados: reemplazar sus
+  filas, o anularlos y cargarlos de nuevo en una sola operación. Lo que cuelga de ellos (cobros de una venta,
+  ventas de un pedido) también tiene que quedar resuelto.
+- **Depósitos, vendedores, socios y tipos de cliente** todavía se cargan y se corrigen a mano en la planilla.
 
 - **Depósito por pedido o por línea.** Esta spec usa uno por pedido. Si un pedido puede entregarse en parte
   desde Bahía Blanca y en parte desde Rosario, el depósito pasa a la línea.

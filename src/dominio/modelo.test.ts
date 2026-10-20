@@ -591,3 +591,37 @@ describe('fabricación', () => {
     expect(M.costoInsumos(insumos, 0, costos)).toBeNull();
   });
 });
+
+describe('contactos y productos', () => {
+  const unContacto = (id: string, rol: string, nombre: string): M.Contacto => ({
+    id, rol, nombre, tipo: '', telefono: '', direccion: '', email: '', localidad: '', provincia: '', observaciones: '',
+  });
+  const contactos = [unContacto('C0001', 'cliente', 'Ana Pérez'), unContacto('C0002', 'proveedor', 'Prov A')];
+
+  it('no deja dos contactos con el mismo nombre y rol, sin mirar mayúsculas ni espacios', () => {
+    expect(M.problemaContacto(contactos, unContacto('C0003', 'cliente', ' ana  pérez'))).toBe('Ya hay un cliente que se llama Ana Pérez.');
+    expect(M.problemaContacto(contactos, unContacto('C0003', 'proveedor', 'Ana Pérez'))).toBeNull();
+    // Corregir a Ana sin cambiarle el nombre no choca consigo misma.
+    expect(M.problemaContacto(contactos, unContacto('C0001', 'cliente', 'Ana Pérez'))).toBeNull();
+    expect(M.problemaContacto(contactos, unContacto('C0003', 'cliente', '  '))).toBe('Ingresá el nombre.');
+    expect(M.problemaContacto(contactos, unContacto('C0003', 'socio', 'Leo'))).toMatch(/cliente, proveedor o transporte/);
+  });
+
+  it('no deja dos productos con el mismo nombre ni un mínimo negativo', () => {
+    const productos: M.Producto[] = [{ id: 'P001', producto: 'Almendras', unidad: 'kg', minimo: null }];
+
+    expect(M.problemaProducto(productos, { id: 'P002', producto: 'almendras', unidad: 'kg', minimo: null })).toBe('Ya hay un producto que se llama Almendras.');
+    expect(M.problemaProducto(productos, { id: 'P001', producto: 'Almendras', unidad: 'unid.', minimo: 3 })).toBeNull();
+    expect(M.problemaProducto(productos, { id: 'P002', producto: 'Nueces', unidad: 'kg', minimo: -1 })).toBe('El mínimo no puede ser negativo.');
+  });
+
+  it('un contacto con pedidos, compras o fletes está en uso', () => {
+    const movimientos = {
+      pedidos: [{ id: 'PE0001', fecha: null, contactoId: 'C0001', depositoId: 'BB', nota: '' }],
+      compras: [], fletes: [],
+    };
+
+    expect(M.contactoEnUso(movimientos, 'C0001')).toBe(true);
+    expect(M.contactoEnUso(movimientos, 'C0002')).toBe(false);
+  });
+});

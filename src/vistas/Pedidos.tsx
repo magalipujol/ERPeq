@@ -1,5 +1,5 @@
 import {
-  Autocomplete, Box, Button, Checkbox, Grid, Group, MultiSelect, NativeSelect, NumberInput, Paper, ScrollArea,
+  Anchor, Autocomplete, Box, Button, Checkbox, Grid, Group, Modal, MultiSelect, NativeSelect, NumberInput, Paper, ScrollArea,
   SegmentedControl, Stack, Table, Text, TextInput, Title,
 } from '@mantine/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -13,6 +13,7 @@ import { useFila } from '../ficha';
 import { ExportarWhatsApp } from '../componentes/ExportarWhatsApp';
 import { type Item, itemVacio } from '../componentes/item';
 import { Items } from '../componentes/Items';
+import { FormContacto } from '../componentes/Maestros';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, lugar, numeroOCero, porFechaDesc, sumable, unicos } from '../formato';
 import * as M from '../dominio/modelo';
 
@@ -91,9 +92,16 @@ function FormPedido({ nuevo }: { nuevo: number }) {
     clientes: unicos(datos.contactos.filter((c) => c.rol === 'cliente').map((c) => c.nombre)),
     vendedores: datos.vendedores.filter((v) => v.activo).map((v) => ({ value: v.id, label: v.nombre })),
   }), [datos]);
-  // Los clientes se dan de alta y se corrigen en la hoja Contactos: el pedido solo elige uno que ya existe.
   const existente = buscarContacto('cliente', cliente);
   const dia = fecha ? deISO(fecha) : null;
+  // Alta de un cliente que no está en la lista, sin salir del pedido.
+  const [altaCliente, setAltaCliente] = useState(false);
+  // Cliente recién dado de alta: cuando vuelve a leerse la planilla y ya está, se le proponen vendedores y depósito.
+  const [recienCreado, setRecienCreado] = useState<string | null>(null);
+  if (recienCreado !== null && existente?.nombre === recienCreado) {
+    setRecienCreado(null);
+    elegirCliente(recienCreado);
+  }
 
   const lineas = items.map((it) => {
     const p = buscarProducto(it.producto);
@@ -116,7 +124,7 @@ function FormPedido({ nuevo }: { nuevo: number }) {
     const nombre = cliente.trim();
     const falta = !dia ? 'Elegí la fecha.'
       : !nombre ? 'Ingresá el cliente.'
-      : !existente ? `${nombre} no está en la lista de clientes. Los clientes se agregan en la hoja Contactos de la planilla.`
+      : !existente ? `${nombre} no está en la lista de clientes. Tocá "Dar de alta" para agregarlo.`
       : !deposito ? 'Elegí el depósito de entrega.'
       : lineas.some((l) => !l.p) ? 'Hay productos que no existen en la lista.'
       : lineas.some((l) => !(l.cantidad > 0)) ? 'Todas las cantidades tienen que ser mayores a 0.'
@@ -177,6 +185,12 @@ function FormPedido({ nuevo }: { nuevo: number }) {
           <Autocomplete ref={clienteRef} label="Cliente" maxLength={120} placeholder="Nombre del cliente" data={listas.clientes}
             value={cliente} onChange={setCliente} onOptionSubmit={elegirCliente} onBlur={() => { elegirCliente(cliente); }}
             description={lugar(existente) || undefined} />
+          {cliente.trim() !== '' && !existente && (
+            <Text size="xs" mt={-6}>
+              {cliente.trim()} no está en la lista de clientes.{' '}
+              <Anchor component="button" type="button" inherit onClick={() => { setAltaCliente(true); }}>Dar de alta</Anchor>
+            </Text>
+          )}
           <MultiSelect label="Vendedores" placeholder={vendedores.length > 0 ? undefined : 'Sin comisión'} data={listas.vendedores}
             value={vendedores} onChange={setVendedores} />
 
@@ -194,6 +208,11 @@ function FormPedido({ nuevo }: { nuevo: number }) {
           <Mensaje msg={msg} />
         </Stack>
       </form>
+      {/* Fuera del <form> del pedido: React propaga el submit a través del portal del modal. */}
+      <Modal opened={altaCliente} onClose={() => { setAltaCliente(false); }} title="Nuevo cliente">
+        <FormContacto inicial={{ rol: 'cliente', nombre: cliente.trim() }} onCancelar={() => { setAltaCliente(false); }}
+          onListo={(_texto, c) => { setAltaCliente(false); setCliente(c.nombre); setRecienCreado(c.nombre); }} />
+      </Modal>
     </Seccion>
   );
 }
