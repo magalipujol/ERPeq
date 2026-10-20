@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { AHORA, expect, HOY_SERIE, serie, test } from './google-falso'
+import { AHORA, confirmarEntrega, expect, HOY_SERIE, serie, test } from './google-falso'
 
 test.beforeEach(async ({ page, ingresar }) => {
   await page.goto('/#pedidos')
@@ -150,6 +150,8 @@ test('entrega parcial con la comisión sobreescrita', async ({ page, google }) =
   await expect(form.getByRole('group', { name: 'Ganancia' })).toContainText('1.040')
 
   await form.getByRole('button', { name: 'Registrar entrega' }).click()
+
+  await confirmarEntrega(page)
   await expect(form.getByText(/✓ Entrega a Ana registrada/)).toBeVisible()
   expect(google.escrituras).toEqual([{
     'Ventas': [['V0002', HOY_SERIE, 'PE0002', 'ROS', '']],
@@ -220,4 +222,19 @@ test('no deja corregir un pedido por debajo de lo ya entregado', async ({ page, 
   await form.getByRole('button', { name: 'Guardar cambios' }).click()
   await expect(form.getByText('La cantidad no puede ser menor que lo ya entregado.')).toBeVisible()
   expect(google.reemplazos).toEqual([])
+})
+
+test('registrar una entrega pide confirmar: con "Volver" no se guarda nada', async ({ page, google }) => {
+  await filaPedido(page, 'Ana · 10/10/26').getByRole('button', { name: 'Entregar' }).click()
+  await entrega(page).getByRole('button', { name: 'Registrar entrega' }).click()
+
+  // 10 kg de avena a $ 800 = $ 8.000, desde Rosario.
+  const confirmacion = page.getByRole('dialog', { name: '¿Registrar la entrega?' })
+  await expect(confirmacion).toContainText('A Ana, desde Rosario, el 16/10/26:')
+  await expect(confirmacion).toContainText(/10 Avena · \$\s8\.000/)
+  await expect(confirmacion).toContainText('descuenta el stock de Rosario')
+  await confirmacion.getByRole('button', { name: 'Volver' }).click()
+  await expect(confirmacion).toBeHidden()
+  expect(google.escrituras).toEqual([])
+  await expect(filaPedido(page, 'Ana · 10/10/26')).toContainText('Pendiente')
 })

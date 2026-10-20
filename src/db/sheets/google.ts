@@ -6,7 +6,7 @@
 import type { Config } from '../../config';
 import { SesionVencida, SinAcceso } from '../puerto';
 import { celda, type Fila, type ValorCelda } from './celdas';
-import { type ClaveHoja, type Correccion, type Escritura, nombreHoja } from './hojas';
+import { type ClaveHoja, type Correccion, type Escritura, letraColumna, nombreHoja } from './hojas';
 
 const SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -189,12 +189,16 @@ const agregar = (planilla: InfoPlanilla, escritura: Escritura) => (Object.entrie
 // reemplaza en el lugar (las celdas vacías de la fila nueva borran las que había; las columnas que la app no usa,
 // a la derecha, no se tocan), después borra las filas de los recambios, de abajo hacia arriba para que no se
 // corran las que faltan, y al final agrega las filas nuevas.
-export async function corregir(planilla: InfoPlanilla, { reemplazos, recambios, agregados }: Correccion) {
+export async function corregir(planilla: InfoPlanilla, { reemplazos, recambios: todos, agregados }: Correccion) {
+  // En una hoja opcional que la planilla no tiene no hay nada que borrar.
+  const recambios = todos.filter((r) => r.filas.length > 0 || existeHoja(planilla, r.hoja));
   const claves = [...new Set([...reemplazos, ...recambios].map((r) => r.hoja))];
-  const columnas = await leer(claves.map((k) => `'${nombreHoja(k)}'!A:A`));
+  // De cada hoja, las columnas hasta la última donde se buscan IDs.
+  const hasta = (k: ClaveHoja) => Math.max(0, ...recambios.filter((r) => r.hoja === k).map((r) => r.columna ?? 0));
+  const columnas = await leer(claves.map((k) => `'${nombreHoja(k)}'!A:${letraColumna(hasta(k) + 1)}`));
   // La fila 0 es el encabezado.
-  const filasCon = (clave: ClaveHoja, ids: string[]) => (columnas[claves.indexOf(clave)] ?? [])
-    .flatMap((f, i) => (i > 0 && ids.includes(String(f[0] ?? '').trim()) ? [i] : []));
+  const filasCon = (clave: ClaveHoja, ids: string[], columna = 0) => (columnas[claves.indexOf(clave)] ?? [])
+    .flatMap((f, i) => (i > 0 && ids.includes(String(f[columna] ?? '').trim()) ? [i] : []));
 
   const actualizar = reemplazos.map(({ hoja: clave, id, fila }) => {
     const titulo = nombreHoja(clave);
@@ -210,9 +214,9 @@ export async function corregir(planilla: InfoPlanilla, { reemplazos, recambios, 
     };
   });
   const borrar = claves.flatMap((clave) => {
-    const ids = recambios.filter((r) => r.hoja === clave).flatMap((r) => r.ids);
+    const filas = new Set(recambios.filter((r) => r.hoja === clave).flatMap((r) => filasCon(clave, r.ids, r.columna)));
     const sheetId = idHoja(planilla, clave);
-    return filasCon(clave, ids).sort((a, b) => b - a)
+    return [...filas].sort((a, b) => b - a)
       .map((i) => ({ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: i, endIndex: i + 1 } } }));
   });
   const nuevas = recambios.reduce<Escritura>((e, r) => ({ ...e, [r.hoja]: [...(e[r.hoja] ?? []), ...r.filas] }), {});
@@ -222,6 +226,8 @@ export async function corregir(planilla: InfoPlanilla, { reemplazos, recambios, 
 }
 
 const CAMPOS = 'userEnteredValue,userEnteredFormat.numberFormat';
+
+const existeHoja = (planilla: InfoPlanilla, clave: ClaveHoja) => planilla.sheets.some((s) => s.properties.title === nombreHoja(clave));
 
 function idHoja(planilla: InfoPlanilla, clave: ClaveHoja) {
   const titulo = nombreHoja(clave);

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import { faltantesDe } from '../db/puerto';
 import { CamposCobro, type DatosCobro } from '../componentes/Cobro';
-import { Encabezado, Kpis, Mensaje, Resumen, Seccion } from '../componentes/comunes';
+import { Confirmacion, Encabezado, Kpis, Mensaje, Resumen, Seccion } from '../componentes/comunes';
 import { EstadoPedido } from '../componentes/estados';
 import { Vinculo } from '../componentes/Fichas';
 import { useFila } from '../ficha';
@@ -269,13 +269,21 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
   const total = M.redondear(importe + envio);
   const ganancia = importe + (paraVendedor === '' ? envio : 0) - comision - aEntregar.reduce((s, l) => s + l.cantidad * (l.costo ?? 0), 0);
 
-  function entregar() {
+  // La entrega registra la venta: descuenta stock y genera comisiones. Antes de guardarla se pide confirmar.
+  const [confirmando, setConfirmando] = useState(false);
+  function pedirConfirmacion() {
     const falta = !dia ? 'Elegí la fecha.'
       : aEntregar.length === 0 ? 'Indicá qué cantidad se entrega.'
       : lineas.some((l) => l.cantidad > l.linea.pendiente) ? 'No se puede entregar más de lo pendiente.'
       : cobrado > total ? 'No se puede cobrar más que el importe de la entrega.'
       : null;
-    if (falta || !dia) { error(falta ?? 'Elegí la fecha.'); return; }
+    if (falta) { error(falta); return; }
+    setConfirmando(true);
+  }
+
+  function entregar() {
+    setConfirmando(false);
+    if (!dia) return;
     const socio = datos.socios.find((s) => s.id === cobro.socioId);
     guardar(async () => {
       const venta: M.Venta = { id: M.siguienteId(datos.ventas.map((v) => v.id), 'V'), fecha: dia, pedidoId: pedido.id, depositoId: pedido.depositoId, nota: nota.trim() };
@@ -371,13 +379,27 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
           </Group>
         )}
         <Group gap="xs">
-          <Button onClick={entregar} loading={guardando}>Registrar entrega</Button>
+          <Button onClick={pedirConfirmacion} loading={guardando}>Registrar entrega</Button>
           {resumen.ventas.length === 0
             ? <Button variant="default" color="red" onClick={() => { cambiarEstado('cancelado'); }} disabled={guardando}>Cancelar pedido</Button>
             : <Button variant="default" onClick={() => { cambiarEstado('cerrado'); }} disabled={guardando}>Cerrar con pendientes</Button>}
         </Group>
         <Mensaje msg={msg} />
       </Stack>
+      <Confirmacion abierta={confirmando} titulo="¿Registrar la entrega?" si="Sí, registrar entrega" onSi={entregar}
+        onNo={() => { setConfirmando(false); }}>
+        <Text size="sm">
+          A {nombres.contacto(pedido.contactoId)}, desde {nombres.deposito(pedido.depositoId)}, el {fmtFecha(dia)}:
+        </Text>
+        {aEntregar.map((l) => (
+          <Text key={l.linea.linea} size="sm">{fmtNum(l.cantidad)} {nombres.producto(l.linea.productoId)} · {fmtMoney(l.importe)}</Text>
+        ))}
+        <Text size="sm" fw={700}>
+          Total {fmtMoney(total)}{envio > 0 ? ` (con ${fmtMoney(envio)} de envío)` : ''}
+          {conCobro && cobrado > 0 ? ` · cobrado ${fmtMoney(cobrado)}` : ''}
+        </Text>
+        <Text size="sm" c="dimmed">Queda registrada como venta: descuenta el stock de {nombres.deposito(pedido.depositoId)} y genera las comisiones.</Text>
+      </Confirmacion>
     </Seccion>
   );
 }

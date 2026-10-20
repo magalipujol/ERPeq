@@ -1,12 +1,12 @@
 import { Anchor, Button, Group, Modal, SimpleGrid, Stack, Table, Text, Title, useMatches } from '@mantine/core';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useBase } from '../base';
+import { useBase, useGuardar } from '../base';
 import * as F from '../dominio/fichas';
 import * as M from '../dominio/modelo';
 import { FichaContext, useFicha } from '../ficha';
 import { fmtFecha, fmtFechaHora, fmtMoney, fmtNum, lugar } from '../formato';
-import { Mensaje, Resumen } from './comunes';
+import { Confirmacion, Mensaje, Resumen } from './comunes';
 import { FormCorregirPedido } from './CorregirPedido';
 import { FormContacto, FormProducto } from './Maestros';
 import { EstadoFlete, EstadoPedido, Recorrido } from './estados';
@@ -100,7 +100,8 @@ function useTitulo() {
   return (r: F.RefFicha) => {
     switch (r.tipo) {
       case 'pedido': return `Pedido de ${etiquetas.pedido(r.id)}`;
-      case 'venta': return `Venta a ${etiquetas.venta(r.id)}`;
+      // Una venta recién borrada ya no tiene etiqueta.
+      case 'venta': return etiquetas.venta(r.id) ? `Venta a ${etiquetas.venta(r.id)}` : 'Venta borrada';
       case 'flete': return `Flete de ${etiquetas.flete(r.id)}`;
       case 'producto': return `Producto: ${nombres.producto(r.id)}`;
       case 'contacto': return `${M.nombreRol(contacto(r.id)?.rol ?? '') || 'Contacto'}: ${nombres.contacto(r.id)}`;
@@ -262,9 +263,34 @@ function FichaPedido({ id, acciones }: { id: string; acciones: Acciones }) {
 }
 
 function FichaVenta({ id }: { id: string }) {
-  const { datos, nombres, etiquetas } = useBase();
+  const { datos, nombres, etiquetas, db } = useBase();
+  const { guardando, msg, guardar } = useGuardar();
+  const [confirmando, setConfirmando] = useState(false);
+  // Pedido de la venta que se borró, para ofrecer volver a él.
+  const [borrada, setBorrada] = useState<string | null>(null);
   const f = F.fichaVenta(datos, id);
+  if (borrada !== null || (!f && msg !== null)) {
+    return (
+      <Stack gap="xs" align="flex-start">
+        <Mensaje msg={msg} />
+        {borrada && <Vinculo a={{ tipo: 'pedido', id: borrada }}>Ver el pedido de {etiquetas.pedido(borrada)}</Vinculo>}
+      </Stack>
+    );
+  }
   if (!f) return <NoEsta />;
+
+  function borrar() {
+    setConfirmando(false);
+    if (!f) return;
+    const pedidoId = f.pedido?.id ?? null;
+    const quien = f.pedido ? nombres.contacto(f.pedido.contactoId) : '';
+    guardar(async () => {
+      await db.borrarVenta(id);
+      setBorrada(pedidoId);
+      return `✓ Venta${quien ? ` a ${quien}` : ''} borrada. El stock volvió a ${nombres.deposito(f.venta.depositoId)}.`;
+    });
+  }
+
   return (
     <Stack gap="md">
       <Datos items={[
@@ -297,6 +323,22 @@ function FichaVenta({ id }: { id: string }) {
             ])} />
         </Seccion>
       )}
+      <Group>
+        <Button size="xs" variant="light" color="red" loading={guardando} onClick={() => { setConfirmando(true); }}>Borrar venta</Button>
+      </Group>
+      <Mensaje msg={msg} />
+      <Confirmacion abierta={confirmando} titulo="¿Borrar la venta?" si="Sí, borrar venta" peligro onSi={borrar}
+        onNo={() => { setConfirmando(false); }}>
+        <Text size="sm">
+          Venta a {etiquetas.venta(id)}: {fmtMoney(f.importe)}, desde {nombres.deposito(f.venta.depositoId)}.
+        </Text>
+        <Text size="sm">
+          Se borran también sus comisiones{f.envio ? ', el envío' : ''}
+          {f.cobrado > 0 ? ` y sus cobros (${fmtMoney(f.cobrado)} cobrados)` : ''}. El stock vuelve
+          a {nombres.deposito(f.venta.depositoId)} y lo entregado vuelve a quedar pendiente en el pedido.
+        </Text>
+        <Text size="sm" fw={700}>No se puede deshacer.</Text>
+      </Confirmacion>
     </Stack>
   );
 }

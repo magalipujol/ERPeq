@@ -40,7 +40,7 @@ export function crearPlanillaEnMemoria(inicial: Partial<Hojas> = {}):
       });
       c.reemplazos.forEach((r, j) => { hojas[r.hoja][indices[j]] = r.fila.map(leida); });
       for (const r of c.recambios) {
-        hojas[r.hoja] = hojas[r.hoja].filter((f) => !r.ids.includes(id(f)));
+        hojas[r.hoja] = hojas[r.hoja].filter((f) => !r.ids.includes(String(f[r.columna ?? 0] ?? '').trim()));
         agregar({ [r.hoja]: r.filas });
       }
       agregar(c.agregados);

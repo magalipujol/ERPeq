@@ -9,7 +9,7 @@
 //   Sin recetas ni fabricaciones. Sin costo de envío.
 import type { Page } from '@playwright/test'
 import { galaxyA53 } from './dispositivos'
-import { AHORA, esperarDatosStock, expect, HOY_SERIE, ir, stockEn, test } from './google-falso'
+import { AHORA, confirmarEntrega, esperarDatosStock, expect, HOY_SERIE, ir, serie, stockEn, test } from './google-falso'
 
 const filaCon = (page: Page, texto: string) =>
   page.getByRole('row').filter({ has: page.getByRole('cell', { name: texto, exact: true }) })
@@ -125,6 +125,7 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
   await expect(entrega.getByRole('group', { name: 'Comisión' })).toContainText('1.740')
   await expect(entrega.getByRole('group', { name: 'Ganancia' })).toContainText('12.260')
   await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
+  await confirmarEntrega(page)
   await expect(entrega.getByText(/✓ Entrega a Ana registrada \(\$\s29\.000\)/)).toBeVisible()
   // La ganancia del pedido no descuenta el flete: es la de la entrega, 12.260.
   await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText('Parcial')
@@ -134,6 +135,7 @@ test('pedido sin stock en Rosario: se trae de Bahía Blanca, se rompe una bolsa 
   await expect(entrega.getByLabel('Entregar Almendras')).toHaveValue('2')
   await entrega.getByLabel('Entregar Almendras').fill('1')
   await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
+  await confirmarEntrega(page)
   await expect(entrega.getByText(/✓ Entrega a Ana registrada \(\$\s2\.900\)/)).toBeVisible()
 
   // 9. El kilo que falta no se va a entregar: se cierra el pedido con pendientes.
@@ -205,6 +207,7 @@ test('cambiar el precio de lista y la regla de comisión no toca los pedidos ya 
   await expect(entrega.getByLabel('Comisión Guada/Hernán Avena')).toHaveValue('4')
   await expect(entrega.getByRole('group', { name: 'Importe' })).toContainText('4.000')
   await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
+  await confirmarEntrega(page)
   // Al quedar entregado todo, el panel se cierra y lo avisa.
   await expect(page.getByText('El pedido de Ana · 16/10/26 quedó entregado.')).toBeVisible()
 
@@ -390,6 +393,7 @@ test.describe('desde el celular', () => {
     await expect(entrega.getByLabel('Entregar Almendras')).toBeInViewport()
     await expect(entrega.getByRole('group', { name: 'Comisión' })).toContainText('600')
     await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
+    await confirmarEntrega(page)
     // Era todo lo pendiente: el pedido queda entregado y sale de la lista de abiertos.
     await expect(page.getByText('El pedido de Bruno · 16/10/26 quedó entregado.')).toBeVisible()
     await expect(fila).toBeHidden()
@@ -522,6 +526,7 @@ test('Guada/Hernán cobra en efectivo, rinde una parte y Sampatti le paga la com
   await expect(entrega.getByLabel('Medio', { exact: true })).toHaveValue('efectivo')
   await entrega.getByLabel('Cobrado en la entrega', { exact: true }).fill('8000')
   await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
+  await confirmarEntrega(page)
   await expect(page.getByText('El pedido de Ana · 10/10/26 quedó entregado.')).toBeVisible()
 
   // 2. Tiene $ 8.000 de Sampatti y $ 240 son su comisión: le debe $ 7.760.
@@ -733,6 +738,7 @@ test('un pedido por menos del mínimo paga envío, que es para el vendedor que e
   await expect(entrega.getByLabel('El envío es para', { exact: true })).toHaveValue('VEN02')
   await expect(entrega.getByRole('group', { name: 'Total' })).toContainText('13.000')
   await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
+  await confirmarEntrega(page)
   await expect(page.getByText('El pedido de Ana · 10/10/26 quedó entregado.')).toBeVisible()
   expect(google.escrituras[1]).toEqual({
     'Ventas': [['V0002', HOY_SERIE, 'PE0002', 'ROS', '']],
@@ -796,4 +802,43 @@ test('una venta directa cargada desde el depósito y con el precio equivocados s
   await page.keyboard.press('Escape')
   await ir(page, 'Stock')
   await esperarStock(page, 'Almendras', { general: ['8', '–', '–'], rosario: ['0', '6', '–'] })
+})
+
+test('una entrega registrada por error se borra desde la venta y el pedido se cancela', async ({ page, google }) => {
+  // 1. Se entrega por error el pedido de Ana del 10/10: 10 kg de avena desde Rosario, $ 8.000, con 3% para
+  //    Guada/Hernán ($ 240). Rosario pasa de 25 a 15 kg.
+  await filaPedido(page, 'Ana · 10/10/26').getByRole('button', { name: 'Entregar' }).click()
+  await formEntrega(page).getByRole('button', { name: 'Registrar entrega' }).click()
+  await confirmarEntrega(page)
+  await expect(page.getByText('El pedido de Ana · 10/10/26 quedó entregado.')).toBeVisible()
+  expect(google.escrituras[0]).toMatchObject({
+    'Ventas': [['V0002', HOY_SERIE, 'PE0002', 'ROS', '']],
+    'Ventas comisiones': [['V0002', 1, 'VEN02', 3, 3, 240]],
+  })
+
+  // 2. En Ventas se abre esa venta y se borra. La confirmación dice qué se pierde.
+  await ir(page, 'Ventas')
+  await filaCon(page, 'Ana').getByRole('cell', { name: 'Avena' }).click()
+  const venta = page.getByRole('dialog', { name: 'Venta a Ana · 16/10/26' })
+  await venta.getByRole('button', { name: 'Borrar venta' }).click()
+  const confirmacion = page.getByRole('dialog', { name: '¿Borrar la venta?' })
+  await expect(confirmacion).toContainText(/Venta a Ana · 16\/10\/26: \$\s8\.000, desde Rosario\./)
+  await confirmacion.getByRole('button', { name: 'Sí, borrar venta' }).click()
+  await expect(page.getByText('✓ Venta a Ana borrada. El stock volvió a Rosario.')).toBeVisible()
+  expect(google.borrados.map((b) => [b.hoja, b.valores[0]])).toEqual([
+    ['Ventas', 'V0002'], ['Ventas ítems', 'V0002'], ['Ventas comisiones', 'V0002'],
+  ])
+  expect(google.hojas.Ventas).toEqual([['V0001', serie('2026-10-05'), 'PE0001', 'BB', '']])
+
+  // 3. El pedido vuelve a estar pendiente y ahora sí se puede cancelar.
+  await page.getByRole('button', { name: 'Ver el pedido de Ana · 10/10/26' }).click()
+  const pedido = page.getByRole('dialog', { name: 'Pedido de Ana · 10/10/26' })
+  await expect(pedido.getByRole('group', { name: 'Estado' })).toHaveText(/Pendiente/)
+  await pedido.getByRole('button', { name: 'Registrar entrega' }).click()
+  await formEntrega(page).getByRole('button', { name: 'Cancelar pedido' }).click()
+  await expect(page.getByText('El pedido de Ana · 10/10/26 quedó cancelado.')).toBeVisible()
+
+  // 4. La avena vuelve a los 25 kg de Rosario, sin nada comprometido.
+  await ir(page, 'Stock')
+  await esperarStock(page, 'Avena', { general: null, rosario: ['25', '–', '–'] })
 })

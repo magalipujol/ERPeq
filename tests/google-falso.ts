@@ -316,3 +316,8 @@ export async function ordenarStock(page: Page, lista: 'Stock por depósito' | 'S
   const boton = page.getByRole('table', { name: lista }).getByRole('button', { name: columna, exact: true })
   for (let i = 0; i < clics; i++) await boton.click()
 }
+
+// "Registrar entrega" pide confirmar antes de guardar la venta.
+export async function confirmarEntrega(page: Page) {
+  await page.getByRole('dialog', { name: '¿Registrar la entrega?' }).getByRole('button', { name: 'Sí, registrar entrega' }).click()
+}

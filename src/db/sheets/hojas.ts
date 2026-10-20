@@ -60,8 +60,9 @@ type Opcional = keyof typeof OPCIONALES;
 export const hojasFaltantes = (titulos: readonly string[]) =>
   (Object.keys(OPCIONALES) as Opcional[]).filter((k) => !titulos.includes(nombreHoja(k)));
 
-const columna = (n: number) => String.fromCharCode(64 + n);
-export const rango = (k: ClaveHoja) => `'${nombreHoja(k)}'!A1:${columna(encabezados(k).length)}`;
+// Letra de la columna `n` (1 = A).
+export const letraColumna = (n: number) => String.fromCharCode(64 + n);
+export const rango = (k: ClaveHoja) => `'${nombreHoja(k)}'!A1:${letraColumna(encabezados(k).length)}`;
 
 export class FormatoDistinto extends Error {
   constructor(hoja: string, esperados: readonly string[], leidos: string[]) {
@@ -222,9 +223,9 @@ export type Escritura = Partial<Record<ClaveHoja, ValorCelda[][]>>;
 // Fila que reemplaza a la que tiene `id` en la primera columna de su hoja.
 export interface Reemplazo { hoja: ClaveHoja; id: string; fila: ValorCelda[] }
 
-// Filas que ocupan el lugar de todas las que tienen alguno de los `ids` en la primera columna de su hoja: las de
-// antes se borran y estas se agregan al final (pueden ser más o menos).
-export interface Recambio { hoja: ClaveHoja; ids: string[]; filas: ValorCelda[][] }
+// Filas que ocupan el lugar de todas las que tienen alguno de los `ids` en la columna `columna` de su hoja (0 = A, la
+// primera si no se dice): las de antes se borran y estas se agregan al final (pueden ser más, menos o ninguna).
+export interface Recambio { hoja: ClaveHoja; ids: string[]; filas: ValorCelda[][]; columna?: number }
 
 // Corrección de filas ya guardadas, que se escribe de una sola vez: reemplazos en el lugar, recambios y filas nuevas.
 export interface Correccion { reemplazos: Reemplazo[]; recambios: Recambio[]; agregados: Escritura }

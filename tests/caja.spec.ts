@@ -1,4 +1,4 @@
-import { expect, ir, test } from './google-falso'
+import { confirmarEntrega, expect, ir, test } from './google-falso'
 
 test('ventas a cobrar y cuenta de cada socio al empezar', async ({ page, ingresar }) => {
   await page.goto('/#caja')
@@ -37,6 +37,7 @@ test('si la planilla todavía no tiene las hojas de caja, la app funciona y avis
   const entrega = page.getByRole('form', { name: 'Registrar entrega' })
   await expect(entrega.getByLabel('Cobrado en la entrega')).toHaveCount(0)
   await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
+  await confirmarEntrega(page)
   await expect(page.getByText('El pedido de Ana · 10/10/26 quedó entregado.')).toBeVisible()
 })
 
@@ -53,6 +54,7 @@ test('si la planilla todavía no tiene las hojas de envíos, Precios avisa cuál
   const entrega = page.getByRole('form', { name: 'Registrar entrega' })
   await expect(entrega.getByLabel('Costo de envío', { exact: true })).toHaveCount(0)
   await entrega.getByRole('button', { name: 'Registrar entrega' }).click()
+  await confirmarEntrega(page)
   await expect(page.getByText('El pedido de Ana · 10/10/26 quedó entregado.')).toBeVisible()
   expect(google.escrituras[0]).not.toHaveProperty('Ventas envíos')
 })

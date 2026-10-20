@@ -87,6 +87,9 @@ export interface Operaciones {
   corregirPedido: (c: CorreccionPedido) => Promise<void>;
   // Los cobros opcionales se guardan junto con la venta.
   registrarEntrega: (e: Entrega, cobros?: Cobro[]) => Promise<void>;
+  // Borra una venta (una entrega) con sus ítems, comisiones, envío y cobros: el stock vuelve al depósito y lo
+  // entregado vuelve a quedar pendiente en el pedido.
+  borrarVenta: (ventaId: string) => Promise<void>;
   cambiarEstadoPedido: (pedidoId: string, estado: 'cancelado' | 'cerrado', momento: Date) => Promise<void>;
   registrarFlete: (f: FleteNuevo) => Promise<void>;
   cambiarEstadoFlete: (fleteId: string, estado: EstadoFlete, momento: Date) => Promise<void>;

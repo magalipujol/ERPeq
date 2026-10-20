@@ -28,7 +28,7 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
 | Depósitos, Productos, Contactos, Tipos de cliente, Vendedores | Datos maestros. Contactos y productos se dan de alta y se corrigen en sus pantallas (o en su ficha); los demás, a mano en la planilla. El pedido propone los vendedores y el depósito de la localidad del cliente. |
 | Precios, Reglas de comisión | Valores por defecto (precio de lista y % de comisión por vendedor y producto), con fecha desde. |
 | Pedidos, Pedidos ítems, Pedidos estados, Pedidos vendedores | Lo que pide el cliente, con el precio fijado al crearlo. Reserva stock. Se corrige desde su ficha, junto con sus entregas. |
-| Ventas, Ventas ítems, Ventas comisiones | Cada entrega de un pedido: descuenta stock y genera la comisión. |
+| Ventas, Ventas ítems, Ventas comisiones | Cada entrega de un pedido: descuenta stock y genera la comisión. Se registra con confirmación y, si fue un error, se borra desde su ficha. |
 | Compras, Ajustes | Entradas y correcciones de stock. |
 | Recetas, Recetas ítems | Recetas de productos de *Productos* (insumos por tanda y cuánto sale, con versiones). Cada fabricación se guarda en *Ajustes*. Si faltan, la app las lee vacías y la pantalla Recetas avisa. |
 | Fletes, Fletes ítems, Fletes estados | Viajes con su costo (gasto de logística del mes, no se asigna a pedidos) y la salida y llegada previstas; los que van entre depósitos mueven stock según su estado. |

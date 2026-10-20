@@ -235,6 +235,25 @@ describe('operaciones sobre la planilla', () => {
     });
   });
 
+  it('borrar una venta borra sus ítems, comisiones, envío y cobros, y deja las demás', async () => {
+    expect.hasAssertions();
+
+    const db = crearPlanillaEnMemoria();
+    const conEnvio = { ...entrega('V0001'), envio: { ventaId: 'V0001', vendedorId: 'VEN01', costoRegla: 500, costo: 500 } };
+    await db.registrarPedido({ pedido, items: [item], vendedores: ['VEN01'], momento: dia, entrega: conEnvio, cobros: [cobro], preciosNuevos: [] });
+    await db.registrarEntrega(entrega('V0002'), [{ ...cobro, ventaId: 'V0002' }]);
+    await db.borrarVenta('V0001');
+
+    expect(db.hojas).toMatchObject({
+      pedidos: [['PE0001', DIA, 'C0001', 'BB', '']],
+      ventas: [['V0002', DIA, 'PE0001', 'BB', '']],
+      ventasItems: [['V0002', 1, 1, 'P001', 2, 3000, 6000, 1500]],
+      ventasComisiones: [['V0002', 1, 'VEN01', 10, 10, 600]],
+      ventasEnvios: [],
+      cobros: [[DIA, 'V0002', 6000, 'efectivo', 'SOC02', '']],
+    });
+  });
+
   it('corregir algo que no está en la hoja falla sin escribir', async () => {
     expect.hasAssertions();
 

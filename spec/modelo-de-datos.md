@@ -59,6 +59,8 @@ sequenceDiagram
     `id`. El ID no cambia, así que los pedidos, compras y fletes que lo nombran muestran el dato corregido.
   - **Pedidos**: corregir uno reemplaza sus filas y las de sus entregas ya registradas, en una sola operación (ver
     [Corregir un pedido](#corregir-un-pedido)). El stock, las comisiones y lo que falta cobrar se recalculan solos.
+  - **Ventas**: una entrega registrada por error se borra con sus comisiones, envío y cobros (ver
+    [Borrar una venta](#borrar-una-venta)).
   - **Movimientos** (compras, ajustes, estados): las correcciones son filas nuevas (un ajuste, un nuevo
     estado), así el stock se puede recalcular siempre. La corrección de fletes, compras y cobros ya
     cargados todavía no está en la app (ver [Preguntas abiertas](#preguntas-abiertas)).
@@ -575,6 +577,18 @@ pedido que entrega; el precio se copia de esa línea y no se puede cambiar en la
 Si al entregar no hay stock suficiente en el depósito, la app **avisa** pero deja registrar la venta. El
 stock del depósito puede quedar negativo, y eso indica que falta registrar una compra, un flete o un ajuste.
 
+Antes de guardar, *Registrar entrega* pide confirmar: muestra el cliente, el depósito, la fecha, cada producto con
+su importe, el total (con el envío) y lo cobrado. La venta directa no pide confirmación: entregar ya se eligió al
+tildar "Se entrega ahora".
+
+### Borrar una venta
+
+Una entrega registrada por error se borra desde la ficha de la venta (*Borrar venta*, con confirmación). Se borran
+sus filas de *Ventas*, *Ventas ítems*, *Ventas comisiones*, *Ventas envíos* y *Cobros*: el stock vuelve al depósito,
+la comisión y el envío dejan de contar en la cuenta del socio, y lo entregado vuelve a quedar pendiente en el pedido,
+que se puede entregar de nuevo, cerrar o (si no le quedan entregas) cancelar. Si la venta tenía cobros, la
+confirmación avisa cuánto se había cobrado. No se puede deshacer: el borrado no deja rastro en la planilla.
+
 ```mermaid
 flowchart LR
     PE["Pedido PE0042<br/>Dietética de ejemplo · Rosario<br/>vendedor: Guada/Hernán"]
@@ -902,8 +916,9 @@ La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e 
 ## Preguntas abiertas
 
 - **Corregir movimientos.** Contactos y productos se corrigen en el lugar, y un pedido reemplazando sus filas y las
-  de sus entregas. Falta decidir cómo se corrigen un flete, una compra, un cobro, una rendición o una fabricación ya
-  cargados, y si una entrega se puede corregir sola (la fecha, las cantidades entregadas, el envío) o anular.
+  de sus entregas; una venta se puede borrar. Falta decidir cómo se corrigen un flete, una compra, un cobro, una
+  rendición o una fabricación ya cargados, y si una entrega se puede corregir sola (la fecha, las cantidades
+  entregadas, el envío).
 - **Depósitos, vendedores, socios y tipos de cliente** todavía se cargan y se corrigen a mano en la planilla.
 
 - **Depósito por pedido o por línea.** Esta spec usa uno por pedido. Si un pedido puede entregarse en parte

@@ -48,6 +48,19 @@ export function correccionPedido(c: CorreccionPedido): Correccion {
   };
 }
 
+// Borra una venta con todo lo que cuelga de ella: ítems, comisiones, envío y cobros (que tienen el ID en la columna B).
+export function borradoVenta(id: string): Correccion {
+  const ids = [id];
+  return {
+    reemplazos: [],
+    recambios: [
+      { hoja: 'ventas', ids, filas: [] }, { hoja: 'ventasItems', ids, filas: [] }, { hoja: 'ventasComisiones', ids, filas: [] },
+      { hoja: 'ventasEnvios', ids, filas: [] }, { hoja: 'cobros', ids, filas: [], columna: 1 },
+    ],
+    agregados: {},
+  };
+}
+
 export function escrituraFlete(f: FleteNuevo): Escritura {
   return {
     ...(f.transporteNuevo ? { contactos: [filas.contacto(f.transporteNuevo)] } : {}),
@@ -77,6 +90,7 @@ export function operaciones(escribir: (e: Escritura) => Promise<void>, corregir:
     registrarPedido: async (p) => escribir(escrituraPedido(p)),
     corregirPedido: async (c) => corregir(correccionPedido(c)),
     registrarEntrega: async (e, cobros) => escribir(escrituraEntrega(e, cobros)),
+    borrarVenta: async (id) => corregir(borradoVenta(id)),
     cambiarEstadoPedido: async (id, estado, momento) => escribir({ pedidosEstados: [filas.estado(id, estado, momento)] }),
     registrarFlete: async (f) => escribir(escrituraFlete(f)),
     cambiarEstadoFlete: async (id, estado, momento) => escribir({ fletesEstados: [filas.estado(id, estado, momento)] }),

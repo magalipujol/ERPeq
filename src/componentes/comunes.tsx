@@ -1,4 +1,4 @@
-import { Group, Paper, type PaperProps, Select, SimpleGrid, Text, Title } from '@mantine/core';
+import { Button, Group, Modal, Paper, type PaperProps, Select, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { fmtMes } from '../formato';
 import { mesElegido, mesesDisponibles } from '../meses';
 
@@ -70,5 +70,24 @@ export function Resumen({ label, valor, c }: { label: string; valor: string | nu
       <Text size="xs" c="dimmed">{label}</Text>
       <Text fw={700} c={c} style={{ fontVariantNumeric: 'tabular-nums' }}>{valor}</Text>
     </div>
+  );
+}
+
+// Pide confirmar una operación que no se deshace con un clic (registrar una entrega, borrar una venta). `children`
+// cuenta qué va a pasar; `si` es el texto del botón que confirma.
+export function Confirmacion({ abierta, titulo, si, peligro = false, onSi, onNo, children }: {
+  abierta: boolean; titulo: string; si: string; peligro?: boolean; onSi: () => void; onNo: () => void; children: React.ReactNode;
+}) {
+  return (
+    <Modal opened={abierta} onClose={onNo} title={titulo} centered>
+      <Stack gap="md">
+        <Stack gap="xs">{children}</Stack>
+        <Group gap="xs" justify="flex-end">
+          {/* Para lo que borra, el foco queda en "Volver": un Enter de más no confirma. */}
+          <Button variant="default" onClick={onNo} data-autofocus={peligro || undefined}>Volver</Button>
+          <Button color={peligro ? 'red' : undefined} onClick={onSi} data-autofocus={!peligro || undefined}>{si}</Button>
+        </Group>
+      </Stack>
+    </Modal>
   );
 }
