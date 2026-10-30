@@ -18,7 +18,7 @@ Node 24 y pnpm (`corepack enable`).
 | `pnpm typecheck` | `tsc -b`. |
 | `pnpm lint` / `pnpm lint:fix` | ESLint con `--max-warnings 0` y caché (`.tmp/eslintcache`): solo vuelve a revisar los archivos cambiados. |
 | `pnpm test:unit` | Vitest (`src/**/*.test.ts`). |
-| `pnpm test:e2e` | Playwright contra el build (`pnpm build` + `vite preview`), en Chromium escritorio y en celular (Samsung Galaxy A53: 360 px a DPR 3, en `tests/dispositivos.ts`). |
+| `pnpm test:e2e` | Playwright contra el build (`pnpm build` + `vite preview`), en Chromium escritorio y en celular (Samsung Galaxy A53: 360 px a DPR 3, en `tests/dispositivos.ts`). Las pruebas con la etiqueta `@escritorio` no corren en el celular. |
 | `pnpm build` | Compila a `dist/`. |
 
 El hook de pre-commit (husky) corre `lint-staged` (ESLint sobre los archivos cambiados) y `pnpm test:unit`.
@@ -49,6 +49,7 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 
 | Ruta | Contenido |
 |---|---|
+| `PRODUCT.md`, `.impeccable/` | Quién usa la app, para qué y los principios de diseño (`PRODUCT.md`); la dirección visual de la app del celular y los bocetos de la elección (`.impeccable/`). |
 | `src/dominio/modelo.ts` | **Dominio**: tipos y cálculos (stock, estados, precios, comisiones, ganancia, entregas, IDs, envío de cada entrega, saldo a cobrar de cada venta, cuentas entre socios y recetas: versión vigente, merma y armado de una fabricación). No sabe nada de hojas, columnas ni del navegador: se prueba con Vitest. |
 | `src/dominio/analisis.ts` | **Dominio**: cálculos de la pantalla Análisis (ganancia y ventas por producto, clientes activos e inactivos). Puro, se prueba con Vitest. Ver `spec/analisis.md`. |
 | `src/dominio/fichas.ts` | **Dominio**: qué muestra la ficha de un pedido, venta, producto, contacto, flete o compra y lo que tiene relacionado. Puro, se prueba con Vitest. Ver `spec/fichas.md`. |
@@ -60,9 +61,9 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 | `src/base.ts`, `src/BaseProvider.tsx` | Contexto de React con los datos cargados, los cálculos derivados y las operaciones del puerto (`db`). |
 | `src/ficha.ts` | Contexto para abrir fichas (`useFicha`) y `useFila`, que hace que tocar una fila de tabla abra su ficha. |
 | `src/vistas/` | Pantallas: Inicio (por defecto: pedido nuevo, mapa, pedidos pendientes —con el flete para cubrir sus faltantes— y fletes en curso), Stock, Pedidos (alta y entregas), Ventas, Compras, Recetas (recetas y fabricación), Fletes, Precios (precios, reglas de comisión y costo de envío), Contactos y Productos (alta y lista; se corrigen desde la ficha), Caja (cobros y cuentas entre socios) y Análisis. |
-| `src/componentes/` | Componentes compartidos (carga de ítems, navegación: selector del header y barra inferior del celular, exportar pedidos a WhatsApp, estados de pedidos y fletes, etc.). `Fichas.tsx`: el modal de fichas (`FichaProvider`) y `Vinculo`. `comunes.tsx`: piezas chicas, entre ellas `Confirmacion`, el modal que pide confirmar una operación. `Maestros.tsx`: formularios de alta y corrección de contactos y productos. `CorregirPedido.tsx`: el formulario que corrige un pedido (y sus entregas) desde su ficha. |
+| `src/componentes/` | Componentes compartidos (la tapa de cada producto —`Tapa` en `comunes.tsx`, tono y letras en `tapa.ts`—, carga de ítems, navegación: selector del header y barra inferior del celular, exportar pedidos a WhatsApp, estados de pedidos y fletes, etc.). `Fichas.tsx`: el modal de fichas (`FichaProvider`) y `Vinculo`. `comunes.tsx`: piezas chicas, entre ellas `Confirmacion`, el modal que pide confirmar una operación. `Maestros.tsx`: formularios de alta y corrección de contactos y productos. `CorregirPedido.tsx`: el formulario que corrige un pedido (y sus entregas) desde su ficha. |
 | `src/estilos.css`, `src/celular.css` | Estilos globales (incluida la declaración de la fuente); `celular.css` tiene los ajustes para menos de 768 px (breakpoint `sm` de Mantine). |
-| `src/fuentes/` | OpenDyslexic 0.990 (regular y negrita, del repositorio del proyecto) y su licencia OFL. Ver `spec/legibilidad.md`. |
+| `src/fuentes/` | Atkinson Hyperlegible Next (regular y negrita, subconjunto latino de Fontsource) y su licencia OFL. Ver `spec/legibilidad.md`. |
 | `src/whatsapp.ts` | Arma el mensaje de pedidos para WhatsApp (qué pedidos entran y el texto). Sin dependencias del navegador: se prueba con Vitest. |
 | `src/config.ts` | Client ID de Google e ID de la planilla. No son secretos. |
 | `tests/` | Pruebas e2e. `tests/google-falso.ts` reemplaza a Google con una planilla en memoria (su estado inicial está resumido al principio de `historias.spec.ts`) y tiene `ir()` para cambiar de pantalla en escritorio o celular, y funciones para leer el stock tanto de las tablas (escritorio) como de las tarjetas (celular): `stockEn`, `stockTotal`, `esperarDatosStock`, etc. `tests/dispositivos.ts` define el celular de las pruebas (Galaxy A53, 360 × 800 a DPR 3) y el escritorio. `tests/historias.spec.ts` tiene las historias de usuario de punta a punta; `tests/legibilidad.spec.ts` recorre cada pantalla del celular con importes de millones y falla si una cifra queda partida en dos renglones (con `CAPTURAS=1` guarda una captura de cada pantalla en `.tmp/capturas/`); el resto prueba una pantalla cada uno. |

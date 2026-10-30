@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test'
 import { galaxyA53 } from './dispositivos'
 import { expect, ir, type Pantalla, test } from './google-falso'
 
-// Una cifra cortada en dos renglones ("$ 1.234." arriba y "567" abajo) no se lee. Con OpenDyslexic, que es ancha,
+// Una cifra cortada en dos renglones ("$ 1.234." arriba y "567" abajo) no se lee. Con letra grande,
 // pasa con los importes de verdad en un celular de 360 px: esta prueba los agranda y recorre cada pantalla.
 
 // Corre en los dos proyectos, siempre con la pantalla del celular.

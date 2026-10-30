@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import {
-  esCelular, esperarDatosStock, expect, grupoStock, HOY_SERIE, ordenarStock, productosEn, productosTotal, stockEn, stockTotal, test,
+  esCelular, esperarDatosStock, expect, filtrarStockTotal, grupoStock, HOY_SERIE, ordenarStock, productosEn, productosTotal, stockEn, stockTotal, test,
 } from './google-falso'
 
 test.beforeEach(async ({ page, ingresar }) => {
@@ -33,19 +33,27 @@ test('muestra un solo depósito', async ({ page }) => {
 })
 
 test('compara el stock total con el mínimo', async ({ page }) => {
-  await esperarDatosStock(page, stockTotal(page, 'Almendras'), { 'En depósitos': '10', 'En camino': '6', 'Total': '16', 'Mínimo': '–' })
-  await expect(stockTotal(page, 'Almendras')).toContainText('OK')
-  await esperarDatosStock(page, stockTotal(page, 'Avena'), { 'En depósitos': '25', 'En camino': '–', 'Total': '25', 'Mínimo': '50' })
+  await esperarDatosStock(page, stockTotal(page, 'Almendras'), { 'Total': '16' })
+  await esperarDatosStock(page, stockTotal(page, 'Avena'), { 'Total': '25' })
   await expect(stockTotal(page, 'Avena')).toContainText('Reponer')
-  await esperarDatosStock(page, stockTotal(page, 'Miel'), { 'En depósitos': '0', 'En camino': '–', 'Total': '0', 'Mínimo': '–' })
+  await esperarDatosStock(page, stockTotal(page, 'Miel'), { 'Total': '0' })
   await expect(stockTotal(page, 'Miel')).toContainText('Sin stock')
 
-  await page.getByRole('combobox', { name: 'Filtrar stock total' }).selectOption({ label: 'Bajo el mínimo' })
+  await filtrarStockTotal(page, 'Bajo el mínimo')
   await expect(productosTotal(page)).toHaveCount(1)
   await expect(productosTotal(page).first()).toContainText('Avena')
 })
 
-test('ordena el stock total con lo más urgente primero', async ({ page }) => {
+// En el celular, el frasco muestra el total y lo que pide atención; el detalle está en la ficha del producto.
+test('el stock total detalla depósitos, camino y mínimo', { tag: '@escritorio' }, async ({ page }) => {
+  await esperarDatosStock(page, stockTotal(page, 'Almendras'), { 'En depósitos': '10', 'En camino': '6', 'Mínimo': '–' })
+  await expect(stockTotal(page, 'Almendras')).toContainText('OK')
+  await esperarDatosStock(page, stockTotal(page, 'Avena'), { 'En depósitos': '25', 'En camino': '–', 'Mínimo': '50' })
+  await esperarDatosStock(page, stockTotal(page, 'Miel'), { 'En depósitos': '0', 'En camino': '–', 'Mínimo': '–' })
+})
+
+// En el celular los frascos van siempre por nombre.
+test('ordena el stock total con lo más urgente primero', { tag: '@escritorio' }, async ({ page }) => {
   // Avena (Reponer), Miel y Mix europeo (Sin stock), Almendras (OK).
   await ordenarStock(page, 'Stock total', 'Estado', 1, 'Más urgente primero')
   await expect(productosTotal(page).first()).toContainText('Avena')

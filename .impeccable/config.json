@@ -1,0 +1,53 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          ".impeccable/mocks/decision/canon.html"
+        ],
+        "createdAt": "2026-10-30T22:38:28.212Z",
+        "reason": "Claude: decision-round fixture that depicts the category standard on purpose"
+      },
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/model-pick.html"
+        ],
+        "createdAt": "2026-10-30T22:38:28.220Z",
+        "reason": "Claude: decision-round sketch of the direction the user picked (paper-label ground is part of that card)"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "hyperlegible next\",verdana,sans-serif",
+        "files": [
+          ".impeccable/mocks/decision/assigned.html"
+        ],
+        "createdAt": "2026-10-30T22:51:34.880Z",
+        "reason": "Claude: frozen decision-round sketch, not shipped UI"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "hyperlegible next\",verdana,sans-serif",
+        "files": [
+          ".impeccable/mocks/decision/model-pick.html"
+        ],
+        "createdAt": "2026-10-30T22:51:34.889Z",
+        "reason": "Claude: frozen decision-round sketch, not shipped UI"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "inter",
+        "files": [
+          ".impeccable/mocks/decision/canon.html"
+        ],
+        "createdAt": "2026-10-30T22:51:34.897Z",
+        "reason": "Claude: frozen decision-round sketch, not shipped UI"
+      }
+    ]
+  }
+}

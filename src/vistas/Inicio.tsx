@@ -55,7 +55,8 @@ export function Inicio({ onNuevoPedido, onIr, onPedido, onFlete, onDeposito, onA
     <Stack gap="md">
       <Title order={2} className="titulo-pantalla">Inicio</Title>
 
-      <Button size="md" leftSection={<IconPlus size={20} />} onClick={onNuevoPedido} w={{ base: '100%', sm: 'auto' }} style={{ alignSelf: 'flex-start' }}>
+      {/* En el celular, «Nuevo» de la barra inferior hace lo mismo desde cualquier pantalla. */}
+      <Button size="md" leftSection={<IconPlus size={20} />} onClick={onNuevoPedido} visibleFrom="sm" style={{ alignSelf: 'flex-start' }}>
         Tomar pedido nuevo
       </Button>
 

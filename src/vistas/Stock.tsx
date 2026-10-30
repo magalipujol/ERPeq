@@ -6,7 +6,8 @@ import {
 import { IconArrowDown, IconArrowUp } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
-import { Encabezado, Kpis, Mensaje, Resumen, Seccion } from '../componentes/comunes';
+import { Encabezado, Kpis, Mensaje, Resumen, Seccion, Tapa } from '../componentes/comunes';
+import { tonoTapa } from '../componentes/tapa';
 import { Vinculo } from '../componentes/Fichas';
 import { useFila } from '../ficha';
 import { aNumero, fmtMoney, fmtNum, unicos } from '../formato';
@@ -34,6 +35,8 @@ interface FilaStock extends M.Producto {
 
 export function Stock({ visible, deposito, onDeposito }: { visible: boolean; deposito: string; onDeposito: (id: string) => void }) {
   const { datos, stock, costos } = useBase();
+  // Un solo buscador para las dos listas: en el celular está arriba de los frascos; en la compu, en Stock por depósito.
+  const [buscar, setBuscar] = useState('');
 
   const filas = useMemo<FilaStock[]>(() => datos.productos.map((p) => {
     const s = stock.enDeposito.get(p.id) ?? {};
@@ -53,19 +56,19 @@ export function Stock({ visible, deposito, onDeposito }: { visible: boolean; dep
 
   return (
     <Stack gap="md">
-      <Kpis label="Resumen de stock" items={[
+      <Box className="kpis-stock"><Kpis label="Resumen de stock" items={[
         { label: 'Productos con stock', valor: filas.filter((f) => f.total > 0).length },
         { label: 'Bajo el mínimo', valor: bajos, alerta: bajos > 0 },
         { label: 'Stock negativo', valor: negs, alerta: negs > 0 },
         { label: 'Faltan para pedidos', valor: faltan, alerta: faltan > 0 },
         { label: 'Valor del stock (a costo)', valor: fmtMoney(filas.reduce((s, f) => s + (f.valor ?? 0), 0)) },
-      ]} />
+      ]} /></Box>
 
       <Grid gap="md" align="flex-start">
         <Grid.Col span={{ base: 12, md: 'auto' }} miw={0}>
           <Stack gap="md">
-            <StockPorDeposito deposito={deposito} onDeposito={onDeposito} />
-            <StockTotal filas={filas} />
+            <StockTotal filas={filas} buscar={buscar} onBuscar={setBuscar} />
+            <StockPorDeposito deposito={deposito} onDeposito={onDeposito} buscar={buscar} onBuscar={setBuscar} />
           </Stack>
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 'content' }} w={{ md: 340 }}>
@@ -73,7 +76,7 @@ export function Stock({ visible, deposito, onDeposito }: { visible: boolean; dep
         </Grid.Col>
       </Grid>
 
-      {visible && <GraficoStock filas={filas} deposito={deposito} />}
+      {visible && <Box visibleFrom="sm"><GraficoStock filas={filas} deposito={deposito} /></Box>}
     </Stack>
   );
 }
@@ -147,10 +150,10 @@ const ORDEN_DEPOSITO: OpcionOrden[] = [
 // Un grupo por depósito con los productos que tienen algo ahí: stock, algo en camino o pedidos por entregar.
 // `deposito` vacío muestra todos los grupos; si no, solo el de ese depósito. Lo elige el selector de la tabla
 // o el ícono del depósito en el mapa de Inicio. En escritorio es una tabla; en celular, una tarjeta por producto.
-function StockPorDeposito({ deposito, onDeposito }: { deposito: string; onDeposito: (id: string) => void }) {
+function StockPorDeposito({ deposito, onDeposito, buscar, onBuscar }:
+  { deposito: string; onDeposito: (id: string) => void; buscar: string; onBuscar: (q: string) => void }) {
   const { datos, stock, cargando } = useBase();
   const fila = useFila();
-  const [buscar, setBuscar] = useState('');
   const [filtro, setFiltro] = useState('');
   const [orden, setOrden] = useState<Orden>({ key: 'producto', dir: 1 });
 
@@ -191,8 +194,8 @@ function StockPorDeposito({ deposito, onDeposito }: { deposito: string; onDeposi
     <Seccion>
       <Encabezado titulo="Stock por depósito">
         <Group gap="xs">
-          <TextInput type="search" w={{ base: '100%', sm: 200 }} placeholder="Buscar producto…" aria-label="Buscar producto"
-            value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
+          <TextInput type="search" w={200} visibleFrom="sm" placeholder="Buscar producto…" aria-label="Buscar producto"
+            value={buscar} onChange={(e) => { onBuscar(e.currentTarget.value); }} />
           <NativeSelect aria-label="Mostrar depósito" value={deposito} onChange={(e) => { onDeposito(e.currentTarget.value); }} data={[
             { value: '', label: 'Todos los depósitos' }, ...datos.depositos.map((d) => ({ value: d.id, label: d.nombre })),
           ]} />
@@ -260,6 +263,8 @@ function Tarjeta({ producto, estado, principal, nota, children, ...props }: {
   return (
     <Paper component="article" aria-label={producto.producto} p="sm" radius="md" {...props}>
       <Group justify="space-between" wrap="nowrap" gap="xs" align="flex-start">
+        <Group gap="xs" wrap="nowrap" align="flex-start" miw={0}>
+        <Tapa id={producto.id} nombre={producto.producto} chica />
         <Stack gap={4} align="flex-start" miw={0}>
           <Text fw={600}>
             <Vinculo a={{ tipo: 'producto', id: producto.id }}>{producto.producto}</Vinculo>
@@ -267,6 +272,7 @@ function Tarjeta({ producto, estado, principal, nota, children, ...props }: {
           </Text>
           {estado && <Badge variant="light" color={estado.color} size="sm">{estado.texto}</Badge>}
         </Stack>
+        </Group>
         <Box ta="right" style={{ whiteSpace: 'nowrap' }}>{principal}</Box>
       </Group>
       <SimpleGrid cols={children.length} spacing="xs" mt="xs">{children}</SimpleGrid>
@@ -284,35 +290,43 @@ const COLS_TOTAL: Columna<FilaStock>[] = [
   { key: 'estado', titulo: 'Estado', valor: (f) => f.estado.urgencia },
 ];
 
-const ORDEN_TOTAL: OpcionOrden[] = [
-  { value: 'producto', label: 'Por producto', orden: { key: 'producto', dir: 1 } },
-  { value: 'menos', label: 'Menos stock primero', orden: { key: 'total', dir: 1 } },
-  { value: 'mas', label: 'Más stock primero', orden: { key: 'total', dir: -1 } },
-  { value: 'estado', label: 'Más urgente primero', orden: { key: 'estado', dir: 1 } },
-];
+const FILTROS_FRASCOS = [{ value: '', label: 'Todos' }, { value: 'falta', label: 'Faltan' }, { value: 'bajo', label: 'Bajo el mínimo' }];
 
 // Una fila por producto con el stock de todos los depósitos más lo que está en camino, contra su mínimo.
 // En escritorio es una tabla; en celular, una tarjeta por producto.
-function StockTotal({ filas }: { filas: FilaStock[] }) {
+function StockTotal({ filas, buscar, onBuscar }: { filas: FilaStock[]; buscar: string; onBuscar: (q: string) => void }) {
   const { cargando } = useBase();
   const fila = useFila();
   const [filtro, setFiltro] = useState('');
   const [orden, setOrden] = useState<Orden>({ key: 'producto', dir: 1 });
 
-  const visibles = ordenar(filas.filter((f) => !filtro
+  const q = buscar.trim().toLowerCase();
+  const filtradas = filas.filter((f) => (!q || f.producto.toLowerCase().includes(q)) && (!filtro
     || (filtro === 'con' && minimoDe(f) !== 0)
-    || (filtro === 'bajo' && bajoMinimo(f))), COLS_TOTAL, orden);
+    || (filtro === 'bajo' && bajoMinimo(f))
+    || (filtro === 'falta' && f.faltante > 0)));
+  const visibles = ordenar(filtradas, COLS_TOTAL, orden);
+  // En el celular los frascos van siempre por nombre: el lugar de cada uno no cambia.
+  const frascos = ordenar(filtradas, COLS_TOTAL, { key: 'producto', dir: 1 });
 
   return (
     <Seccion>
       <Encabezado titulo="Stock total">
-        <Group gap="xs">
-          <NativeSelect aria-label="Filtrar stock total" value={filtro} onChange={(e) => { setFiltro(e.currentTarget.value); }} data={[
-            { value: '', label: 'Todos' }, { value: 'con', label: 'Con mínimo' }, { value: 'bajo', label: 'Bajo el mínimo' },
-          ]} />
-          <SelectorOrden opciones={ORDEN_TOTAL} orden={orden} onOrden={setOrden} />
-        </Group>
+        <NativeSelect aria-label="Filtrar stock total" visibleFrom="sm" value={filtro} onChange={(e) => { setFiltro(e.currentTarget.value); }} data={[
+          { value: '', label: 'Todos' }, { value: 'con', label: 'Con mínimo' }, { value: 'bajo', label: 'Bajo el mínimo' },
+          { value: 'falta', label: 'Faltan para pedidos' },
+        ]} />
       </Encabezado>
+      <Stack gap="xs" mb="sm" hiddenFrom="sm">
+        <TextInput type="search" size="md" h={52} styles={{ input: { height: 52 } }} placeholder="Buscar producto…" aria-label="Buscar producto"
+          value={buscar} onChange={(e) => { onBuscar(e.currentTarget.value); }} />
+        <Group gap={6} wrap="nowrap" role="group" aria-label="Filtrar stock total">
+          {FILTROS_FRASCOS.map((o) => (
+            <Button key={o.value} size="sm" h={44} px="sm" variant={filtro === o.value ? 'filled' : 'default'} aria-pressed={filtro === o.value}
+              onClick={() => { setFiltro(o.value); }}>{o.label}</Button>
+          ))}
+        </Group>
+      </Stack>
       <ScrollArea.Autosize mah={560} type="auto" visibleFrom="sm">
         <Table stickyHeader highlightOnHover fz="sm" aria-label="Stock total"
           style={{ opacity: cargando ? 0.5 : 1, whiteSpace: 'nowrap' }}>
@@ -332,18 +346,36 @@ function StockTotal({ filas }: { filas: FilaStock[] }) {
           </Table.Tbody>
         </Table>
       </ScrollArea.Autosize>
-      <Stack component="section" aria-label="Stock total" gap="xs" hiddenFrom="sm" style={{ opacity: cargando ? 0.5 : 1 }}>
-        {visibles.map((f) => (
-          <Tarjeta key={f.id} producto={f} estado={f.estado} {...fila({ tipo: 'producto', id: f.id })}
-            principal={<Resumen label="Total" valor={fmtNum(f.total)} c={f.total < 0 ? 'red' : undefined} />}>
-            <Resumen label="Mínimo" valor={guion(minimoDe(f))} />
-            <Resumen label="En depósitos" valor={fmtNum(M.sumaDeps(f.s))} />
-            <Resumen label="En camino" valor={guion(f.transito)} />
-          </Tarjeta>
-        ))}
-      </Stack>
+      <SimpleGrid component="section" aria-label="Stock total" cols={2} spacing="sm" hiddenFrom="sm" style={{ opacity: cargando ? 0.5 : 1 }}>
+        {frascos.map((f) => <Frasco key={f.id} f={f} {...fila({ tipo: 'producto', id: f.id })} />)}
+      </SimpleGrid>
       {visibles.length === 0 && <Text c="dimmed" mt="xs">No hay productos que coincidan.</Text>}
     </Seccion>
+  );
+}
+
+// Un producto en la grilla del celular: la tapa, el nombre, el total con la unidad y, como mucho, lo que pide
+// atención. El detalle por depósito está en su ficha (tocar el frasco).
+function Frasco({ f, className, ...props }: { f: FilaStock } & ReturnType<ReturnType<typeof useFila>>) {
+  const tapa: Record<string, string> = { '--tapa': tonoTapa(f.id) };
+  const aviso = f.estado.texto !== 'OK';
+  return (
+    <Box component="article" aria-label={f.producto} className={`frasco ${className}`} data-vacio={f.total === 0 || undefined}
+      data-alerta={f.estado.urgencia <= 1 || undefined} style={tapa} {...props}>
+      <div className="frasco-tapa"><Tapa id={f.id} nombre={f.producto} chica /></div>
+      <Stack gap={4} p="sm" pt={8}>
+        <Text fw={700} lh={1.25} style={{ overflowWrap: 'anywhere' }}>
+          <Vinculo a={{ tipo: 'producto', id: f.id }}>{f.producto}</Vinculo>
+        </Text>
+        <Group role="group" aria-label="Total" gap={6} align="baseline" wrap="nowrap">
+          <Text fz={30} fw={700} lh={1.15} c={f.total < 0 ? 'red' : undefined}>{fmtNum(f.total)}</Text>
+          <Text span c="dimmed">{f.unidad}</Text>
+        </Group>
+        {aviso && <Badge variant="light" color={f.estado.color} size="md" style={{ alignSelf: 'flex-start' }}>{f.estado.texto}</Badge>}
+        {f.faltante > 0 && <Text size="sm" c="yellow.9" fw={700} lh={1.3}>Faltan {fmtNum(f.faltante)} para pedidos</Text>}
+        {!aviso && f.faltante <= 0 && f.transito > 0 && <Text size="sm" lh={1.3}>{fmtNum(f.transito)} en camino</Text>}
+      </Stack>
+    </Box>
   );
 }
 

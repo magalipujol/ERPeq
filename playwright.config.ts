@@ -18,7 +18,8 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: escritorio },
-    { name: 'mobile', use: { ...galaxyA53, browserName: 'chromium' } },
+    // `@escritorio`: pruebas de lo que el celular muestra de otra forma (por ejemplo, el detalle de Stock total).
+    { name: 'mobile', use: { ...galaxyA53, browserName: 'chromium' }, grepInvert: /@escritorio/ },
   ],
   // Contra el build y no contra `vite dev`, así también se prueba la Content-Security-Policy.
   webServer: {
