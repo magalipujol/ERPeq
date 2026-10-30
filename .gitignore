@@ -14,3 +14,7 @@ dist/
 
 # Worktrees de agentes de Claude Code
 .claude/worktrees/
+
+# Impeccable: capturas de revisión y caché del detector
+.impeccable/review/
+.impeccable/hook.cache.json

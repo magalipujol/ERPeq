@@ -1,17 +1,28 @@
 import { Button, Group, Modal, Paper, type PaperProps, Select, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { fmtMes } from '../formato';
+import { letrasTapa, tonoTapa } from './tapa';
 import { mesElegido, mesesDisponibles } from '../meses';
+
+// La tapa de un producto: su tono y dos letras, para reconocerlo antes de leer el nombre. Es decorativa: el
+// nombre siempre va al lado.
+export function Tapa({ id, nombre, chica = false }: { id: string; nombre: string; chica?: boolean }) {
+  return (
+    <span className={chica ? 'tapa tapa-chica' : 'tapa'} style={{ '--tapa': tonoTapa(id) } as React.CSSProperties} aria-hidden>
+      {letrasTapa(nombre)}
+    </span>
+  );
+}
 
 export interface Kpi { label: string; valor: React.ReactNode; alerta?: boolean }
 
 // Una cifra nunca se corta en dos renglones: si no entra en la tarjeta (un importe de millones en un celular de
-// 360 px), la letra se achica hasta que entre. Cada carácter de OpenDyslexic en negrita ocupa unos 0,7em.
+// 360 px), la letra se achica hasta que entre. Cada cifra de Atkinson Hyperlegible en negrita ocupa unos 0,6em.
 const estiloCifra = (valor: React.ReactNode): React.CSSProperties => {
   const largo = typeof valor === 'string' || typeof valor === 'number' ? String(valor).length : 0;
   return {
     fontVariantNumeric: 'tabular-nums',
     whiteSpace: 'nowrap',
-    fontSize: largo > 0 ? `min(var(--mantine-h2-font-size), calc(100cqi / ${largo * 0.72}))` : undefined,
+    fontSize: largo > 0 ? `min(var(--mantine-h2-font-size), calc(100cqi / ${largo * 0.62}))` : undefined,
   };
 };
 

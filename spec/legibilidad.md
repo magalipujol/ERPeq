@@ -8,15 +8,16 @@ Association (BDA) y las pautas de contraste de WCAG. Los valores están en `src/
 
 | Pauta | Cómo se aplica |
 |---|---|
-| Sans serif clara, con letras que no se confunden (I/l/1, O/0, b/d) | OpenDyslexic en todo, títulos incluidos: letras con la base más pesada, para que no se den vuelta (b/d, p/q). Se sirve desde el propio sitio (`src/fuentes/`, declarada en `src/estilos.css`) en pesos 400 y 700; si no carga, Verdana. Es la versión 0.990 del repositorio del proyecto: la 0.910 que publica npm dibuja mal la tilde de la «ó» en regular. El texto monoespaciado usa la fuente del sistema. |
-| Texto base de 16 a 19 px | Texto normal 17 px, `sm` 15 px, `xs` 14 px y etiquetas de estado 13 px. |
+| Sans serif clara, con letras que no se confunden (I/l/1, O/0, b/d) | Atkinson Hyperlegible Next en todo, títulos incluidos: diseñada por el Braille Institute para que cada letra tenga una forma propia (cero con barra, 1 con base, l con cola, b/d y p/q asimétricas). Es angosta: las etiquetas entran en un renglón a 360 px. Se sirve desde el propio sitio (`src/fuentes/`, declarada en `src/estilos.css`) en pesos 400 y 700; si no carga, Verdana. El texto monoespaciado usa la fuente del sistema. |
+| Texto base de 16 a 19 px | Texto normal 18 px, `sm` 16 px, `xs` 14 px y etiquetas de estado 13 px. |
 | Interlineado de 1,5 | 1,5 en textos chicos y 1,55 en el resto; títulos 1,3 a 1,4. |
-| Espaciado entre letras y palabras | El de OpenDyslexic, que ya es amplio; no se agrega espaciado extra. |
+| Espaciado entre letras y palabras | El de la fuente; no se agrega espaciado extra. |
 | Sin mayúsculas sostenidas | Encabezados de tabla y etiquetas de estado (Badge) en mayúscula inicial. |
 | Sin itálicas ni subrayados para énfasis | El énfasis va en negrita; `em`/`i` se muestran en negrita. |
 | Sin texto justificado | Todo alineado a la izquierda; los números, a la derecha. |
 | Polaridad positiva: texto oscuro sobre fondo claro | Siempre en esquema claro, aunque el dispositivo esté en modo oscuro (`forceColorScheme` en `src/main.tsx`). Botones y etiquetas `filled` con fondo claro del color (tono 2), borde del tono 6 y el texto normal, en lugar de texto blanco sobre color (`variantColorResolver` en `src/tema.ts`); lo mismo los globitos del mapa. |
-| Contraste alto sin blanco puro sobre negro puro | Fondo crema (`#f6f3ec`, tarjetas `#fffdf8`) y texto `#1f241c`. Texto secundario `#545a50` (contraste mayor a 6:1). Los textos de color (`c="red"`, etiquetas `light`) usan el tono 9; los tonos 8 y 9 de rojo, verde, amarillo y naranja están oscurecidos en `src/tema.ts` para pasar 4,5:1 sobre el fondo. |
+| Contraste alto sin blanco puro sobre negro puro | Fondo papel (`#fbf8f1`, tarjetas blancas con borde kraft `#e3dccb`) y texto `#1e2420`. Texto secundario `#555b52` (contraste mayor a 6:1). Los textos de color (`c="red"`, etiquetas `light`) usan el tono 9; los tonos 8 y 9 de rojo, verde, amarillo y naranja están oscurecidos en `src/tema.ts` para pasar 4,5:1 sobre el fondo. |
+| Reconocer antes que leer | Cada producto tiene una tapa: un círculo de un tono fijo (sale de su ID, `src/componentes/tapa.ts`) con dos letras ("Almendras" → Al, "Mix europeo" → Me). Es decorativa: el nombre siempre va al lado. Los diez tonos son oscuros, para que se distingan sobre blanco; las letras van siempre en tinta sobre fondo claro. |
 | Cifras fáciles de comparar | Números tabulares en las tablas y en los KPI; columnas numéricas alineadas a la derecha. |
 | Una cifra nunca se parte en dos renglones | Los KPI no cortan el valor: si no entra en la tarjeta, la letra se achica (`Kpis` en `src/componentes/comunes.tsx`). Lo prueba `tests/legibilidad.spec.ts` en un celular de 360 px con importes de millones. |
 
@@ -25,9 +26,9 @@ Association (BDA) y las pautas de contraste de WCAG. Los valores están en `src/
 - Textos de ayuda de una sola idea y una línea cuando se pueda. Ejemplo: en *Ajuste de stock*, "Para corregir
   diferencias. Para restar, usá un número negativo."
 - No usar `tt="uppercase"`, `fs="italic"` ni `ta="justify"`.
-- OpenDyslexic es ancha: revisar cada pantalla en un celular de 360 a 412 px (las pruebas e2e de celular usan 360). Las tablas van dentro de un
+- Revisar cada pantalla en un celular de 360 a 412 px (las pruebas e2e de celular usan 360). Las tablas van dentro de un
   `ScrollArea`, y un `SegmentedControl` con varias opciones pasa a vertical (*Estado* en *Nuevo flete*) o a tamaño
-  `xs` (*Período* en Análisis) en celular. La barra inferior tiene cuatro pantallas y un menú *Más* con el resto.
+  `xs` (*Período* en Análisis) en celular. La barra inferior tiene Inicio, Stock, *Nuevo* (pedido nuevo, destacado en el medio), Pedidos y un menú *Más* con el resto.
 - En celular el espacio es para los datos: cada bloque de una pantalla va en `Seccion` (de `componentes/comunes.tsx`),
   que en la compu es una tarjeta y en el celular queda plano, sin borde ni relleno, así las tarjetas de adentro
   (pedidos, productos) no quedan dentro de otra tarjeta. El título de cada pantalla lleva `className="titulo-pantalla"`:

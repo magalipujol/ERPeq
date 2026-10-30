@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { expect, grupoStock, ir, test } from './google-falso'
+import { esCelular, expect, grupoStock, ir, test } from './google-falso'
 
 test.beforeEach(async ({ page, ingresar }) => {
   await page.goto('/')
@@ -89,8 +89,8 @@ test('tocar un depósito del mapa abre Stock filtrado por ese depósito', async 
   await expect(grupoStock(page, 'General')).toHaveCount(0)
 })
 
-test('"Tomar pedido nuevo" abre Pedidos con el cursor en el cliente', async ({ page }) => {
-  await page.getByRole('button', { name: 'Tomar pedido nuevo' }).click()
+test('"Tomar pedido nuevo" (en el celular, «Nuevo» de la barra) abre Pedidos con el cursor en el cliente', async ({ page }) => {
+  await page.getByRole('button', { name: esCelular(page) ? 'Pedido nuevo' : 'Tomar pedido nuevo', exact: true }).click()
   await expect(page).toHaveURL(/#pedidos$/)
   await expect(page.getByRole('form', { name: 'Nuevo pedido' }).getByLabel('Cliente', { exact: true })).toBeFocused()
 })

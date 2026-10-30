@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=360">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--fondo:#FBF8F1;--tinta:#1E2420;--kraft:#C9A46A;--apoyo:#555B52;--linea:#E3DCCB}
+*{box-sizing:border-box;margin:0}
+body{width:360px;height:800px;overflow:hidden;background:var(--fondo);color:var(--tinta);font:18px/1.5 "Atkinson Hyperlegible Next",Verdana,sans-serif;position:relative}
+header{padding:16px;border-bottom:2px solid var(--linea)}
+h1{font-size:26px;line-height:1.2}
+.buscar{margin-top:10px;background:#fff;border:2px solid var(--kraft);border-radius:10px;height:52px;display:flex;align-items:center;padding:0 14px;color:var(--apoyo)}
+.grilla{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px}
+.frasco{background:#fff;border:2px solid var(--linea);border-radius:14px;overflow:hidden}
+.tapa{height:56px;display:flex;align-items:center;gap:10px;padding:0 12px;color:#fff;font-weight:700;font-size:22px}
+.tapa span{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.92);color:var(--tinta);display:grid;place-items:center;font-size:17px}
+.cuerpo{padding:8px 12px 12px}
+.cuerpo b{display:block;font-size:30px;line-height:1.2;font-variant-numeric:tabular-nums}
+.cuerpo small{font-size:16px;color:var(--apoyo)}
+.nombre{font-weight:700;font-size:18px}
+.vacio{border:3px dashed #B25E09}
+.accion{position:absolute;left:16px;right:16px;bottom:84px;height:60px;border-radius:12px;background:#2F5DA8;color:#fff;font-weight:700;font-size:22px;display:grid;place-items:center}
+nav{position:absolute;bottom:0;left:0;right:0;height:72px;background:#fff;border-top:2px solid var(--linea);display:flex}
+nav a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--apoyo)}
+nav a.on{color:var(--tinta);border-top:4px solid var(--kraft)}
+</style></head><body>
+<header><h1>Stock</h1><div class="buscar">Buscar producto…</div></header>
+<div class="grilla">
+  <div class="frasco"><div class="tapa" style="background:#8A5A2B"><span>Al</span>Almendras</div><div class="cuerpo"><b>160</b><small>kg · 2 depósitos</small></div></div>
+  <div class="frasco"><div class="tapa" style="background:#1F7A55"><span>Av</span>Avena</div><div class="cuerpo"><b>250</b><small>kg · 100 para pedidos</small></div></div>
+  <div class="frasco vacio"><div class="tapa" style="background:#B25E09"><span>Mi</span>Miel</div><div class="cuerpo"><b>0</b><small>unid. · sin stock</small></div></div>
+  <div class="frasco vacio"><div class="tapa" style="background:#6B4BA8"><span>Mx</span>Mix eur.</div><div class="cuerpo"><b>0</b><small>kg · sin stock</small></div></div>
+</div>
+<div class="accion">＋ Pedido nuevo</div>
+<nav><a>Inicio</a><a class="on">Stock</a><a>Pedidos</a><a>Más</a></nav>
+</body></html>

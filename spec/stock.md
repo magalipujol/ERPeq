@@ -2,7 +2,7 @@
 
 El stock se calcula por producto y depósito a partir de los movimientos (`calcularStock` en
 `src/dominio/modelo.ts`; la fórmula está en `spec/modelo-de-datos.md`). La pantalla lo muestra en dos tablas:
-una por depósito y otra con el total de cada producto contra su mínimo.
+una con el total de cada producto contra su mínimo y otra por depósito.
 
 ## Stock por depósito
 
@@ -44,13 +44,22 @@ El filtro deja los productos *Con mínimo* o *Bajo el mínimo*.
 
 ## En celular
 
-En pantallas de menos de 768 px (breakpoint `sm`) las dos tablas se muestran como tarjetas, una por producto, para
-no tener que desplazarse a lo ancho:
+En pantallas de menos de 768 px (breakpoint `sm`) *Stock total* va primero: un buscador de 52 px, los filtros
+*Todos*, *Faltan* (falta stock para pedidos) y *Bajo el mínimo* como botones de 44 px, y una grilla de frascos de dos
+columnas, siempre por nombre. Cada frasco tiene la tapa de color del producto, el nombre, el total con la unidad
+("160 kg") y, como mucho, lo que pide atención: el estado si no es *OK*, cuánto falta para pedidos o, si no hay nada
+de eso, cuánto viene en camino. Los frascos sin stock tienen el borde punteado y los que hay que reponer, rojo. El
+detalle por depósito está en la ficha del producto (tocar el frasco).
 
-- Arriba, el producto con su unidad (y su estado, en *Stock total*) y, a la derecha, el dato principal:
-  *En depósito* en *Stock por depósito* y *Total* en *Stock total*.
-- Debajo, en una fila, los demás datos con su etiqueta: *En camino* y *Comprometido*; o *Mínimo*, *En depósitos*
-  y *En camino*. Si falta stock para pedidos, la tarjeta lo dice ("Faltan 4 kg para pedidos.").
+Después va *Stock por depósito*, con una tarjeta por producto, y el resumen (KPI) queda al final. El buscador de
+arriba filtra las dos listas (en la compu está en *Stock por depósito*). El gráfico *Productos con más stock* solo se
+muestra en la compu.
+
+En *Stock por depósito*:
+
+- Arriba, la tapa y el producto con su unidad y, a la derecha, *En depósito*.
+- Debajo, en una fila, *En camino* y *Comprometido*. Si falta stock para pedidos, la tarjeta lo dice ("Faltan 4 kg
+  para pedidos.").
 - En *Stock por depósito*, cada depósito es un título con sus tarjetas debajo.
 - Como no hay encabezados de columna para tocar, cada lista tiene un selector *Ordenar*: por producto, más o
   menos stock primero, más comprometido primero (por depósito) o más urgente primero (total: Negativo, Reponer,

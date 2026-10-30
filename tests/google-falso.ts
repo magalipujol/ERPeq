@@ -250,7 +250,7 @@ export type Pantalla = 'Inicio' | 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | '
   | 'Productos' | 'Caja' | 'Análisis'
 
 // En celular, estas pantallas están en el menú «Más» de la barra inferior.
-const EN_MAS: readonly Pantalla[] = ['Compras', 'Recetas', 'Fletes', 'Precios', 'Contactos', 'Productos', 'Caja', 'Análisis']
+const EN_MAS: readonly Pantalla[] = ['Ventas', 'Compras', 'Recetas', 'Fletes', 'Precios', 'Contactos', 'Productos', 'Caja', 'Análisis']
 
 // Menos de 768 px: el breakpoint `sm` de Mantine.
 export const esCelular = (page: Page) => (page.viewportSize()?.width ?? 0) < 768
@@ -306,11 +306,18 @@ export async function esperarDatosStock(page: Page, fila: Locator, datos: Partia
   }
 }
 
-// Ordena una lista de stock: con el encabezado de la columna (escritorio, `clics` veces) o con el selector
+// Filtra «Stock total»: con el selector (escritorio) o con los botones de arriba de los frascos (celular).
+export async function filtrarStockTotal(page: Page, filtro: 'Todos' | 'Faltan' | 'Bajo el mínimo') {
+  const filtros = page.getByRole('group', { name: 'Filtrar stock total' })
+  if (esCelular(page)) return filtros.getByRole('button', { name: filtro, exact: true }).click()
+  await page.getByRole('combobox', { name: 'Filtrar stock total' }).selectOption({ label: filtro === 'Faltan' ? 'Faltan para pedidos' : filtro })
+}
+
+// Ordena una lista de stock (en el celular, solo «Stock por depósito»; los frascos van siempre por nombre): con el encabezado de la columna (escritorio, `clics` veces) o con el selector
 // «Ordenar» de la lista (celular).
 export async function ordenarStock(page: Page, lista: 'Stock por depósito' | 'Stock total', columna: string, clics: number, opcion: string) {
   if (esCelular(page)) {
-    await page.getByRole('combobox', { name: 'Ordenar' }).nth(lista === 'Stock total' ? 1 : 0).selectOption({ label: opcion })
+    await page.getByRole('combobox', { name: 'Ordenar' }).selectOption({ label: opcion })
     return
   }
   const boton = page.getByRole('table', { name: lista }).getByRole('button', { name: columna, exact: true })

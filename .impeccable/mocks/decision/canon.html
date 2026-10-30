@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=360">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+body{width:360px;height:800px;overflow:hidden;background:#F3F4F6;color:#111827;font:15px/1.45 Inter,system-ui,sans-serif;position:relative}
+header{background:#fff;padding:16px;border-bottom:1px solid #E5E7EB}
+h1{font-size:20px;font-weight:600}
+.buscar{margin-top:10px;background:#F3F4F6;border-radius:10px;height:42px;display:flex;align-items:center;padding:0 12px;color:#6B7280}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px}
+.kpi{background:#fff;border-radius:12px;padding:12px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.kpi small{color:#6B7280;font-size:13px}.kpi b{display:block;font-size:22px}
+.lista{margin:0 16px;background:#fff;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.item{display:flex;justify-content:space-between;padding:14px;border-bottom:1px solid #F3F4F6}
+.item small{display:block;color:#6B7280;font-size:13px}
+.badge{font-size:12px;background:#FEE2E2;color:#B91C1C;border-radius:10px;padding:1px 8px}
+.fab{position:absolute;right:20px;bottom:84px;width:58px;height:58px;border-radius:50%;background:#2563EB;color:#fff;font-size:30px;display:grid;place-items:center;box-shadow:0 4px 12px rgba(37,99,235,.4)}
+nav{position:absolute;bottom:0;left:0;right:0;height:64px;background:#fff;border-top:1px solid #E5E7EB;display:flex}
+nav a{flex:1;display:grid;place-items:center;font-size:12px;color:#6B7280}nav a.on{color:#2563EB;font-weight:600}
+</style></head><body>
+<header><h1>Stock</h1><div class="buscar">Buscar producto</div></header>
+<div class="kpis"><div class="kpi"><small>Con stock</small><b>2</b></div><div class="kpi"><small>Sin stock</small><b>2</b></div></div>
+<div class="lista">
+  <div class="item"><div>Almendras<small>General 100 · Rosario 0</small></div><b>160 kg</b></div>
+  <div class="item"><div>Avena<small>Rosario 250 · 100 para pedidos</small></div><b>250 kg</b></div>
+  <div class="item"><div>Miel<small>unid.</small></div><span class="badge">Sin stock</span></div>
+  <div class="item"><div>Mix europeo<small>kg</small></div><span class="badge">Sin stock</span></div>
+</div>
+<div class="fab">+</div>
+<nav><a>Inicio</a><a class="on">Stock</a><a>Pedidos</a><a>Más</a></nav>
+</body></html>

@@ -1,0 +1,610 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-30T22:50:51+00:00",
+  "title": "Design System: ERPeq",
+  "extensions": {
+    "colorMeta": {
+      "kraft": {
+        "role": "primary",
+        "displayName": "Kraft de etiqueta",
+        "canonical": "oklch(54.6% 0.076 75.6)",
+        "tonalRamp": [
+          "#4a381e",
+          "#614a28",
+          "#765a31",
+          "#8a6a3b",
+          "#b98f4a",
+          "#cfab67",
+          "#dcc089",
+          "#e8d5ae",
+          "#f3e8d2",
+          "#fbf6ec"
+        ]
+      },
+      "kraft-deep": {
+        "role": "primary",
+        "displayName": "Kraft tostado",
+        "canonical": "oklch(48.7% 0.068 75.5)",
+        "tonalRamp": [
+          "#4a381e",
+          "#614a28",
+          "#765a31",
+          "#8a6a3b",
+          "#b98f4a",
+          "#cfab67",
+          "#dcc089",
+          "#e8d5ae",
+          "#f3e8d2",
+          "#fbf6ec"
+        ]
+      },
+      "kraft-label": {
+        "role": "primary",
+        "displayName": "Papel de etiqueta",
+        "canonical": "oklch(87.9% 0.056 85.0)",
+        "tonalRamp": [
+          "#4a381e",
+          "#614a28",
+          "#765a31",
+          "#8a6a3b",
+          "#b98f4a",
+          "#cfab67",
+          "#dcc089",
+          "#e8d5ae",
+          "#f3e8d2",
+          "#fbf6ec"
+        ]
+      },
+      "kraft-soft": {
+        "role": "primary",
+        "displayName": "Kraft claro",
+        "canonical": "oklch(93.4% 0.031 84.6)",
+        "tonalRamp": [
+          "#4a381e",
+          "#614a28",
+          "#765a31",
+          "#8a6a3b",
+          "#b98f4a",
+          "#cfab67",
+          "#dcc089",
+          "#e8d5ae",
+          "#f3e8d2",
+          "#fbf6ec"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Papel",
+        "canonical": "oklch(98.0% 0.010 87.5)",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#272624",
+          "#464541",
+          "#686660",
+          "#8b8984",
+          "#afaeaa",
+          "#d2d1ce",
+          "#efeeed"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Tarjeta",
+        "canonical": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#262626",
+          "#454545",
+          "#666666",
+          "#898989",
+          "#aeaeae",
+          "#d1d1d1",
+          "#eeeeee"
+        ]
+      },
+      "kraft-border": {
+        "role": "neutral",
+        "displayName": "Borde kraft",
+        "canonical": "oklch(89.5% 0.024 88.2)",
+        "tonalRamp": [
+          "#0c0b09",
+          "#292621",
+          "#49453b",
+          "#6b6658",
+          "#8e897c",
+          "#b2aea4",
+          "#d3d1ca",
+          "#f0eeeb"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Tinta",
+        "canonical": "oklch(25.3% 0.011 156.3)",
+        "tonalRamp": [
+          "#0a0b0b",
+          "#252725",
+          "#424643",
+          "#616864",
+          "#858b87",
+          "#abafac",
+          "#cfd2d0",
+          "#edefee"
+        ]
+      },
+      "ink-dimmed": {
+        "role": "neutral",
+        "displayName": "Tinta tenue",
+        "canonical": "oklch(46.3% 0.016 135.0)",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252724",
+          "#424641",
+          "#626860",
+          "#868b83",
+          "#abafa9",
+          "#cfd2ce",
+          "#edefed"
+        ]
+      },
+      "ink-placeholder": {
+        "role": "neutral",
+        "displayName": "Tinta de ayuda",
+        "canonical": "oklch(53.8% 0.016 128.8)",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252723",
+          "#434640",
+          "#63685f",
+          "#868b82",
+          "#acafa9",
+          "#d0d2cd",
+          "#eeefed"
+        ]
+      },
+      "alert-red": {
+        "role": "tertiary",
+        "displayName": "Rojo alerta",
+        "canonical": "oklch(50.1% 0.181 26.8)",
+        "tonalRamp": [
+          "#180504",
+          "#461210",
+          "#79211e",
+          "#b2312d",
+          "#d55f55",
+          "#eb9389",
+          "#fbc0b9",
+          "#ffe6e2"
+        ]
+      },
+      "alert-red-text": {
+        "role": "tertiary",
+        "displayName": "Rojo texto",
+        "canonical": "oklch(42.6% 0.150 26.4)",
+        "tonalRamp": [
+          "#160605",
+          "#411714",
+          "#722b26",
+          "#a73f39",
+          "#ca6860",
+          "#e19890",
+          "#f4c3bd",
+          "#ffe7e4"
+        ]
+      },
+      "ok-green-text": {
+        "role": "tertiary",
+        "displayName": "Verde texto",
+        "canonical": "oklch(40.3% 0.096 147.3)",
+        "tonalRamp": [
+          "#060d07",
+          "#182c1a",
+          "#2c4e30",
+          "#417448",
+          "#68976d",
+          "#96b899",
+          "#c2d8c4",
+          "#e7f2e7"
+        ]
+      },
+      "warn-yellow": {
+        "role": "tertiary",
+        "displayName": "Amarillo atención",
+        "canonical": "oklch(55.1% 0.125 63.9)",
+        "tonalRamp": [
+          "#120902",
+          "#392005",
+          "#643905",
+          "#935502",
+          "#b57b40",
+          "#d0a47c",
+          "#e8cbb1",
+          "#fbebde"
+        ]
+      },
+      "warn-yellow-text": {
+        "role": "tertiary",
+        "displayName": "Amarillo texto",
+        "canonical": "oklch(44.8% 0.101 65.1)",
+        "tonalRamp": [
+          "#110904",
+          "#35220d",
+          "#5e3d19",
+          "#8a5a25",
+          "#ad7e50",
+          "#c9a786",
+          "#e3ccb7",
+          "#f8ece1"
+        ]
+      },
+      "tapa-tostado": {
+        "role": "secondary",
+        "displayName": "Tapa tostado",
+        "canonical": "oklch(51.1% 0.089 62.8)",
+        "tonalRamp": [
+          "#110904",
+          "#342211",
+          "#5c3d21",
+          "#875b31",
+          "#aa7f59",
+          "#c7a78c",
+          "#e2cdbb",
+          "#f8ece3"
+        ]
+      },
+      "tapa-verde": {
+        "role": "secondary",
+        "displayName": "Tapa verde",
+        "canonical": "oklch(51.7% 0.103 161.4)",
+        "tonalRamp": [
+          "#040e08",
+          "#0f2d1f",
+          "#1b5039",
+          "#277755",
+          "#569979",
+          "#8bbba2",
+          "#bcd9c9",
+          "#e3f3ea"
+        ]
+      },
+      "tapa-naranja": {
+        "role": "secondary",
+        "displayName": "Tapa naranja",
+        "canonical": "oklch(53.7% 0.134 52.4)",
+        "tonalRamp": [
+          "#140803",
+          "#3c1d07",
+          "#6a350c",
+          "#9b4e11",
+          "#be7445",
+          "#d7a07f",
+          "#edc9b3",
+          "#feeade"
+        ]
+      },
+      "tapa-violeta": {
+        "role": "secondary",
+        "displayName": "Tapa violeta",
+        "canonical": "oklch(49.3% 0.144 296.6)",
+        "tonalRamp": [
+          "#0c0816",
+          "#2a1f41",
+          "#4b3873",
+          "#6f53a8",
+          "#9178c9",
+          "#b3a3df",
+          "#d4caf1",
+          "#f0ebff"
+        ]
+      },
+      "tapa-azul": {
+        "role": "secondary",
+        "displayName": "Tapa azul",
+        "canonical": "oklch(48.6% 0.131 259.7)",
+        "tonalRamp": [
+          "#050b16",
+          "#152642",
+          "#274474",
+          "#3a65aa",
+          "#6189cb",
+          "#91afe0",
+          "#bed2f2",
+          "#e4efff"
+        ]
+      },
+      "tapa-bordo": {
+        "role": "secondary",
+        "displayName": "Tapa bordo",
+        "canonical": "oklch(50.0% 0.154 12.8)",
+        "tonalRamp": [
+          "#160608",
+          "#41161d",
+          "#722835",
+          "#a73b4f",
+          "#ca6573",
+          "#e2969d",
+          "#f5c2c6",
+          "#ffe7e9"
+        ]
+      },
+      "tapa-hoja": {
+        "role": "secondary",
+        "displayName": "Tapa hoja",
+        "canonical": "oklch(47.8% 0.118 135.4)",
+        "tonalRamp": [
+          "#070d04",
+          "#1b2c11",
+          "#314e20",
+          "#497430",
+          "#6e9759",
+          "#9bb98c",
+          "#c4d8bb",
+          "#e8f2e3"
+        ]
+      },
+      "tapa-petroleo": {
+        "role": "secondary",
+        "displayName": "Tapa petroleo",
+        "canonical": "oklch(49.4% 0.081 208.5)",
+        "tonalRamp": [
+          "#040d0f",
+          "#0e2b30",
+          "#194d55",
+          "#25727d",
+          "#54959f",
+          "#8ab7be",
+          "#bbd7dc",
+          "#e3f2f4"
+        ]
+      },
+      "tapa-ciruela": {
+        "role": "secondary",
+        "displayName": "Tapa ciruela",
+        "canonical": "oklch(47.6% 0.080 339.4)",
+        "tonalRamp": [
+          "#10090d",
+          "#32202c",
+          "#59394e",
+          "#825574",
+          "#a57a96",
+          "#c3a3b8",
+          "#dfcad7",
+          "#f6ebf2"
+        ]
+      },
+      "tapa-oliva": {
+        "role": "secondary",
+        "displayName": "Tapa oliva",
+        "canonical": "oklch(48.3% 0.091 114.1)",
+        "tonalRamp": [
+          "#0b0c04",
+          "#262911",
+          "#444920",
+          "#656b2f",
+          "#888f58",
+          "#adb28b",
+          "#d0d4bb",
+          "#eef0e3"
+        ]
+      },
+      "chart-1": {
+        "role": "neutral",
+        "displayName": "Serie 1",
+        "canonical": "oklch(51.7% 0.103 161.4)",
+        "tonalRamp": [
+          "#040e08",
+          "#0f2d1f",
+          "#1b5039",
+          "#277755",
+          "#569979",
+          "#8bbba2",
+          "#bcd9c9",
+          "#e3f3ea"
+        ]
+      },
+      "chart-2": {
+        "role": "neutral",
+        "displayName": "Serie 2",
+        "canonical": "oklch(67.6% 0.101 78.1)",
+        "tonalRamp": [
+          "#100a03",
+          "#32230a",
+          "#594014",
+          "#835f1d",
+          "#a5834b",
+          "#c3aa83",
+          "#dfceb6",
+          "#f6ede0"
+        ]
+      },
+      "chart-3": {
+        "role": "neutral",
+        "displayName": "Serie 3",
+        "canonical": "oklch(48.6% 0.131 259.7)",
+        "tonalRamp": [
+          "#050b16",
+          "#152642",
+          "#274474",
+          "#3a65aa",
+          "#6189cb",
+          "#91afe0",
+          "#bed2f2",
+          "#e4efff"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Cifra del frasco",
+        "purpose": "Total de cada frasco, con la unidad al lado."
+      },
+      "headline": {
+        "displayName": "Cifra de KPI",
+        "purpose": "Valor de los KPI; se achica para no partirse."
+      },
+      "title": {
+        "displayName": "Encabezado de sección",
+        "purpose": "Título de cada sección."
+      },
+      "body": {
+        "displayName": "Cuerpo",
+        "purpose": "Texto base de 18 px."
+      },
+      "body-strong": {
+        "displayName": "Nombre de producto",
+        "purpose": "Nombre en el frasco."
+      },
+      "label": {
+        "displayName": "Etiqueta",
+        "purpose": "Etiquetas de cifras y palabras de la barra inferior."
+      }
+    },
+    "shadows": [
+      {
+        "name": "anillo-accion",
+        "value": "0 0 0 4px #ffffff",
+        "purpose": "Separa el círculo de la acción principal de la barra inferior; no es una sombra."
+      },
+      {
+        "name": "raya-activa",
+        "value": "inset 0 3px 0 #765a31",
+        "purpose": "Raya kraft arriba de la pestaña activa."
+      }
+    ],
+    "motion": [],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "48em"
+      },
+      {
+        "name": "md",
+        "value": "62em"
+      }
+    ],
+    "fonts": [
+      {
+        "family": "Atkinson Hyperlegible Next",
+        "weights": [
+          400,
+          700
+        ],
+        "source": "src/fuentes/"
+      }
+    ],
+    "focus": {
+      "value": "3px solid #765a31",
+      "offset": "2px"
+    }
+  },
+  "components": [
+    {
+      "name": "Botón default",
+      "kind": "button",
+      "refersTo": "button-default",
+      "description": "Botón común: blanco con borde kraft y texto en tinta, 44 px.",
+      "html": "<button class=\"ds-btn\">Salir</button>",
+      "css": ".ds-btn { font-family: \"Atkinson Hyperlegible Next\", Verdana, system-ui, sans-serif; font-size: 1rem; font-weight: 700; height: 44px; padding: 0 14px; background: #ffffff; color: #1e2420; border: 1px solid #e3dccb; border-radius: 8px; cursor: pointer; } .ds-btn:hover { background: #fbf8f1; } .ds-btn:focus-visible { outline: 3px solid #765a31; outline-offset: 2px; }"
+    },
+    {
+      "name": "Botón filled",
+      "kind": "button",
+      "refersTo": "button-filled",
+      "description": "Lo elegido o la acción del formulario: papel de etiqueta, borde kraft, texto en tinta (polaridad positiva).",
+      "html": "<button class=\"ds-btn-filled\">Guardar</button>",
+      "css": ".ds-btn-filled { font-family: \"Atkinson Hyperlegible Next\", Verdana, system-ui, sans-serif; font-size: 1rem; font-weight: 700; height: 44px; padding: 0 14px; background: #e8d5ae; color: #1e2420; border: 1px solid #8a6a3b; border-radius: 8px; cursor: pointer; } .ds-btn-filled:hover { background: #dcc089; } .ds-btn-filled:focus-visible { outline: 3px solid #765a31; outline-offset: 2px; }"
+    },
+    {
+      "name": "Filtros en chips",
+      "kind": "chip",
+      "refersTo": "button-filled",
+      "description": "Fila de filtros de Stock: botones de 44 px con aria-pressed; el elegido es filled.",
+      "html": "<div class=\"ds-chips\" role=\"group\" aria-label=\"Filtrar\"><button class=\"ds-chip\" aria-pressed=\"true\">Todos</button><button class=\"ds-chip\" aria-pressed=\"false\">Faltan</button><button class=\"ds-chip\" aria-pressed=\"false\">Bajo el mínimo</button></div>",
+      "css": ".ds-chips { display: flex; gap: 6px; } .ds-chip { font-family: \"Atkinson Hyperlegible Next\", Verdana, system-ui, sans-serif; font-size: 1rem; font-weight: 700; height: 44px; padding: 0 12px; background: #ffffff; color: #1e2420; border: 1px solid #e3dccb; border-radius: 8px; cursor: pointer; } .ds-chip[aria-pressed=\"true\"] { background: #e8d5ae; border-color: #8a6a3b; } .ds-chip:hover { background: #f3e8d2; } .ds-chip:focus-visible { outline: 3px solid #765a31; outline-offset: 2px; }"
+    },
+    {
+      "name": "Buscador",
+      "kind": "input",
+      "refersTo": "input-buscar",
+      "description": "Buscador de Stock en el celular, 52 px.",
+      "html": "<input class=\"ds-buscar\" type=\"search\" placeholder=\"Buscar producto…\" aria-label=\"Buscar producto\">",
+      "css": ".ds-buscar { font-family: \"Atkinson Hyperlegible Next\", Verdana, system-ui, sans-serif; font-size: 1.125rem; height: 52px; width: 100%; max-width: 340px; padding: 0 16px; background: #ffffff; color: #1e2420; border: 1px solid #e3dccb; border-radius: 8px; } .ds-buscar::placeholder { color: #6b7066; } .ds-buscar:focus-visible { outline: 3px solid #765a31; outline-offset: 2px; }"
+    },
+    {
+      "name": "Tapa",
+      "kind": "custom",
+      "refersTo": "tapa",
+      "description": "Identifica un producto por su tono fijo y dos letras; el nombre va siempre al lado.",
+      "html": "<span class=\"ds-fila\"><span class=\"ds-tapa\" style=\"--tapa:#a8530a\" aria-hidden=\"true\">Al</span><span class=\"ds-nombre\">Almendras</span></span> <span class=\"ds-fila\"><span class=\"ds-tapa\" style=\"--tapa:#a8324a\" aria-hidden=\"true\">Me</span><span class=\"ds-nombre\">Mix europeo</span></span>",
+      "css": ".ds-fila { display: inline-flex; align-items: center; gap: 10px; margin-right: 16px; font-family: \"Atkinson Hyperlegible Next\", Verdana, system-ui, sans-serif; } .ds-tapa { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: color-mix(in srgb, var(--tapa) 14%, white); border: 4px solid var(--tapa); color: #1e2420; font-weight: 700; font-size: 1rem; line-height: 1; box-sizing: border-box; } .ds-nombre { font-size: 1.125rem; font-weight: 700; color: #1e2420; }"
+    },
+    {
+      "name": "Frasco",
+      "kind": "card",
+      "refersTo": "frasco",
+      "description": "Un producto en la grilla de Stock del celular: banda del tono, tapa, nombre y total. Punteado si está vacío, borde rojo si está en alerta.",
+      "html": "<div class=\"ds-frascos\"><button class=\"ds-frasco\" style=\"--tapa:#a8530a\"><span class=\"ds-frasco-tapa\"><span class=\"ds-tapa-b\">Al</span></span><span class=\"ds-frasco-cuerpo\"><span class=\"ds-frasco-nombre\">Almendras</span><span class=\"ds-frasco-total\"><b>160</b> <span>kg</span></span><span class=\"ds-frasco-nota\">60 en camino</span></span></button><button class=\"ds-frasco\" data-vacio style=\"--tapa:#2f5da8\"><span class=\"ds-frasco-tapa\"><span class=\"ds-tapa-b\">Mi</span></span><span class=\"ds-frasco-cuerpo\"><span class=\"ds-frasco-nombre\">Miel</span><span class=\"ds-frasco-total\"><b>0</b> <span>unid.</span></span><span class=\"ds-badge\">Sin stock</span></span></button></div>",
+      "css": ".ds-frascos { display: grid; grid-template-columns: repeat(2, 160px); gap: 12px; font-family: \"Atkinson Hyperlegible Next\", Verdana, system-ui, sans-serif; } .ds-frasco { display: flex; flex-direction: column; padding: 0; text-align: left; background: #ffffff; border: 2px solid #e3dccb; border-radius: 16px; overflow: hidden; cursor: pointer; font: inherit; color: #1e2420; } .ds-frasco[data-vacio] { border-style: dashed; border-color: #555b52; } .ds-frasco:focus-visible { outline: 3px solid #765a31; outline-offset: 2px; } .ds-frasco-tapa { display: flex; align-items: center; padding: 6px 10px; background: var(--tapa); } .ds-tapa-b { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: rgb(255 255 255 / 0.92); color: #1e2420; font-weight: 700; font-size: 0.9375rem; } .ds-frasco-cuerpo { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px 12px; } .ds-frasco-nombre { font-size: 1.125rem; font-weight: 700; line-height: 1.25; color: #8a6a3b; } .ds-frasco-total b { font-size: 30px; line-height: 1.15; font-variant-numeric: tabular-nums; } .ds-frasco-total span { color: #555b52; font-size: 1.125rem; } .ds-frasco-nota { font-size: 1rem; } .ds-badge { align-self: flex-start; padding: 2px 12px; border-radius: 9999px; background: #f1f3f5; font-size: 0.875rem; font-weight: 700; }"
+    },
+    {
+      "name": "Barra inferior",
+      "kind": "nav",
+      "refersTo": "barra-inferior",
+      "description": "Navegación del celular: pestañas con ícono y palabra, la activa con fondo kraft claro y raya kraft; la acción principal en un círculo kraft que sobresale.",
+      "html": "<nav class=\"ds-barra\" aria-label=\"Pantalla\"><button class=\"ds-tab\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12H3l9-9 9 9h-2M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7\"/></svg><span>Inicio</span></button><button class=\"ds-tab\" data-activa aria-current=\"page\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3l8 4.5v9L12 21l-8-4.5v-9z\"/><path d=\"M12 12l8-4.5M12 12v9M12 12L4 7.5\"/></svg><span>Stock</span></button><button class=\"ds-tab ds-accion\" aria-label=\"Pedido nuevo\"><span class=\"ds-mas\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"/></svg></span><span>Nuevo</span></button></nav>",
+      "css": ".ds-barra { display: flex; width: 300px; height: 68px; margin-top: 28px; background: #ffffff; border-top: 1px solid #e3dccb; font-family: \"Atkinson Hyperlegible Next\", Verdana, system-ui, sans-serif; } .ds-tab { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: none; border: 0; color: #555b52; font: inherit; font-size: 0.875rem; cursor: pointer; } .ds-tab[data-activa] { color: #1e2420; font-weight: 700; background: #f3e8d2; box-shadow: inset 0 3px 0 #765a31; } .ds-tab:focus-visible { outline: 3px solid #765a31; outline-offset: 2px; } .ds-accion { color: #1e2420; font-weight: 700; } .ds-mas { display: grid; place-items: center; width: 46px; height: 46px; margin-top: -24px; border-radius: 50%; background: #8a6a3b; color: #fff; box-shadow: 0 0 0 4px #ffffff; } .ds-accion:hover .ds-mas { background: #765a31; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Frascos a granel",
+    "overview": "Cada producto se reconoce por su tapa, un color fijo y dos letras, antes de leer el nombre, como los frascos de una dietética con su etiqueta de papel kraft. La pantalla es papel claro con tarjetas blancas de borde kraft; el color fuerte está en las tapas y en la acción principal, y en ningún otro lado. La tinta es casi negra y siempre va sobre fondo claro.\n\nLa densidad es la de una herramienta de una sola mano: toques de 44 px como mínimo, letra base de 18 px, cifras grandes y tabulares. Las reglas de legibilidad (fuente, tamaños, contraste, sin mayúsculas sostenidas ni itálicas, cifras que no se parten) están en [`spec/legibilidad.md`](spec/legibilidad.md) y este documento no las repite: las da por obligatorias.\n\nEl mundo está completo en el shell (header, barra inferior del celular) y en Stock del celular. Las demás pantallas heredan el tema de Mantine, la fuente y la paleta, pero todavía no usan la tapa ni la grilla de frascos: llevarlas es trabajo pendiente, y al hacerlo se siguen las reglas de este documento.",
+    "keyCharacteristics": [
+      "Papel claro, tarjetas blancas, borde kraft de 2 px en los frascos y de 1 px en lo demás.",
+      "Diez tonos de tapa fijos por producto (el tono sale del ID, no del nombre).",
+      "Polaridad positiva: tinta sobre claro en todo, incluidos los botones \"filled\".",
+      "Atkinson Hyperlegible Next en 400 y 700, con cifras tabulares.",
+      "Plano: profundidad por borde y tono, sin sombras."
+    ],
+    "rules": [
+      {
+        "name": "The Tapa Rule",
+        "body": "El color saturado identifica productos, nada más. Un tono de tapa no marca estado, ni pantalla, ni categoría, y un producto conserva su tono en todas las pantallas.",
+        "section": "colors"
+      },
+      {
+        "name": "The Positive Polarity Rule",
+        "body": "Texto oscuro sobre fondo claro, también en los botones `filled` y sobre las bandas de color (el círculo de la tapa va claro con letras en tinta). La única pieza clara sobre oscuro es el «+» blanco del círculo kraft de la acción principal, que es un ícono.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Weights Rule",
+        "body": "Solo hay archivos de 400 y 700: un 500 se ve como 400 y un 600 como 700. El énfasis es negrita (700), nunca itálica.",
+        "section": "typography"
+      },
+      {
+        "name": "The Thumb Rule",
+        "body": "Todo lo que se toca mide 44 px o más en el celular (campos, botones, filtros, ítems de menú), y la acción más frecuente está en el centro de la barra inferior, en todas las pantallas.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Shelf Rule",
+        "body": "Las tarjetas y los frascos no proyectan sombra; un estado se marca con borde (rojo, punteado) o con fondo kraft claro.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do poner la tapa del producto (`Tapa`, con su tono de `tonoTapa`) en cada lugar donde aparece un producto como ítem de una lista, con el nombre al lado.",
+      "Do escribir las cifras en negrita y tabulares, con la unidad al lado en tinta tenue.",
+      "Do marcar lo elegido con papel de etiqueta y borde kraft, con el texto en tinta.",
+      "Do marcar estados con borde (rojo, punteado) y con etiquetas `light` en tipo oración (\"Sin stock\").",
+      "Do cumplir [`spec/legibilidad.md`](spec/legibilidad.md) en cada pantalla nueva."
+    ],
+    "donts": [
+      "Don't usar un tono de tapa para otra cosa que identificar un producto, ni inventar tonos fuera de los diez.",
+      "Don't poner texto blanco sobre un fondo de color: botones `filled`, bandas y etiquetas llevan texto en tinta.",
+      "Don't agregar sombras a tarjetas o frascos.",
+      "Don't usar pesos 500 o 600 esperando que se vean distintos de 400 y 700.",
+      "Don't poner el resumen de KPI arriba de los frascos en Stock del celular: primero lo que hay, el resumen al final."
+    ]
+  }
+}

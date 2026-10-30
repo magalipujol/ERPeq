@@ -163,18 +163,19 @@ export function App({ db }: { db: BaseDeDatos }) {
     addEventListener('popstate', alVolver);
     return () => { removeEventListener('popstate', alVolver); };
   }, []);
+  const nuevo = () => { irA('pedidos'); setNuevoPedido((n) => n + 1); };
   const verPedido = (id: string) => { irA('pedidos'); setPedidoElegido((p) => ({ id, vez: (p?.vez ?? 0) + 1 })); };
   const verFlete = (id: string) => { irA('fletes'); setFleteResaltado((f) => ({ id, vez: (f?.vez ?? 0) + 1 })); };
 
   const enApp = pantalla === 'app' && info !== null && datos !== null;
 
   return (
-    <AppShell header={{ height: { base: 68, sm: enApp ? 116 : 68, xl: 68 } }} footer={enApp ? { height: { base: 64, sm: 0 } } : undefined}>
+    <AppShell header={{ height: { base: 68, sm: enApp ? 116 : 68, xl: 68 } }} footer={enApp ? { height: { base: 68, sm: 0 } } : undefined}>
       <AppShell.Header>
         <Container size="xl" h="100%">
           <Group h="100%" justify="space-between" gap="xs" py={8} className="fila-header">
             <Group gap="sm" wrap="nowrap" miw={0}>
-              <ThemeIcon size={42} radius="md" variant="light" aria-hidden>🌿</ThemeIcon>
+              <ThemeIcon size={42} radius="md" variant="light" aria-hidden visibleFrom="sm">🌿</ThemeIcon>
               <Box miw={0}>
                 <Title order={1} size="h3">ERPeq</Title>
                 <Text size="xs" c={estado.error ? 'red' : 'dimmed'} lineClamp={1}>
@@ -210,7 +211,7 @@ export function App({ db }: { db: BaseDeDatos }) {
 
       {enApp && (
         <AppShell.Footer hiddenFrom="sm">
-          <BarraInferior opciones={NAV} value={vista} onChange={irA} />
+          <BarraInferior opciones={NAV} value={vista} onChange={irA} accion={{ label: 'Nuevo', nombre: 'Pedido nuevo', onClick: nuevo }} />
         </AppShell.Footer>
       )}
 
@@ -262,7 +263,7 @@ export function App({ db }: { db: BaseDeDatos }) {
             <BaseProvider db={db} info={info} datos={datos} cargando={cargando} recargar={cargar}>
               <FichaProvider onEntregar={verPedido} onVerFlete={verFlete}>
                 <Box display={vista === 'inicio' ? undefined : 'none'}>
-                  <Inicio onIr={irA} onNuevoPedido={() => { irA('pedidos'); setNuevoPedido((n) => n + 1); }}
+                  <Inicio onIr={irA} onNuevoPedido={nuevo}
                     onPedido={verPedido} onFlete={verFlete}
                     onDeposito={(id) => { irA('stock'); setDepositoStock(id); }}
                     onArmarFlete={(f) => { irA('fletes'); setBorradorFlete((b) => ({ ...f, vez: (b?.vez ?? 0) + 1 })); }} />

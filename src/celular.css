@@ -19,8 +19,24 @@
 }
 
 .barra-inferior-boton[data-activa] {
-  color: var(--mantine-primary-color-filled);
+  color: var(--mantine-color-text);
   background: var(--erp-soft);
+  box-shadow: inset 0 3px 0 var(--mantine-color-kraft-7);
+}
+
+/* La acción principal: un círculo kraft lleno con el «+» y la palabra debajo. */
+.barra-inferior-accion { color: var(--mantine-color-text); }
+.barra-inferior-mas {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  /* Sobresale arriba de la barra lo que le sobra a los 22 px de los íconos: las cinco palabras quedan alineadas. */
+  margin-top: -24px;
+  border-radius: 50%;
+  background: var(--mantine-color-kraft-6);
+  color: #fff;
+  box-shadow: 0 0 0 4px var(--mantine-color-body);
 }
 
 /* Ítems del menú «Más» de 44px, como los botones. */
@@ -41,6 +57,9 @@
   /* Lo que se pase de ancho (por ejemplo, el tooltip de un gráfico) se recorta: si ensanchara la página, el
      navegador achicaría todo y los toques caerían en el elemento de al lado. `clip` no rompe los encabezados fijos. */
   .mantine-AppShell-main { overflow-x: clip; }
+
+  /* En Stock, primero los frascos: el resumen va al final. */
+  .kpis-stock { order: 1; }
 
   /* Las secciones quedan planas (ver `Seccion`): sin tarjeta alrededor, su contenido usa todo el ancho. */
   .seccion {

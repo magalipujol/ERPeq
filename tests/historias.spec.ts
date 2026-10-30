@@ -10,7 +10,7 @@
 //   Sin recetas ni fabricaciones. Sin costo de envío.
 import type { Page } from '@playwright/test'
 import { galaxyA53 } from './dispositivos'
-import { AHORA, confirmarEntrega, esperarDatosStock, expect, HOY_SERIE, ir, serie, stockEn, test } from './google-falso'
+import { AHORA, confirmarEntrega, esCelular, esperarDatosStock, expect, HOY_SERIE, ir, serie, stockEn, test } from './google-falso'
 
 const filaCon = (page: Page, texto: string) =>
   page.getByRole('row').filter({ has: page.getByRole('cell', { name: texto, exact: true }) })
@@ -416,8 +416,9 @@ test('desde Inicio se toma un pedido sin stock y queda destacado entre los pendi
   await expect(fletes.getByRole('article', { name: 'Flete Interprovincial · 08/10/26' })).toContainText('En camino')
   await expect(kpi(page, 'Con faltante de stock')).toContainText('0')
 
-  // 2. Llama un cliente: el acceso directo lleva al formulario con el cursor en "Cliente".
-  await page.getByRole('button', { name: 'Tomar pedido nuevo' }).click()
+  // 2. Llama un cliente: el acceso directo (en el celular, «Nuevo» de la barra inferior) lleva al formulario con el
+  //    cursor en "Cliente".
+  await page.getByRole('button', { name: esCelular(page) ? 'Pedido nuevo' : 'Tomar pedido nuevo', exact: true }).click()
   await expect(page).toHaveURL(/#pedidos$/)
   await expect(formPedido(page).getByLabel('Cliente', { exact: true })).toBeFocused()
   await elegirCliente(page, 'Ana')

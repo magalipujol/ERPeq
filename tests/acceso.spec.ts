@@ -12,12 +12,12 @@ test('ingresa con Google y abre Inicio', async ({ page, ingresar }) => {
 
 // La fuente se sirve desde el propio sitio: si la Content-Security-Policy la bloquea, la app se ve igual pero
 // con Verdana, y ninguna otra prueba lo nota.
-test('carga OpenDyslexic en regular y negrita', async ({ page, ingresar }) => {
+test('carga Atkinson Hyperlegible Next en regular y negrita', async ({ page, ingresar }) => {
   await page.goto('/')
   await ingresar()
   const estados = await page.evaluate(async () => {
-    await Promise.all([document.fonts.load('400 16px OpenDyslexic'), document.fonts.load('700 16px OpenDyslexic')])
-    return [...document.fonts].filter((f) => f.family === 'OpenDyslexic').map((f) => `${f.weight} ${f.status}`)
+    await Promise.all([document.fonts.load('400 16px "Atkinson Hyperlegible Next"'), document.fonts.load('700 16px "Atkinson Hyperlegible Next"')])
+    return [...document.fonts].filter((f) => f.family === '"Atkinson Hyperlegible Next"' || f.family === 'Atkinson Hyperlegible Next').map((f) => `${f.weight} ${f.status}`)
   })
   expect(estados.sort()).toEqual(['400 loaded', '700 loaded'])
 })
