@@ -81,6 +81,8 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
   el Chromium de Playwright).
 - `herramientas/mapa_argentina.py`: genera `src/mapa/argentina.json` con los datos abiertos de Georef (IGN e INDEC).
 - `.tmp/`: salidas temporales de scripts y herramientas (reportes de Playwright, caché de ESLint, capturas). Git la ignora.
+- `.credenciales/`: la clave de la service account con la que los agentes leen y migran la planilla (ver
+  "Acceso a la planilla" en `AGENTS.md`). Git la ignora.
 - `GUIA-CONFIGURACION.md`: paso a paso para configurar Google y la planilla.
 
 ## Probar en la compu

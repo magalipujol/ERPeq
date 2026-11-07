@@ -4,6 +4,9 @@
 *.xls
 *.csv
 
+# Credenciales de la service account de los agentes (ver AGENTS.md, "Acceso a la planilla")
+.credenciales/
+
 # Salidas temporales de scripts y herramientas (reportes de Playwright, caché de ESLint, capturas, etc.)
 .tmp/
 

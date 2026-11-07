@@ -72,6 +72,7 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 | `herramientas/iconos.mjs` | Genera los íconos PNG desde `public/icono.svg` con el Chromium de Playwright: `node herramientas/iconos.mjs`. |
 | `herramientas/mapa_argentina.py` | Baja provincias (IGN) y localidades censales (INDEC) del servicio Georef y genera `src/mapa/argentina.json`. |
 | `.tmp/` | Salidas temporales de scripts y herramientas (reportes de Playwright, caché de ESLint, capturas). Git la ignora. |
+| `.credenciales/` | Clave de la service account `erpeq-agente` (`erpeq-agente.json`) y su configuración aislada de gcloud (`gcloud/`). Git la ignora. Ver "Acceso a la planilla". |
 | `README.md` | Qué es, cómo funciona, estructura de la planilla, cómo correrlo. |
 | `GUIA-CONFIGURACION.md` | Paso a paso para configurar Google Cloud y la planilla (para el dueño, no técnico). |
 | `TODO.md` | Pendientes. |
@@ -146,5 +147,59 @@ Si encontrás documentación que no coincide con el código, corregila o avisá;
 - `ROSARIO ACTUALIZADO.xlsm` y los `.xlsx` generados tienen datos personales de clientes: **no se suben al
   repo** (`.gitignore` los excluye). Tampoco los copies a specs, tests ni commits: usá datos inventados o
   anonimizados.
-- `src/config.ts` no tiene secretos, pero no agregues tokens ni credenciales en ningún archivo.
+- `src/config.ts` no tiene secretos, pero no agregues tokens ni credenciales en ningún archivo versionado. La única
+  credencial en el repo es la de la service account, en `.credenciales/`, que git ignora.
 - La planilla real es producción: no la modifiques desde un agente sin que el usuario lo pida explícitamente.
+
+## Acceso a la planilla (migraciones)
+
+Los agentes leen y migran la planilla de producción con la service account
+`erpeq-agente@erpeke.iam.gserviceaccount.com`, del proyecto de Google Cloud `erpeke` (el del Client ID). No tiene
+roles en el proyecto: solo puede abrir la planilla, que está compartida con ella como editora. Así un agente no
+necesita la cuenta de nadie ni acceso a gcloud.
+
+Para obtener un token (dura una hora), con una configuración de gcloud aislada que no toca la del usuario:
+
+```sh
+export CLOUDSDK_CONFIG=$PWD/.credenciales/gcloud
+gcloud auth activate-service-account --key-file=.credenciales/erpeq-agente.json   # una vez por máquina
+TOKEN=$(gcloud auth print-access-token --scopes=https://www.googleapis.com/auth/spreadsheets)
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "https://sheets.googleapis.com/v4/spreadsheets/<SPREADSHEET_ID de src/config.ts>/values/Costos!A1:C5"
+```
+
+Una migración que cambia hojas o columnas va así:
+
+1. Primero leer y calcular sin escribir (con `valueRenderOption=UNFORMATTED_VALUE` y
+   `dateTimeRenderOption=SERIAL_NUMBER`, como la app), y mostrarle al usuario qué cambia, sobre todo si cambian
+   números ya cargados (ganancias, stock).
+2. Escribir solo con su confirmación, en el orden que no rompa la app publicada: lo que la versión nueva necesita
+   y la anterior ignora (hojas nuevas, columnas a la derecha) antes del push a `main`; lo que la anterior necesita,
+   después del deploy.
+3. Dejar el paso a mano en `GUIA-CONFIGURACION.md`, para otras planillas.
+
+Los scripts de cada migración van en `.tmp/`; no se versionan.
+
+### Crear la credencial (una vez, la dueña de la planilla)
+
+Si falta `.credenciales/erpeq-agente.json` (máquina nueva, clave borrada), alguien con acceso al proyecto `erpeke`
+genera una clave nueva. La service account ya existe y la planilla ya está compartida con ella:
+
+```sh
+gcloud auth login                       # con la cuenta dueña del proyecto erpeke
+mkdir -p .credenciales && chmod 700 .credenciales
+gcloud iam service-accounts keys create .credenciales/erpeq-agente.json \
+  --iam-account=erpeq-agente@erpeke.iam.gserviceaccount.com --project=erpeke
+chmod 600 .credenciales/erpeq-agente.json
+```
+
+Si hubiera que crearla de cero (otro proyecto o planilla):
+
+```sh
+gcloud iam service-accounts create erpeq-agente --project=erpeke --display-name="ERPeq agente (Claude)"
+gcloud services enable sheets.googleapis.com --project=erpeke
+```
+
+y compartir la planilla con `erpeq-agente@erpeke.iam.gserviceaccount.com` como **Editor** (botón *Compartir* de
+Sheets, sin notificar). Para quitarle el acceso: sacarla de *Compartir*, o borrar sus claves con
+`gcloud iam service-accounts keys list/delete --iam-account=erpeq-agente@erpeke.iam.gserviceaccount.com`.

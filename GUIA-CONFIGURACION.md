@@ -255,6 +255,10 @@ En iPhone, si cambia el ícono hay que borrarla y volver a agregarla.
 
 Para sacarle el acceso: dejá de compartirle la planilla y sacala de los usuarios de prueba.
 
+En *Compartir* también aparece `erpeq-agente@erpeke.iam.gserviceaccount.com`, como editor. No es una persona: es la
+cuenta con la que Claude lee la planilla y hace las migraciones cuando se lo pedís. Si la sacás, Claude deja de
+tener acceso.
+
 ## Pasarle todo a otra cuenta (de vos a Leo)
 
 - **Planilla**: en Drive, *Compartir* → agregá a Leo como Editor → en su nombre, *Transferir la propiedad*.
