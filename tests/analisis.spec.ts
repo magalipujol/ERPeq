@@ -10,22 +10,24 @@ function agregarClientes(hojas: GoogleFalso['hojas']) {
     ['C0005', 'cliente', 'Bruno', 'Revendedor', '', '', '', 'Rosario', 'Santa Fe', ''],
     ['C0006', 'cliente', 'Carla', 'Minorista', '', '', '', 'Funes', 'Santa Fe', ''],
   )
-  const compras: [string, string, string, number, number, number][] = [
-    ['2026-01-10', 'C0005', 'P003', 2, 1000, 600],
-    ['2026-02-09', 'C0005', 'P003', 2, 1000, 600],
-    ['2026-03-11', 'C0005', 'P003', 2, 1000, 600],
-    ['2026-04-10', 'C0005', 'P003', 2, 1000, 600],
-    ['2026-08-01', 'C0006', 'P002', 10, 800, 500],
-    ['2026-09-01', 'C0006', 'P002', 10, 800, 500],
-    ['2026-10-01', 'C0006', 'P002', 10, 800, 500],
+  // Costo de la miel $600 y de la avena $500, para todo el año.
+  hojas.Costos.push(['P003', 600, serie('2026-01-01')], ['P002', 500, serie('2026-01-01')])
+  const compras: [string, string, string, number, number][] = [
+    ['2026-01-10', 'C0005', 'P003', 2, 1000],
+    ['2026-02-09', 'C0005', 'P003', 2, 1000],
+    ['2026-03-11', 'C0005', 'P003', 2, 1000],
+    ['2026-04-10', 'C0005', 'P003', 2, 1000],
+    ['2026-08-01', 'C0006', 'P002', 10, 800],
+    ['2026-09-01', 'C0006', 'P002', 10, 800],
+    ['2026-10-01', 'C0006', 'P002', 10, 800],
   ]
-  compras.forEach(([fecha, contacto, productoId, cantidad, precio, costo], i) => {
+  compras.forEach(([fecha, contacto, productoId, cantidad, precio], i) => {
     const pedido = `PE${String(i + 3).padStart(4, '0')}`
     const venta = `V${String(i + 2).padStart(4, '0')}`
     hojas.Pedidos.push([pedido, serie(fecha), contacto, 'ROS', ''])
     hojas['Pedidos ítems'].push([pedido, 1, productoId, cantidad, precio, precio])
     hojas.Ventas.push([venta, serie(fecha), pedido, 'ROS', ''])
-    hojas['Ventas ítems'].push([venta, 1, 1, productoId, cantidad, precio, cantidad * precio, costo])
+    hojas['Ventas ítems'].push([venta, 1, 1, productoId, cantidad, precio, cantidad * precio])
   })
 }
 

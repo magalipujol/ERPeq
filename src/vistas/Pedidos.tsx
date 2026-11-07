@@ -69,7 +69,7 @@ export function Pedidos({ nuevo = 0, abrir = null }: { nuevo?: number; abrir?: P
 }
 
 function FormPedido({ nuevo }: { nuevo: number }) {
-  const { datos, costos, buscarProducto, buscarContacto, db } = useBase();
+  const { datos, buscarProducto, buscarContacto, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const clienteRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -151,7 +151,7 @@ function FormPedido({ nuevo }: { nuevo: number }) {
         entrega = M.armarEntrega(venta, pItems.map((it) => {
           const porcentaje = (v: M.Vendedor) => M.porcentajeRegla(datos.reglas, v.id, it.productoId, dia);
           return {
-            linea: { ...it, entregado: 0, pendiente: it.cantidad }, cantidad: it.cantidad, costo: costos.get(it.productoId) ?? null,
+            linea: { ...it, entregado: 0, pendiente: it.cantidad }, cantidad: it.cantidad,
             comisiones: vend.map((v) => ({ vendedor: v, porcentajeRegla: porcentaje(v), porcentaje: porcentaje(v) })),
           };
         }));
@@ -222,7 +222,7 @@ type Porcentajes = Record<string, number | string>;
 const claveCom = (linea: number, vendedor: string) => `${linea}|${vendedor}`;
 
 function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: () => void }) {
-  const { datos, info, stock, costos, nombres, etiquetas, contacto, db } = useBase();
+  const { datos, info, stock, nombres, etiquetas, contacto, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const { pedido } = resumen;
   // Cobro opcional en la misma operación; solo si la base ya tiene lo necesario para la caja.
@@ -247,6 +247,7 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => { ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, []);
 
+  const costoA = M.costeador(datos.costos);
   const lineas = pendientes.map((l) => {
     const cantidad = numeroOCero(cantidades[l.linea] ?? l.pendiente);
     const importe = M.redondear(cantidad * l.precio);
@@ -256,7 +257,7 @@ function Entrega({ resumen, onCerrar }: { resumen: M.ResumenPedido; onCerrar: ()
       const porcentaje = !(k in editados) || editados[k] === '' ? porcentajeRegla : numeroOCero(editados[k]);
       return { vendedor: v, porcentajeRegla, porcentaje, monto: M.montoComision(importe, porcentaje) };
     });
-    const costo = costos.get(l.productoId) ?? null;
+    const costo = costoA(l.productoId, dia);
     return { linea: l, cantidad, importe, comisiones, costo };
   });
   const aEntregar = lineas.filter((l) => l.cantidad > 0);
@@ -476,7 +477,7 @@ function ListaPedidos({ elegido, onElegir }: { elegido: string | null; onElegir:
         </Table>
       </ScrollArea.Autosize>
       {filas.length === 0 && <Text c="dimmed" mt="xs">No hay pedidos {filtro === 'abiertos' ? 'abiertos' : ''}.</Text>}
-      {filas.some((r) => r.sinCosto) && <Text size="xs" c="dimmed" mt="xs">* Hay productos sin costo de compra: la ganancia no los descuenta.</Text>}
+      {filas.some((r) => r.sinCosto) && <Text size="xs" c="dimmed" mt="xs">* Hay productos sin costo: la ganancia no los descuenta.</Text>}
     </Seccion>
   );
 }

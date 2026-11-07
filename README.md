@@ -10,7 +10,8 @@ Es una página estática (sin servidor) hecha con React, TypeScript y Mantine, q
   con la cuenta del usuario. El proyecto queda en modo Prueba: solo entran los usuarios de prueba cargados.
 - Lee y escribe directo con la Sheets API desde el navegador. Las escrituras son siempre filas nuevas, y cada
   operación (un pedido con sus ítems, una entrega con sus comisiones) va en un solo `batchUpdate`: se guarda
-  entera o no se guarda. El stock, el costo y los estados se calculan a partir de los movimientos.
+  entera o no se guarda. El stock y los estados se calculan a partir de los movimientos, y el costo de cada venta,
+  a partir de la hoja *Costos*.
 - Las pantallas no conocen la planilla: usan una interfaz con una operación por caso de uso (registrar un pedido,
   una entrega, un flete…), y el adaptador de Google Sheets la traduce en filas. Ver
   [spec/arquitectura.md](spec/arquitectura.md).
@@ -27,6 +28,7 @@ El detalle (columnas, diagramas y casos de uso) está en [spec/modelo-de-datos.m
 |---|---|
 | Depósitos, Productos, Contactos, Tipos de cliente, Vendedores | Datos maestros. Contactos y productos se dan de alta y se corrigen en sus pantallas (o en su ficha); los demás, a mano en la planilla. El pedido propone los vendedores y el depósito de la localidad del cliente. |
 | Precios, Reglas de comisión | Valores por defecto (precio de lista y % de comisión por vendedor y producto), con fecha desde. |
+| Costos | Costo de compra de cada producto, con fecha desde. Se carga en Precios o lo actualiza una compra (con el switch prendido). |
 | Pedidos, Pedidos ítems, Pedidos estados, Pedidos vendedores | Lo que pide el cliente, con el precio fijado al crearlo. Reserva stock. Se corrige desde su ficha, junto con sus entregas. |
 | Ventas, Ventas ítems, Ventas comisiones | Cada entrega de un pedido: descuenta stock y genera la comisión. Se registra con confirmación y, si fue un error, se borra desde su ficha. |
 | Compras, Ajustes | Entradas y correcciones de stock. |
@@ -40,8 +42,8 @@ se corrige en *Productos*, *Contactos*, *Vendedores* o *Socios* (los dos primero
 encabezados de cada hoja y no abre una planilla con las columnas distintas a las que espera.
 
 **Stock** = compras − entregas + ajustes (incluidas las fabricaciones) ± fletes entre depósitos (en camino: sale del origen; finalizado: entra en el destino).
-**Costo** = precio unitario de la última compra con precio del producto (cada venta guarda el del momento).
-**Ganancia de un pedido** = lo entregado + envíos que quedan para el negocio − comisiones − cantidad × costo guardado en cada venta (los fletes son gasto del mes).
+**Costo de una venta** = el de *Costos* vigente a la fecha de la venta (no se guarda en la venta).
+**Ganancia de un pedido** = lo entregado + envíos que quedan para el negocio − comisiones − cantidad × costo de cada venta (los fletes son gasto del mes).
 **Ganancia después de fletes** = ganancia de las ventas del período − costo de los fletes del período.
 **Saldo de un socio con el dueño** = lo que cobró − las comisiones y envíos de sus vendedores − lo que le rindió + lo que recibió del dueño.
 

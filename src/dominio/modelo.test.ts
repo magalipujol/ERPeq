@@ -5,7 +5,7 @@ const fecha = (a: number, m: number, d: number) => new Date(a, m - 1, d, 12);
 
 const vacios = (): M.Datos => ({
   depositos: [{ id: 'BB', nombre: 'General', localidad: '' }, { id: 'ROS', nombre: 'Rosario', localidad: '' }],
-  productos: [], contactos: [], tipos: [], vendedores: [], precios: [], reglas: [], compras: [], pedidos: [],
+  productos: [], contactos: [], tipos: [], vendedores: [], precios: [], costos: [], reglas: [], compras: [], pedidos: [],
   pedidosItems: [], pedidosEstados: [], pedidosVendedores: [], ventas: [], ventasItems: [], ventasComisiones: [],
   fletes: [], fletesItems: [], fletesEstados: [], ajustes: [], socios: [], cobros: [], rendiciones: [],
   recetas: [], recetasItems: [], envios: [], ventasEnvios: [],
@@ -23,8 +23,8 @@ const item = (pedidoId: string, linea: number, productoId: string, cantidad: num
   pedidoId, linea, productoId, cantidad, precioLista: precio, precio,
 });
 const venta = (id: string, pedidoId: string, depositoId = 'ROS', f = fecha(2026, 10, 5)): M.Venta => ({ id, fecha: f, pedidoId, depositoId, nota: '' });
-const ventaItem = (ventaId: string, linea: number, pedidoLinea: number, productoId: string, cantidad: number, precio = 100, costo: number | null = 50): M.VentaItem => ({
-  ventaId, linea, pedidoLinea, productoId, cantidad, precio, importe: cantidad * precio, costo,
+const ventaItem = (ventaId: string, linea: number, pedidoLinea: number, productoId: string, cantidad: number, precio = 100): M.VentaItem => ({
+  ventaId, linea, pedidoLinea, productoId, cantidad, precio, importe: cantidad * precio,
 });
 const flete = (id: string, origenId: string, destinoId: string, costo: number | null = null): M.Flete => ({
   id, fecha: fecha(2026, 10, 1), contactoId: '', origenId, destinoId, costo, guia: '', nota: '', salida: null, llegadaEstimada: null,
@@ -67,22 +67,37 @@ describe('porcentajeRegla', () => {
   });
 });
 
-describe('costosUltimaCompra', () => {
-  it('toma el precio de la compra más reciente y saltea las sin precio o sin cantidad', () => {
-    const costos = M.costosUltimaCompra([
-      compra({ fecha: fecha(2026, 10, 5), precio: 1000 }),
-      // Cargada después, pero de una fecha anterior.
-      compra({ fecha: fecha(2026, 9, 1), precio: 2000 }),
-      compra({ fecha: fecha(2026, 10, 9), precio: null }),
-      compra({ fecha: fecha(2026, 10, 9), cantidad: 0, precio: 9999 }),
-      compra({ productoId: 'P002', fecha: null, precio: 100 }),
-    ]);
+describe('costos', () => {
+  const costos: M.Costo[] = [
+    { productoId: 'P001', costo: 1000, desde: fecha(2026, 9, 1) },
+    { productoId: 'P001', costo: 1200, desde: fecha(2026, 10, 1) },
+    // Cargado después, con la misma fecha: gana.
+    { productoId: 'P001', costo: 1300, desde: fecha(2026, 10, 1) },
+    { productoId: 'P002', costo: 500, desde: fecha(2026, 12, 1) },
+  ];
 
-    expect(costos).toStrictEqual(new Map([['P001', 1000], ['P002', 100]]));
+  it('el costo a una fecha es el de desde más reciente que no sea posterior', () => {
+    const costo = M.costeador(costos);
+
+    expect(costo('P001', fecha(2026, 9, 15))).toBe(1000);
+    expect(costo('P001', fecha(2026, 10, 1))).toBe(1300);
+    expect(costo('P001', fecha(2026, 8, 1))).toBeNull();
+    expect(costo('P003', fecha(2026, 10, 1))).toBeNull();
+    // Sin fecha, el último.
+    expect(costo('P002', null)).toBe(500);
   });
 
-  it('a igual fecha gana la compra cargada después', () => {
-    expect(M.costosUltimaCompra([compra({ precio: 1000 }), compra({ precio: 1200 })]).get('P001')).toBe(1200);
+  it('costosVigentes deja afuera los productos sin costo a esa fecha', () => {
+    expect(M.costosVigentes(costos, fecha(2026, 10, 16))).toStrictEqual(new Map([['P001', 1300]]));
+  });
+
+  it('una compra propone el precio de cada producto con precio, desde su fecha; si se repite, vale la última línea', () => {
+    expect(M.costosDeCompra([
+      compra({ productoId: 'P001', precio: 1000 }),
+      compra({ productoId: 'P002', precio: null }),
+      compra({ productoId: 'P003', precio: 0 }),
+      compra({ productoId: 'P001', precio: 1100 }),
+    ])).toStrictEqual([{ productoId: 'P001', costo: 1100, desde: fecha(2026, 10, 1) }]);
   });
 });
 
@@ -92,6 +107,7 @@ describe('resumirPedidos', () => {
     pedidosItems: [item('PE1', 1, 'P001', 10), item('PE1', 2, 'P002', 5), item('PE2', 1, 'P001', 3), item('PE3', 1, 'P001', 2), item('PE4', 1, 'P001', 4)],
     ventas: [venta('V1', 'PE1'), venta('V2', 'PE2'), venta('V3', 'PE4')],
     ventasItems: [ventaItem('V1', 1, 1, 'P001', 4), ventaItem('V2', 1, 1, 'P001', 3), ventaItem('V3', 1, 1, 'P001', 1)],
+    costos: [{ productoId: 'P001', costo: 50, desde: null }],
     ventasComisiones: [{ ventaId: 'V1', linea: 1, vendedorId: 'VEN01', porcentajeRegla: 3, porcentaje: 5, monto: 20 }],
     pedidosEstados: [estado('PE3', 'abierto'), estado('PE3', 'cancelado'), estado('PE4', 'cerrado')],
   });
@@ -276,14 +292,14 @@ describe('armarEntrega', () => {
     const vend: M.Vendedor = { id: 'VEN01', nombre: 'Guada/Hernán', activo: true, localidad: '' };
     const linea = (n: number, precio: number): M.LineaPedido => ({ ...item('PE1', n, `P00${n}`, 25, precio), entregado: 0, pendiente: 25 });
     const e = M.armarEntrega(venta('V1', 'PE1'), [
-      { linea: linea(1, 4080), cantidad: 25, costo: 1450, comisiones: [{ vendedor: vend, porcentajeRegla: 7, porcentaje: 7 }] },
-      { linea: linea(2, 2550), cantidad: 0, costo: null, comisiones: [] },
-      { linea: linea(3, 2550), cantidad: 10, costo: null, comisiones: [{ vendedor: vend, porcentajeRegla: 3, porcentaje: 5 }] },
+      { linea: linea(1, 4080), cantidad: 25, comisiones: [{ vendedor: vend, porcentajeRegla: 7, porcentaje: 7 }] },
+      { linea: linea(2, 2550), cantidad: 0, comisiones: [] },
+      { linea: linea(3, 2550), cantidad: 10, comisiones: [{ vendedor: vend, porcentajeRegla: 3, porcentaje: 5 }] },
     ]);
 
-    expect(e.items.map((i) => [i.linea, i.pedidoLinea, i.productoId, i.cantidad, i.importe, i.costo])).toStrictEqual([
-      [1, 1, 'P001', 25, 102000, 1450],
-      [2, 3, 'P003', 10, 25500, null],
+    expect(e.items.map((i) => [i.linea, i.pedidoLinea, i.productoId, i.cantidad, i.importe])).toStrictEqual([
+      [1, 1, 'P001', 25, 102000],
+      [2, 3, 'P003', 10, 25500],
     ]);
     expect(e.comisiones.map((c) => [c.linea, c.vendedorId, c.porcentajeRegla, c.porcentaje, c.monto])).toStrictEqual([
       [1, 'VEN01', 7, 7, 7140],
@@ -293,11 +309,16 @@ describe('armarEntrega', () => {
 });
 
 describe('lineasVendidas y ventasPorMes', () => {
-  it('suma la comisión de cada ítem y agrupa por mes de la venta', () => {
+  it('suma la comisión de cada ítem, usa el costo vigente a la fecha de la venta y agrupa por mes', () => {
     const d = datos({
       pedidos: [pedido('PE1')],
       ventas: [venta('V1', 'PE1', 'ROS', fecha(2026, 9, 1)), venta('V2', 'PE1', 'ROS', fecha(2026, 10, 2))],
-      ventasItems: [ventaItem('V1', 1, 1, 'P001', 1, 100, 40), ventaItem('V2', 1, 1, 'P001', 2, 100, null)],
+      // V1 es del 01/09: costo 40. V2, del 02/10, es de P002, que todavía no tiene costo.
+      costos: [
+        { productoId: 'P001', costo: 40, desde: fecha(2026, 8, 1) }, { productoId: 'P001', costo: 90, desde: fecha(2026, 10, 1) },
+        { productoId: 'P002', costo: 30, desde: fecha(2026, 11, 1) },
+      ],
+      ventasItems: [ventaItem('V1', 1, 1, 'P001', 1), ventaItem('V2', 1, 1, 'P002', 2)],
       ventasComisiones: [
         { ventaId: 'V1', linea: 1, vendedorId: 'A', porcentajeRegla: null, porcentaje: 5, monto: 5 },
         { ventaId: 'V1', linea: 1, vendedorId: 'B', porcentajeRegla: null, porcentaje: 5, monto: 5 },
@@ -305,7 +326,7 @@ describe('lineasVendidas y ventasPorMes', () => {
     });
     const lineas = M.lineasVendidas(d);
 
-    expect(lineas.map((l) => [l.comision, l.ganancia])).toStrictEqual([[10, 50], [0, null]]);
+    expect(lineas.map((l) => [l.costo, l.comision, l.ganancia])).toStrictEqual([[40, 10, 50], [null, 0, null]]);
     expect(M.ventasPorMes(lineas)).toStrictEqual([
       { mes: '2026-09', importe: 100, ganancia: 50, comision: 10, lineas: 1 },
       { mes: '2026-10', importe: 200, ganancia: 0, comision: 0, lineas: 1 },
@@ -360,10 +381,11 @@ const caja = (d: Partial<M.Datos> = {}): M.Datos => datos({
     { id: 'V0002', fecha: fecha(2026, 10, 4), pedidoId: 'PE0002', depositoId: 'BB', nota: '' },
   ],
   ventasItems: [
-    { ventaId: 'V0001', linea: 1, pedidoLinea: 1, productoId: 'P002', cantidad: 10, precio: 800, importe: 8000, costo: 500 },
-    { ventaId: 'V0002', linea: 1, pedidoLinea: 1, productoId: 'P001', cantidad: 3, precio: 3000, importe: 9000, costo: 1500 },
-    { ventaId: 'V0002', linea: 2, pedidoLinea: 2, productoId: 'P003', cantidad: 3, precio: 2000, importe: 6000, costo: null },
+    { ventaId: 'V0001', linea: 1, pedidoLinea: 1, productoId: 'P002', cantidad: 10, precio: 800, importe: 8000 },
+    { ventaId: 'V0002', linea: 1, pedidoLinea: 1, productoId: 'P001', cantidad: 3, precio: 3000, importe: 9000 },
+    { ventaId: 'V0002', linea: 2, pedidoLinea: 2, productoId: 'P003', cantidad: 3, precio: 2000, importe: 6000 },
   ],
+  costos: [{ productoId: 'P002', costo: 500, desde: null }, { productoId: 'P001', costo: 1500, desde: null }],
   ventasComisiones: [
     { ventaId: 'V0001', linea: 1, vendedorId: 'VEN01', porcentajeRegla: 3, porcentaje: 3, monto: 240 },
     { ventaId: 'V0002', linea: 1, vendedorId: 'VEN01', porcentajeRegla: 7, porcentaje: 7, monto: 630 },
@@ -662,7 +684,7 @@ describe('corregirPedido', () => {
       { pedidoId: 'PE1', linea: 1, productoId: 'P001', cantidad: 10, precioLista: 100, precio: 90 },
       { pedidoId: 'PE1', linea: 2, productoId: 'P003', cantidad: 2, precioLista: 300, precio: 300 },
     ]);
-    // 4 × $90 = $360, desde Bahía Blanca; el costo no cambia. Leo conserva su 12% (360 × 12% = 43,20); Guada entra con
+    // 4 × $90 = $360, desde Bahía Blanca. Leo conserva su 12% (360 × 12% = 43,20); Guada entra con
     // su regla, 5% (18).
     expect(c.entregas).toStrictEqual([{
       venta: venta('V1', 'PE1', 'BB'),

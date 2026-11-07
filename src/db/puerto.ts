@@ -2,7 +2,7 @@
 // conoce esta interfaz; cómo se guarda (hojas, columnas, celdas, API) es asunto de cada adaptador.
 // Ver spec/arquitectura.md.
 import type {
-  Ajuste, Cobro, Compra, Contacto, ContactoNuevo, CorreccionPedido, Datos, Entrega, EstadoFlete, Flete, FleteItem, Pedido, PedidoItem,
+  Ajuste, Cobro, Compra, Contacto, Costo, ContactoNuevo, CorreccionPedido, Datos, Entrega, EstadoFlete, Flete, FleteItem, Pedido, PedidoItem,
   Precio, Producto, Receta, RecetaItem, ReglaComision, ReglaEnvio, Rendicion,
 } from '../dominio/modelo';
 
@@ -59,6 +59,7 @@ export interface CompraNueva {
   lineas: Omit<Compra, 'fila' | 'importe'>[]; // el importe lo calcula la base: cantidad × precio
   productosNuevos: Producto[];
   proveedorNuevo: ContactoNuevo | null;
+  costos: Costo[]; // costos nuevos que deja la compra (costosDeCompra), si se eligió actualizarlos
 }
 
 // Login y apertura de la base.
@@ -96,6 +97,7 @@ export interface Operaciones {
   registrarCompra: (c: CompraNueva) => Promise<void>;
   registrarAjuste: (a: Ajuste) => Promise<void>;
   registrarPrecio: (p: Precio) => Promise<void>;
+  registrarCosto: (c: Costo) => Promise<void>;
   registrarReglaComision: (r: ReglaComision) => Promise<void>;
   registrarReglaEnvio: (r: ReglaEnvio) => Promise<void>;
   registrarCobro: (c: Cobro) => Promise<void>;

@@ -31,7 +31,7 @@ export function fichaPedido(datos: M.Datos, resumenes: M.ResumenPedido[], id: st
   };
 }
 
-export interface ItemVenta extends M.VentaItem { comision: number; ganancia: number | null }
+export interface ItemVenta extends M.VentaItem { costo: number | null; comision: number; ganancia: number | null }
 
 export interface FichaVenta {
   venta: M.Venta;
@@ -75,7 +75,7 @@ export interface VentaDeProducto { venta: M.Venta; pedido: M.Pedido | undefined;
 export interface FichaProducto {
   producto: M.Producto;
   precio: number | null; // de lista, vigente a la fecha
-  costo: number | null; // precio de la última compra
+  costo: number | null; // vigente a la fecha
   stock: StockDeposito[];
   receta: M.VersionReceta | undefined; // receta activa que lo fabrica
   usadoEn: M.VersionReceta[]; // recetas activas que lo usan como insumo

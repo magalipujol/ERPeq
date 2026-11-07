@@ -247,7 +247,7 @@ function FichaPedido({ id, acciones }: { id: string; acciones: Acciones }) {
         ...(r.envios > 0 ? [['Envío', fmtMoney(r.envios)] as [string, string]] : []),
         ...(r.ventas.length > 0 ? [['Ganancia', `${fmtMoney(r.ganancia)}${r.sinCosto ? '*' : ''}`] as [string, string]] : []),
       ]} />
-      {r.sinCosto && <Text size="xs" c="dimmed">* Hay productos sin costo de compra: la ganancia no los descuenta.</Text>}
+      {r.sinCosto && <Text size="xs" c="dimmed">* Hay productos sin costo: la ganancia no los descuenta.</Text>}
       {f.ventas.length > 0 && (
         <Seccion titulo="Entregas">
           <Tabla label="Entregas del pedido" columnas={[{ titulo: 'Venta' }, { titulo: 'Importe', num: true }, { titulo: 'A cobrar', num: true }]}
@@ -356,7 +356,7 @@ function FichaProducto({ id }: { id: string }) {
         <Datos items={[
           ['Unidad', p.unidad],
           ['Precio de lista', f.precio === null ? 'Sin precio' : fmtMoney(f.precio)],
-          ['Último costo', f.costo === null ? 'Sin compras con precio' : fmtMoney(f.costo)],
+          ['Costo', f.costo === null ? 'Sin costo' : fmtMoney(f.costo)],
           ['Mínimo', p.minimo !== null && p.minimo > 0 ? unidad(p.minimo) : ''],
         ]} />
       </Corregible>

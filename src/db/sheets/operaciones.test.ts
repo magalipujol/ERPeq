@@ -11,7 +11,7 @@ const item: M.PedidoItem = { pedidoId: 'PE0001', linea: 1, productoId: 'P001', c
 const leo: M.Vendedor = { id: 'VEN01', nombre: 'Leo', activo: true, localidad: '' };
 const cobro: M.Cobro = { fecha: dia, ventaId: 'V0001', importe: 6000, medio: 'efectivo', socioId: 'SOC02', nota: '' };
 const entrega = (id = 'V0001') => M.armarEntrega({ id, fecha: dia, pedidoId: 'PE0001', depositoId: 'BB', nota: '' }, [{
-  linea: { ...item, entregado: 0, pendiente: 2 }, cantidad: 2, costo: 1500,
+  linea: { ...item, entregado: 0, pendiente: 2 }, cantidad: 2,
   comisiones: [{ vendedor: leo, porcentajeRegla: 10, porcentaje: 10 }],
 }]);
 
@@ -19,7 +19,8 @@ describe('operaciones sobre la planilla', () => {
   it('un pedido con venta directa se guarda en una sola escritura', async () => {
     expect.hasAssertions();
 
-    const db = crearPlanillaEnMemoria();
+    // Costo de P001: $ 1.500.
+    const db = crearPlanillaEnMemoria({ costos: [['P001', 1500, DIA]] });
     await db.registrarPedido({
       pedido, items: [item], vendedores: ['VEN01'], momento: dia, entrega: entrega(), cobros: [cobro],
       preciosNuevos: [{ productoId: 'P001', precio: 3000, desde: dia }],
@@ -33,7 +34,7 @@ describe('operaciones sobre la planilla', () => {
       pedidosVendedores: [['PE0001', 'VEN01']],
       precios: [['P001', 3000, DIA]],
       ventas: [['V0001', DIA, 'PE0001', 'BB', '']],
-      ventasItems: [['V0001', 1, 1, 'P001', 2, 3000, 6000, 1500]],
+      ventasItems: [['V0001', 1, 1, 'P001', 2, 3000, 6000]],
       ventasComisiones: [['V0001', 1, 'VEN01', 10, 10, 600]],
       cobros: [[DIA, 'V0001', 6000, 'efectivo', 'SOC02', '']],
     });
@@ -98,7 +99,7 @@ describe('operaciones sobre la planilla', () => {
     expect(M.estadoFlete(M.estadosActuales((await db.leer()).fletesEstados), 'F0001')).toBe('finalizado');
   });
 
-  it('una compra con producto y proveedor nuevos calcula el importe', async () => {
+  it('una compra con producto y proveedor nuevos calcula el importe y deja el costo nuevo', async () => {
     expect.hasAssertions();
 
     const db = crearPlanillaEnMemoria();
@@ -109,11 +110,18 @@ describe('operaciones sobre la planilla', () => {
         fecha: dia, depositoId: 'BB', contactoId: 'C0005', productoId: 'P004',
         cantidad: 3, precio: 1.1, remito: '', pedidoId: '', nota: '',
       }],
+      costos: [{ productoId: 'P004', costo: 1.1, desde: dia }],
     });
+    await db.registrarCosto({ productoId: 'P004', costo: 1.2, desde: new Date(2026, 9, 20) });
 
     expect(db.hojas.productos).toStrictEqual([['P004', 'Nueces', 'kg', '']]);
     expect(db.hojas.compras).toStrictEqual([[DIA, 'BB', 'C0005', 'P004', 3, 1.1, 3.3, '', '', '']]);
-    expect((await db.leer()).compras[0]).toMatchObject({ fila: 2, cantidad: 3, precio: 1.1, importe: 3.3 });
+    expect(db.hojas.costos).toStrictEqual([['P004', 1.1, DIA], ['P004', 1.2, DIA + 4]]);
+
+    const leidos = await db.leer();
+
+    expect(leidos.compras[0]).toMatchObject({ fila: 2, cantidad: 3, precio: 1.1, importe: 3.3 });
+    expect(M.costeador(leidos.costos)('P004', dia)).toBe(1.1);
   });
 
   it('una receta y una fabricación se guardan cada una en una escritura', async () => {
@@ -211,7 +219,7 @@ describe('operaciones sobre la planilla', () => {
     await db.registrarPedido({
       pedido: { ...pedido, id: 'PE0002' }, items: [{ ...item, pedidoId: 'PE0002' }], vendedores: ['VEN01'], momento: dia, preciosNuevos: [],
       entrega: M.armarEntrega({ id: 'V0002', fecha: dia, pedidoId: 'PE0002', depositoId: 'BB', nota: '' }, [{
-        linea: { ...item, pedidoId: 'PE0002', entregado: 0, pendiente: 2 }, cantidad: 2, costo: 1500,
+        linea: { ...item, pedidoId: 'PE0002', entregado: 0, pendiente: 2 }, cantidad: 2,
         comisiones: [{ vendedor: leo, porcentajeRegla: 10, porcentaje: 10 }],
       }]),
     });
@@ -228,7 +236,7 @@ describe('operaciones sobre la planilla', () => {
       pedidosItems: [['PE0002', 1, 'P001', 2, '', 3000], ['PE0001', 1, 'P001', 2, '', 2500], ['PE0001', 2, 'P002', 1, '', 800]],
       pedidosVendedores: [['PE0002', 'VEN01'], ['PE0001', 'VEN01']],
       ventas: [['V0001', DIA, 'PE0001', 'ROS', ''], ['V0002', DIA, 'PE0002', 'BB', '']],
-      ventasItems: [['V0002', 1, 1, 'P001', 2, 3000, 6000, 1500], ['V0001', 1, 1, 'P001', 2, 2500, 5000, 1500]],
+      ventasItems: [['V0002', 1, 1, 'P001', 2, 3000, 6000], ['V0001', 1, 1, 'P001', 2, 2500, 5000]],
       ventasComisiones: [['V0002', 1, 'VEN01', 10, 10, 600], ['V0001', 1, 'VEN01', 10, 10, 500]],
       precios: [['P002', 800, DIA]],
       pedidosEstados: [['PE0001', MOMENTO, 'abierto'], ['PE0002', MOMENTO, 'abierto']],
@@ -247,7 +255,7 @@ describe('operaciones sobre la planilla', () => {
     expect(db.hojas).toMatchObject({
       pedidos: [['PE0001', DIA, 'C0001', 'BB', '']],
       ventas: [['V0002', DIA, 'PE0001', 'BB', '']],
-      ventasItems: [['V0002', 1, 1, 'P001', 2, 3000, 6000, 1500]],
+      ventasItems: [['V0002', 1, 1, 'P001', 2, 3000, 6000]],
       ventasComisiones: [['V0002', 1, 'VEN01', 10, 10, 600]],
       ventasEnvios: [],
       cobros: [[DIA, 'V0002', 6000, 'efectivo', 'SOC02', '']],

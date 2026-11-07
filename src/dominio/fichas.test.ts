@@ -19,6 +19,8 @@ const datos: M.Datos = {
   contactos: [contacto('C1', 'cliente'), contacto('C2', 'proveedor'), contacto('C3', 'transporte')],
   tipos: [], vendedores: [{ id: 'VEN01', nombre: 'Leo', activo: true, localidad: '' }],
   precios: [{ productoId: 'P001', precio: 1000, desde: fecha(2026, 1, 1) }, { productoId: 'P001', precio: 1200, desde: fecha(2026, 11, 1) }],
+  // $ 600 en la venta del 03/10; $ 800 desde el 05/10.
+  costos: [{ productoId: 'P001', costo: 600, desde: fecha(2026, 10, 1) }, { productoId: 'P001', costo: 800, desde: fecha(2026, 10, 5) }],
   reglas: [],
   compras: [
     { fila: 2, fecha: fecha(2026, 9, 1), depositoId: 'BB', contactoId: 'C2', productoId: 'P001', cantidad: 10, precio: 500, importe: 5000, remito: '', pedidoId: '', nota: '' },
@@ -34,7 +36,7 @@ const datos: M.Datos = {
   ],
   pedidosEstados: [], pedidosVendedores: [{ pedidoId: 'PE1', vendedorId: 'VEN01' }],
   ventas: [{ id: 'V1', fecha: fecha(2026, 10, 3), pedidoId: 'PE1', depositoId: 'ROS', nota: '' }],
-  ventasItems: [{ ventaId: 'V1', linea: 1, pedidoLinea: 1, productoId: 'P001', cantidad: 4, precio: 1000, importe: 4000, costo: 600 }],
+  ventasItems: [{ ventaId: 'V1', linea: 1, pedidoLinea: 1, productoId: 'P001', cantidad: 4, precio: 1000, importe: 4000 }],
   ventasComisiones: [{ ventaId: 'V1', linea: 1, vendedorId: 'VEN01', porcentajeRegla: 10, porcentaje: 10, monto: 400 }],
   fletes: [{ id: 'F1', fecha: fecha(2026, 10, 2), contactoId: 'C3', origenId: 'BB', destinoId: 'ROS', costo: 900, guia: '', nota: '', salida: null, llegadaEstimada: null }],
   fletesItems: [{ fleteId: 'F1', productoId: 'P001', cantidad: 2 }],
@@ -68,11 +70,10 @@ describe('fichas', () => {
     expect(f?.cobros).toHaveLength(1);
   });
 
-  it('producto: precio vigente a la fecha, costo de la última compra y stock por depósito', () => {
-    const f = F.fichaProducto(datos, resumenes, stock, M.costosUltimaCompra(datos.compras), 'P001', fecha(2026, 10, 17));
+  it('producto: precio y costo vigentes a la fecha y stock por depósito', () => {
+    const f = F.fichaProducto(datos, resumenes, stock, M.costosVigentes(datos.costos, fecha(2026, 10, 17)), 'P001', fecha(2026, 10, 17));
 
     expect(f?.precio).toBe(1000);
-    // La última compra, del 02/10, fue a $ 800.
     expect(f?.costo).toBe(800);
     // BB: 10 comprados − 2 en camino. ROS: 5 comprados − 4 vendidos; 2 llegando y 6 pendientes de PE1.
     expect(f?.stock).toStrictEqual([

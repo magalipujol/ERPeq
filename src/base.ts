@@ -7,7 +7,7 @@ export interface Base {
   info: InfoBase;
   datos: M.Datos;
   stock: M.Stock;
-  costos: Map<string, number>;
+  costos: Map<string, number>; // costo vigente hoy de cada producto
   pedidos: M.ResumenPedido[];
   estadosFletes: Map<string, string>;
   cargando: boolean;

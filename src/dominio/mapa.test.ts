@@ -18,7 +18,7 @@ function datos(): M.Datos {
     ],
     productos: [{ id: 'P1', producto: 'Avena', unidad: 'kg', minimo: null }],
     contactos: [contacto('ANA', 'Funes', 'Santa Fe'), contacto('BETO', ' funes ', 'santa fe'), contacto('CARO', '', '')],
-    tipos: [], vendedores: [], precios: [], reglas: [], compras: [],
+    tipos: [], vendedores: [], precios: [], costos: [], reglas: [], compras: [],
     pedidos: [
       { id: 'PE1', fecha: null, contactoId: 'ANA', depositoId: 'ROS', nota: '' },
       { id: 'PE2', fecha: null, contactoId: 'BETO', depositoId: 'ROS', nota: '' },

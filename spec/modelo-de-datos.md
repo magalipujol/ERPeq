@@ -64,10 +64,11 @@ sequenceDiagram
   - **Movimientos** (compras, ajustes, estados): las correcciones son filas nuevas (un ajuste, un nuevo
     estado), así el stock se puede recalcular siempre. La corrección de fletes, compras y cobros ya
     cargados todavía no está en la app (ver [Preguntas abiertas](#preguntas-abiertas)).
-- **Lo derivado se calcula.** El stock, lo pendiente de un pedido, el estado actual de un flete y el costo de cada
-  producto salen de los movimientos. Lo único que se guarda calculado es lo que tiene que quedar fijo al
-  momento de la operación (precio, costo, porcentaje de comisión): si después se compra a otro precio o cambia una
-  regla de comisión, las ventas pasadas no cambian.
+- **Lo derivado se calcula.** El stock, lo pendiente de un pedido y el estado actual de un flete salen de los
+  movimientos; el costo de cada venta sale de *Costos* (el vigente a su fecha). Lo único que se guarda calculado es
+  lo que tiene que quedar fijo al momento de la operación (precio, porcentaje de comisión): si después cambia el
+  precio de lista o una regla de comisión, las ventas pasadas no cambian. Un costo nuevo solo cambia las ventas desde
+  su `desde`: cargarlo con una fecha pasada corrige la ganancia de las ventas desde ese día.
 - **Valores por defecto que se pueden sobreescribir.** *Precios* y *Reglas de comisión* guardan los valores
   por defecto. Cada pedido o entrega guarda el valor por defecto que se propuso y el que se usó (ver
   [Valores por defecto y sobreescritura](#valores-por-defecto-y-sobreescritura)).
@@ -105,6 +106,7 @@ erDiagram
     PRODUCTO ||--o{ FLETE_ITEM : ""
     PRODUCTO |o--o{ REGLA_COMISION : "aplica a"
     PRODUCTO ||--o{ PRECIO : "lista"
+    PRODUCTO ||--o{ COSTO : "costo"
 
     CONTACTO ||--o{ PEDIDO : "cliente"
     CONTACTO |o--o{ COMPRA : "proveedor"
@@ -181,6 +183,11 @@ erDiagram
         number precio
         date desde
     }
+    COSTO {
+        string producto_id FK
+        number costo
+        date desde
+    }
     COMPRA {
         date fecha
         string deposito_id FK
@@ -229,7 +236,6 @@ erDiagram
         number cantidad
         number precio "copia del pedido"
         number importe
-        number costo "costo de la última compra al entregar"
     }
     VENTA_COMISION {
         string venta_id FK
@@ -319,7 +325,7 @@ erDiagram
 ## Tablas (hojas)
 
 Las columnas se listan en el orden de la hoja. **(c)** indica un valor copiado al momento de la operación
-(precio, costo, porcentaje), que no cambia aunque después cambie su origen. Los nombres no se copian: las
+(precio, porcentaje), que no cambia aunque después cambie su origen. Los nombres no se copian: las
 columnas `*_id` apuntan a la hoja donde están.
 
 La fila 1 de cada hoja tiene los encabezados. La app los compara con los que espera (sin distinguir
@@ -336,6 +342,7 @@ columnas corridas guardaría cada dato en otra columna.
 | **Tipos de cliente** | `tipo` | Lista de tipos para la columna `tipo_cliente` de *Contactos*. |
 | **Vendedores** | `id`, `nombre`, `activo`, `localidad` | Quien consigue el pedido y cobra comisión. "Guada/Hernán" es **un** vendedor; "Leo" es otro. `activo` vacío o "sí" = se puede elegir. `localidad`: donde trabaja; se lo propone en los pedidos de clientes de esa localidad (ver [Pedidos](#pedidos)). |
 | **Precios** | `producto_id`, `precio`, `desde` | Precio por defecto, con historial. Un cambio de precio es una fila nueva; el vigente es el de `desde` más reciente. |
+| **Costos** | `producto_id`, `costo`, `desde` | Costo de compra, con historial. Se carga en la pantalla **Precios** o al registrar una compra (si se deja prendido "Actualizar el costo"). El costo de una venta es el vigente a su fecha (ver [Costo](#costo)). |
 | **Reglas de comisión** | `vendedor_id`, `producto_id`, `porcentaje`, `desde` | Porcentaje por defecto. `producto_id` vacío = regla general del vendedor. |
 
 ### Pedidos y ventas
@@ -347,7 +354,7 @@ columnas corridas guardaría cada dato en otra columna.
 | **Pedidos estados** | `pedido_id`, `fecha`, `estado` | `abierto` al crearlo; después solo los estados que se deciden a mano (ver [Estados del pedido](#estados-del-pedido)). |
 | **Pedidos vendedores** | `pedido_id`, `vendedor_id` | Quiénes comisionan por este pedido. Comisionan por todas sus líneas. |
 | **Ventas** | `id`, `fecha`, `pedido_id`, `deposito_id`, `nota` | Una entrega. El cliente sale del pedido. |
-| **Ventas ítems** | `venta_id`, `linea`, `pedido_linea`, `producto_id`, `cantidad`, `precio` (c), `importe`, `costo` (c) | Lo entregado de cada línea del pedido. `costo` es el costo unitario al entregar: el precio de la última compra del producto (ver [Costo](#costo)). |
+| **Ventas ítems** | `venta_id`, `linea`, `pedido_linea`, `producto_id`, `cantidad`, `precio` (c), `importe` | Lo entregado de cada línea del pedido. El costo no se guarda: es el de *Costos* vigente a la fecha de la venta (ver [Costo](#costo)). |
 | **Ventas comisiones** | `venta_id`, `linea`, `vendedor_id`, `porcentaje_regla` (c), `porcentaje`, `monto` | Una fila por ítem entregado y vendedor. `porcentaje_regla` es el que propone la regla; `porcentaje` el que se usó. `monto = importe × porcentaje / 100`. |
 
 ### Stock y logística
@@ -544,7 +551,7 @@ Guada/Hernán. La mercadería salió de Bahía Blanca a $2.800:
 | Pedidos | `PE0003`, 16/10, `C0001`, `ROS` | `PE0003`, 16/10, `C0001`, `BB` |
 | Pedidos ítems | `PE0003`, 1, almendras, 2, 3000, 3000 | `PE0003`, 1, almendras, 2, 3000, 2800 |
 | Ventas | `V0002`, 16/10, `PE0003`, `ROS` | `V0002`, 16/10, `PE0003`, `BB` |
-| Ventas ítems | `V0002`, 1, 1, almendras, 2, 3000, 6000, 1500 | `V0002`, 1, 1, almendras, 2, 2800, 5600, 1500 |
+| Ventas ítems | `V0002`, 1, 1, almendras, 2, 3000, 6000 | `V0002`, 1, 1, almendras, 2, 2800, 5600 |
 | Ventas comisiones | `V0002`, 1, `VEN02`, 7, 7, 420 | `V0002`, 1, `VEN02`, 7, 7, 392 |
 
 ```mermaid
@@ -568,7 +575,7 @@ directa no cobra envío: el cliente se lleva la mercadería en el momento.
 La venta es la entrega al cliente en la ciudad de destino. Es el momento en que:
 
 - **sale el stock** del depósito de la venta;
-- **se fija el costo** de la mercadería (el de su última compra, ver [Costo](#costo));
+- **se calcula el costo** de la mercadería con el vigente a la fecha de la venta (ver [Costo](#costo));
 - **se genera la comisión**.
 
 Un pedido puede entregarse en varias ventas (entregas parciales). Cada ítem de venta apunta a la línea del
@@ -799,21 +806,33 @@ flowchart LR
 
 ### Costo
 
-El **costo** de un producto es el precio unitario de su **última compra** con precio, de cualquier depósito
-(`costosUltimaCompra`): la de fecha más reciente y, a igual fecha, la agregada después. Las compras sin precio o sin
-cantidad no cuentan. Cada entrega guarda el costo del momento en *Ventas ítems*, así que una compra posterior a otro
-precio no cambia la ganancia de las ventas ya hechas. El mismo costo valúa el stock y la mercadería en camino, y da el
-costo de los insumos de las recetas.
+El **costo** de un producto sale de la hoja *Costos*, que guarda su historial: cada cambio es una fila nueva con su
+`desde`. El costo a una fecha es el de la fila con `desde` más reciente que no sea posterior y, a igual fecha, la
+agregada después (`costeador`). El **costo de una venta** es el vigente a la fecha de la venta: no se guarda en
+*Ventas ítems*, así que la ganancia de una venta solo cambia si se carga un costo con un `desde` igual o anterior a su
+fecha (una corrección). El costo vigente hoy (`costosVigentes`) valúa el stock y la mercadería en camino, y da el costo
+de los insumos de las recetas.
 
-| Compras de almendras | Costo | Venta de 4 kg a $3.000 con 10% de comisión |
-|---|---|---|
-| 10/09: 10 kg a $2.000 | $2.000 | $12.000 − $1.200 − 4 × $2.000 = $2.800 |
-| 02/10: 10 kg a $1.000 | $1.000 | $12.000 − $1.200 − 4 × $1.000 = $6.800 |
-| 20/10: 10 kg a $4.000 | $4.000 | las ventas anteriores conservan su costo |
+El costo se carga de dos maneras:
 
-Un producto sin compras con precio no tiene costo y sus ventas no lo descuentan; un producto que solo se fabrica
-tampoco tiene (ver [recetas.md](recetas.md#costo)). Una transferencia no cambia el costo de la mercadería: su costo
-es un gasto de logística (ver abajo).
+- En la pantalla **Precios** (sección *Costos*), con producto, costo y fecha `desde`.
+- Al **registrar una compra**, con el switch "Actualizar el costo de los productos con estos precios" (prendido por
+  defecto): cada producto comprado con precio mayor a 0 agrega una fila con ese precio y `desde` = fecha de la compra
+  (`costosDeCompra`; si un producto aparece dos veces, vale la última línea). Se guarda en la misma escritura que la
+  compra. Con el switch apagado, la compra no toca *Costos*.
+
+| Costos de almendras | Venta del 05/10: 4 kg a $3.000 con 10% de comisión |
+|---|---|
+| $2.000 desde 10/09 | |
+| $1.500 desde 02/10 | $12.000 − $1.200 − 4 × $1.500 = $4.800 |
+| $1.000 desde 06/10 | no cambia: es posterior a la venta |
+| $1.400 desde 01/10, cargado después | tampoco: el de 02/10 es más reciente a la fecha de la venta |
+| $1.300 desde 05/10, cargado después | $12.000 − $1.200 − 4 × $1.300 = $5.600 |
+
+Un producto sin costo a la fecha de la venta deja esa venta sin costo y la ganancia no lo descuenta; un producto que
+solo se fabrica no tiene costo hasta que se le carga uno (ver [recetas.md](recetas.md#costo)). Una venta sin fecha usa
+el último costo cargado. Una transferencia no cambia el costo de la mercadería: su costo es un gasto de logística (ver
+abajo).
 
 ### Flete para cubrir faltantes
 
@@ -904,7 +923,8 @@ La ganancia se calcula por **pedido**, donde se juntan las entregas, las comisio
 
 - **Importe del pedido** = Σ `importe` de los ítems de sus ventas.
 - **Comisiones** = Σ `monto` de las comisiones de sus ventas.
-- **Costo de mercadería** = Σ `cantidad × costo` de los ítems de sus ventas.
+- **Costo de mercadería** = Σ `cantidad × costo` de los ítems de sus ventas, con el costo vigente a la fecha de cada
+  venta.
 - **Envíos del negocio** = Σ `costo` de sus filas en *Ventas envíos* sin `vendedor_id`.
 - **Ganancia** = importe + envíos del negocio − comisiones − costo de mercadería.
 
@@ -920,7 +940,7 @@ precios o el mínimo para no cobrar envío.
 | Comisión por vendedor | Σ `monto` por vendedor y mes de la venta |
 | Costo de flete sobre ventas | Σ costo de fletes del mes / Σ importe de ventas del mes |
 | Ganancia después de fletes | Σ ganancia de las ventas del período − Σ costo de los fletes del período |
-| Mercadería en tránsito | `en_transito(p) × costo` (el de la última compra) |
+| Mercadería en tránsito | `en_transito(p) × costo` (el vigente hoy) |
 | Faltante por depósito | `faltante(p, d)` para los pedidos abiertos |
 | Tiempo de entrega | fecha de la última venta − fecha del pedido |
 
@@ -961,8 +981,8 @@ La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e 
   pantalla solo carga rendiciones entre un socio y el dueño.
 - **Fabricar sin stock.** La app avisa si un insumo no alcanza en el depósito pero deja fabricar igual (el stock
   queda negativo, como con una venta). Falta decidir si se bloquea.
-- **Costo de lo fabricado.** Las fabricaciones no guardan costo: un producto que solo se fabrica no tiene costo
-  y sus ventas quedan sin costo (la ganancia no lo descuenta). Si hace falta, se puede guardar el costo
-  de los insumos en el momento de fabricar.
+- **Costo de lo fabricado.** Las fabricaciones no agregan filas a *Costos*: un producto que solo se fabrica no
+  tiene costo hasta que se le carga uno en Precios. Falta decidir si la fabricación propone el costo de los
+  insumos, como la compra propone su precio.
 - **Volver de "en camino" a "preparación".** Está en el diagrama para el caso de un flete que vuelve sin
   entregar; si no pasa nunca, se saca.

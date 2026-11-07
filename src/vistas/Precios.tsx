@@ -8,17 +8,24 @@ import { useFila } from '../ficha';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, unicos } from '../formato';
 import * as M from '../dominio/modelo';
 
-// Valores por defecto: precio de lista de cada producto, porcentaje de comisión de cada vendedor y costo de envío.
-// Cada cambio es una fila nueva con su fecha `desde`; los pedidos y ventas ya cargados no cambian.
+// Valores por defecto: precio de lista y costo de cada producto, porcentaje de comisión de cada vendedor y costo de
+// envío. Cada cambio es una fila nueva con su fecha `desde`. Los pedidos y ventas ya cargados guardan su precio y su
+// comisión; el costo de una venta es el vigente a su fecha.
 export function Precios() {
   return (
     <Stack gap="md">
-      <Title order={2} className="titulo-pantalla">Precios, comisiones y envíos</Title>
+      <Title order={2} className="titulo-pantalla">Precios, costos, comisiones y envíos</Title>
       <Text c="dimmed" maw="70ch">
-        Se proponen al cargar pedidos y entregas. Cambiarlos no modifica lo ya cargado.
+        Los precios, comisiones y envíos se proponen al cargar pedidos y entregas, y cambiarlos no modifica lo ya
+        cargado. El costo de cada venta es el vigente a su fecha.
       </Text>
       <Grid gap="md" align="flex-start">
-        <Grid.Col span={{ base: 12, md: 6 }}><ListaPrecios /></Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <Stack gap="md">
+            <ListaPrecios />
+            <ListaCostos />
+          </Stack>
+        </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Stack gap="md">
             <ReglasComision />
@@ -30,21 +37,47 @@ export function Precios() {
   );
 }
 
+// Valor por producto con su fecha `desde`: el precio de lista o el costo.
+interface ValorDesde { productoId: string; valor: number; desde: Date | null }
+
 function ListaPrecios() {
-  const { datos, buscarProducto, db, cargando } = useBase();
+  const { datos, db } = useBase();
+  return (
+    <ListaPorProducto titulo="Lista de precios" que="precio" valores={datos.precios.map((p) => ({ ...p, valor: p.precio }))}
+      registrar={async (productoId, precio, desde) => db.registrarPrecio({ productoId, precio, desde })} />
+  );
+}
+
+// El costo de cada venta es el vigente a su fecha: un costo con `desde` anterior cambia la ganancia de las ventas
+// desde ese día.
+function ListaCostos() {
+  const { datos, db } = useBase();
+  return (
+    <ListaPorProducto titulo="Costos" que="costo" valores={datos.costos.map((c) => ({ ...c, valor: c.costo }))}
+      registrar={async (productoId, costo, desde) => db.registrarCosto({ productoId, costo, desde })}
+      nota="La ganancia de cada venta usa el costo vigente a su fecha. Las compras pueden actualizarlo." />
+  );
+}
+
+function ListaPorProducto({ titulo, que, valores, registrar, nota }: {
+  titulo: string; que: 'precio' | 'costo'; valores: ValorDesde[]; nota?: string;
+  registrar: (productoId: string, valor: number, desde: Date) => Promise<void>;
+}) {
+  const { datos, buscarProducto, cargando } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const fila = useFila();
   const [producto, setProducto] = useState('');
-  const [precioTxt, setPrecioTxt] = useState<number | string>('');
+  const [valorTxt, setValorTxt] = useState<number | string>('');
   const [desde, setDesde] = useState(hoyISO);
   const [buscar, setBuscar] = useState('');
   const productos = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
   const [hoy] = useState(() => new Date());
+  const Que = que === 'precio' ? 'Precio' : 'Costo';
 
   const filas = datos.productos
     .map((p) => {
-      const actual = datos.precios.filter((x) => x.productoId === p.id && (!x.desde || x.desde <= hoy))
-        .reduce<M.Precio | null>((m, x) => (!m || (x.desde?.getTime() ?? 0) >= (m.desde?.getTime() ?? 0) ? x : m), null);
+      const actual = valores.filter((x) => x.productoId === p.id && (!x.desde || x.desde <= hoy))
+        .reduce<ValorDesde | null>((m, x) => (!m || (x.desde?.getTime() ?? 0) >= (m.desde?.getTime() ?? 0) ? x : m), null);
       return { p, actual };
     })
     .filter((f) => !buscar.trim() || f.p.producto.toLowerCase().includes(buscar.trim().toLowerCase()))
@@ -53,45 +86,46 @@ function ListaPrecios() {
   function enviar(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const p = buscarProducto(producto);
-    const precio = aNumero(precioTxt);
+    const valor = aNumero(valorTxt);
     if (!p) { error('Elegí un producto de la lista.'); return; }
-    if (!(precio > 0)) { error('Ingresá un precio mayor a 0.'); return; }
+    if (!(valor > 0)) { error(`Ingresá un ${que} mayor a 0.`); return; }
     if (!desde) { error('Elegí desde qué fecha rige.'); return; }
     guardar(async () => {
-      await db.registrarPrecio({ productoId: p.id, precio, desde: deISO(desde) });
-      setPrecioTxt('');
-      return `✓ ${p.producto}: ${fmtMoney(precio)} desde ${fmtFecha(deISO(desde))}.`;
+      await registrar(p.id, valor, deISO(desde));
+      setValorTxt('');
+      return `✓ ${p.producto}: ${fmtMoney(valor)} desde ${fmtFecha(deISO(desde))}.`;
     });
   }
 
   return (
     <Seccion>
-      <Encabezado titulo="Lista de precios">
-        <TextInput type="search" w={200} placeholder="Buscar producto…" aria-label="Buscar precio"
+      <Encabezado titulo={titulo}>
+        <TextInput type="search" w={200} placeholder="Buscar producto…" aria-label={`Buscar ${que}`}
           value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
       </Encabezado>
-      <form onSubmit={enviar} noValidate aria-label="Cambiar precio">
+      {nota && <Text size="sm" c="dimmed" mb="xs">{nota}</Text>}
+      <form onSubmit={enviar} noValidate aria-label={`Cambiar ${que}`}>
         <Stack gap="xs" mb="sm">
           <Autocomplete label="Producto" data={productos} value={producto} onChange={setProducto} />
           <Group grow gap="xs" align="flex-start">
-            <NumberInput label="Precio" allowNegative={false} value={precioTxt} onChange={setPrecioTxt}
+            <NumberInput label={Que} allowNegative={false} value={valorTxt} onChange={setValorTxt}
               leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none" />
             <TextInput label="Desde" type="date" value={desde} onChange={(e) => { setDesde(e.currentTarget.value); }} />
           </Group>
-          <Button type="submit" loading={guardando}>Guardar precio</Button>
+          <Button type="submit" loading={guardando}>Guardar {que}</Button>
           <Mensaje msg={msg} />
         </Stack>
       </form>
       <ScrollArea.Autosize mah={480} type="auto">
-        <Table stickyHeader highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }} aria-label="Lista de precios">
+        <Table stickyHeader highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }} aria-label={titulo}>
           <Table.Thead>
-            <Table.Tr><Table.Th>Producto</Table.Th><Table.Th className="num">Precio</Table.Th><Table.Th>Desde</Table.Th></Table.Tr>
+            <Table.Tr><Table.Th>Producto</Table.Th><Table.Th className="num">{Que}</Table.Th><Table.Th>Desde</Table.Th></Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {filas.map(({ p, actual }) => (
               <Table.Tr key={p.id} {...fila({ tipo: 'producto', id: p.id })}>
                 <Table.Td><Vinculo a={{ tipo: 'producto', id: p.id }}>{p.producto}</Vinculo></Table.Td>
-                <Table.Td className="num" c={actual ? undefined : 'dimmed'}>{actual ? fmtMoney(actual.precio) : 'Sin precio'}</Table.Td>
+                <Table.Td className="num" c={actual ? undefined : 'dimmed'}>{actual ? fmtMoney(actual.valor) : `Sin ${que}`}</Table.Td>
                 <Table.Td c="dimmed">{actual ? fmtFecha(actual.desde) : ''}</Table.Td>
               </Table.Tr>
             ))}

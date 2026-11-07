@@ -65,12 +65,12 @@ Merma real: 1 − 1,85 / 2 = 7,5 %.
 
 ## Costo
 
-El precio de venta del producto fabricado es su precio de lista. La fabricación **no guarda costo**: el costo
-sigue saliendo solo de las compras (el precio de la última), así que un producto que solo se fabrica no tiene costo y sus ventas
-quedan sin costo (la ganancia no lo descuenta, como pasa hoy con cualquier producto sin compras).
+El precio de venta del producto fabricado es su precio de lista. La fabricación **no agrega costo**: el costo sale
+de la hoja *Costos*, que se carga en Precios o al registrar una compra. Un producto que solo se fabrica no tiene costo
+hasta que se le carga uno, y mientras tanto sus ventas quedan sin costo (la ganancia no lo descuenta).
 
 Como referencia, la pantalla muestra el **costo de los insumos** por unidad de lo que sale, con los costos
-de hoy (`costoInsumos`):
+vigentes hoy (`costoInsumos`):
 
 ```
 costo de los insumos = Σ (cantidad del insumo × costo del insumo) / cantidad que sale

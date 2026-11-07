@@ -101,9 +101,10 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
 | `cambiarEstadoPedido` | `pedidoId`, `cancelado` o `cerrado`, `momento` | *Pedidos estados*. |
 | `registrarFlete` | `flete` (con la salida y la llegada previstas), `items`, `estados`, `momento`, `transporteNuevo` | *Contactos* (si el transporte es nuevo), *Fletes*, *Fletes ítems*, *Fletes estados* (uno por estado). No guarda pedidos: un flete lleva productos. |
 | `cambiarEstadoFlete` | `fleteId`, estado, `momento` | *Fletes estados*. |
-| `registrarCompra` | `lineas`, `productosNuevos`, `proveedorNuevo` | *Productos* (nuevos), *Contactos* (si el proveedor es nuevo), *Compras* (el importe lo calcula el adaptador). |
+| `registrarCompra` | `lineas`, `productosNuevos`, `proveedorNuevo`, `costos` (de `costosDeCompra`, o vacío) | *Productos* (nuevos), *Contactos* (si el proveedor es nuevo), *Compras* (el importe lo calcula el adaptador), *Costos* (si hay). |
 | `registrarAjuste` | `Ajuste` | *Ajustes*. |
 | `registrarPrecio` | `Precio` | *Precios*. |
+| `registrarCosto` | `Costo` | *Costos*. |
 | `registrarReglaComision` | `ReglaComision` | *Reglas de comisión*. |
 | `registrarReglaEnvio` | `ReglaEnvio` | *Envíos*. |
 | `registrarCobro` | `Cobro` | *Cobros*. |

@@ -75,6 +75,7 @@ export function escrituraCompra(c: CompraNueva): Escritura {
     productos: c.productosNuevos.map(filas.producto),
     ...(c.proveedorNuevo ? { contactos: [filas.contacto(c.proveedorNuevo)] } : {}),
     compras: c.lineas.map(filas.compra),
+    ...(c.costos.length > 0 ? { costos: c.costos.map(filas.costo) } : {}),
   };
 }
 
@@ -97,6 +98,7 @@ export function operaciones(escribir: (e: Escritura) => Promise<void>, corregir:
     registrarCompra: async (c) => escribir(escrituraCompra(c)),
     registrarAjuste: async (a) => escribir({ ajustes: [filas.ajuste(a)] }),
     registrarPrecio: async (p) => escribir({ precios: [filas.precio(p)] }),
+    registrarCosto: async (c) => escribir({ costos: [filas.costo(c)] }),
     registrarReglaComision: async (r) => escribir({ reglas: [filas.regla(r)] }),
     registrarReglaEnvio: async (r) => escribir({ envios: [filas.envio(r)] }),
     registrarCobro: async (c) => escribir({ cobros: [filas.cobro(c)] }),

@@ -74,7 +74,7 @@ test('venta directa: crea el pedido y la entrega juntos', async ({ page, google 
   expect(google.escrituras[0]).toMatchObject({
     'Pedidos': [['PE0003', HOY_SERIE, 'C0001', 'ROS', '']],
     'Ventas': [['V0002', HOY_SERIE, 'PE0003', 'ROS', '']],
-    'Ventas ítems': [['V0002', 1, 1, 'P001', 1, 3000, 3000, 1000]],
+    'Ventas ítems': [['V0002', 1, 1, 'P001', 1, 3000, 3000]],
   })
   await page.getByRole('radiogroup', { name: 'Mostrar' }).getByText('Todos').click()
   await expect(filaPedido(page, 'Ana · 16/10/26')).toContainText('Entregado')
@@ -155,7 +155,7 @@ test('entrega parcial con la comisión sobreescrita', async ({ page, google }) =
   await expect(form.getByText(/✓ Entrega a Ana registrada/)).toBeVisible()
   expect(google.escrituras).toEqual([{
     'Ventas': [['V0002', HOY_SERIE, 'PE0002', 'ROS', '']],
-    'Ventas ítems': [['V0002', 1, 1, 'P002', 4, 800, 3200, 500]],
+    'Ventas ítems': [['V0002', 1, 1, 'P002', 4, 800, 3200]],
     'Ventas comisiones': [['V0002', 1, 'VEN02', 3, 5, 160]],
   }])
   await expect(filaPedido(page, 'Ana · 10/10/26')).toContainText('Parcial')

@@ -58,7 +58,7 @@ flowchart LR
 |---|---|---|---|
 | **Pedido** | Cliente, fecha, depósito de entrega, estado, vendedores, nota; importe, entregado, envío (si hubo) y ganancia | Productos (con lo entregado y pendiente), entregas (con lo que falta cobrar de cada una) y compras hechas para el pedido | *Registrar entrega* (si está abierto): abre Pedidos con ese pedido elegido. *Corregir pedido*: fecha, cliente, depósito, vendedores, productos, precios y nota, con sus entregas (ver [Corregir un pedido](modelo-de-datos.md#corregir-un-pedido)) |
 | **Venta** | Cliente, pedido, fecha, depósito, comisión por vendedor, envío (y para quién), nota; importe (con el envío), cobrado, a cobrar y ganancia | Productos entregados (con costo y ganancia de cada uno) y cobros | *Borrar venta*, con confirmación: borra la venta con sus ítems, comisiones, envío y cobros (ver [Borrar una venta](modelo-de-datos.md#borrar-una-venta)) |
-| **Producto** | Unidad, precio de lista vigente hoy, último costo (precio de la última compra), mínimo | Stock por depósito (en depósito, en camino, en fletes en preparación y comprometido), receta activa que lo fabrica, recetas activas que lo usan, pedidos abiertos con algo pendiente, ventas y compras | *Corregir datos*: nombre, unidad y mínimo, en el lugar |
+| **Producto** | Unidad, precio de lista vigente hoy, costo vigente hoy (de *Costos*), mínimo | Stock por depósito (en depósito, en camino, en fletes en preparación y comprometido), receta activa que lo fabrica, recetas activas que lo usan, pedidos abiertos con algo pendiente, ventas y compras | *Corregir datos*: nombre, unidad y mínimo, en el lugar |
 | **Contacto** | Tipo, teléfono, dirección, email, localidad, observaciones (los vacíos no se muestran) | Como cliente: cantidad de pedidos, lo comprado (entregado), lo que debe y sus pedidos. Como proveedor: sus compras. Como transporte: sus fletes | *Corregir datos*: todos (el rol, solo si no tiene pedidos, compras ni fletes) |
 | **Flete** | Transporte, fecha, recorrido, estado, costo, salida prevista, llegada estimada, guía, nota | Mercadería y los estados por los que pasó | *Ver en Fletes*: abre Fletes con la fila resaltada |
 | **Compra** | Proveedor, producto, fecha, depósito, cantidad, precio, importe, remito, nota | Pedido para el que se compró | — |
@@ -68,7 +68,7 @@ flowchart LR
 - El título del modal nombra lo que se ve sin IDs, como el resto de la app: "Pedido de Ana · 10/10/26", "Venta a
   Ana · 05/10/26", "Flete de Interprovincial · 08/10/26", "Producto: Almendras", "Cliente: Ana", "Compra a Prov A ·
   02/10/26". Una compra no tiene ID: la ficha la identifica por su número de fila en *Compras*.
-- La ganancia de una venta es importe − comisiones − envío del vendedor − cantidad × costo de cada ítem (el envío
+- La ganancia de una venta es importe − comisiones − envío del vendedor − cantidad × costo de cada ítem (el vigente a la fecha de la venta; el envío
   que queda para el negocio suma); si algún ítem no tiene costo, no se muestra.
 
 ## Ejemplo

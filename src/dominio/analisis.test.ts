@@ -5,7 +5,7 @@ import type * as M from './modelo';
 const fecha = (a: number, m: number, d: number) => new Date(a, m - 1, d, 12);
 const HOY = fecha(2026, 10, 16);
 
-// [producto, cantidad, precio, costo, comisión]
+// [producto, cantidad, precio, costo, comisión]. El costo queda vigente desde la fecha del pedido.
 type Linea = [string, number, number, number | null, number?];
 // Pedido entregado completo el mismo día en que se pidió.
 interface PedidoPrueba { id: string; cliente: string; fecha: Date; lineas: Linea[]; cancelado?: boolean }
@@ -17,7 +17,7 @@ function armar(pedidos: PedidoPrueba[], extra: Partial<M.Datos> = {}): M.Datos {
       { id: 'P002', producto: 'Avena', unidad: 'kg', minimo: 0 },
       { id: 'P003', producto: 'Miel', unidad: 'unid.', minimo: 0 },
     ],
-    contactos: [], tipos: [], vendedores: [], precios: [], reglas: [], compras: [], pedidos: [],
+    contactos: [], tipos: [], vendedores: [], precios: [], costos: [], reglas: [], compras: [], pedidos: [],
     pedidosItems: [], pedidosEstados: [], pedidosVendedores: [], ventas: [], ventasItems: [], ventasComisiones: [],
     fletes: [], fletesItems: [], fletesEstados: [], ajustes: [], socios: [], cobros: [], rendiciones: [],
     recetas: [], recetasItems: [], envios: [], ventasEnvios: [],
@@ -36,9 +36,8 @@ function armar(pedidos: PedidoPrueba[], extra: Partial<M.Datos> = {}): M.Datos {
     const ventaId = `V-${p.id}`;
     d.ventas.push({ id: ventaId, fecha: p.fecha, pedidoId: p.id, depositoId: 'BB', nota: '' });
     p.lineas.forEach(([productoId, cantidad, precio, costo, comision], i) => {
-      d.ventasItems.push({
-        ventaId, linea: i + 1, pedidoLinea: i + 1, productoId, cantidad, precio, importe: cantidad * precio, costo,
-      });
+      d.ventasItems.push({ ventaId, linea: i + 1, pedidoLinea: i + 1, productoId, cantidad, precio, importe: cantidad * precio });
+      if (costo !== null) d.costos.push({ productoId, costo, desde: p.fecha });
       if (comision !== undefined) {
         d.ventasComisiones.push({ ventaId, linea: i + 1, vendedorId: 'VEN01', porcentajeRegla: null, porcentaje: 0, monto: comision });
       }

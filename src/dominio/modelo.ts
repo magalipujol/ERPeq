@@ -14,6 +14,8 @@ export type ContactoNuevo = Pick<Contacto, 'id' | 'rol' | 'nombre'> & Partial<Co
 // `localidad`: donde trabaja el vendedor; se lo propone en los pedidos de clientes de esa localidad.
 export interface Vendedor { id: string; nombre: string; activo: boolean; localidad: string }
 export interface Precio { productoId: string; precio: number; desde: Date | null }
+// Costo de compra de un producto vigente desde `desde`. El costo de una venta es el vigente a su fecha.
+export interface Costo { productoId: string; costo: number; desde: Date | null }
 export interface ReglaComision { vendedorId: string; productoId: string; porcentaje: number; desde: Date | null }
 export interface Compra {
   fila: number; // identifica la compra, que no tiene ID (en la planilla es el número de fila)
@@ -31,7 +33,7 @@ export interface PedidoVendedor { pedidoId: string; vendedorId: string }
 export interface Venta { id: string; fecha: Date | null; pedidoId: string; depositoId: string; nota: string }
 export interface VentaItem {
   ventaId: string; linea: number; pedidoLinea: number; productoId: string; cantidad: number;
-  precio: number; importe: number; costo: number | null;
+  precio: number; importe: number;
 }
 export interface VentaComision {
   ventaId: string; linea: number; vendedorId: string; porcentajeRegla: number | null;
@@ -65,7 +67,7 @@ export interface RecetaItem { recetaId: string; version: number; productoId: str
 
 export interface Datos {
   depositos: Deposito[]; productos: Producto[]; contactos: Contacto[]; tipos: string[]; vendedores: Vendedor[];
-  precios: Precio[]; reglas: ReglaComision[]; compras: Compra[]; pedidos: Pedido[]; pedidosItems: PedidoItem[];
+  precios: Precio[]; costos: Costo[]; reglas: ReglaComision[]; compras: Compra[]; pedidos: Pedido[]; pedidosItems: PedidoItem[];
   pedidosEstados: RegistroEstado[]; pedidosVendedores: PedidoVendedor[]; ventas: Venta[]; ventasItems: VentaItem[];
   ventasComisiones: VentaComision[]; fletes: Flete[]; fletesItems: FleteItem[]; fletesEstados: RegistroEstado[];
   ajustes: Ajuste[]; socios: Socio[]; cobros: Cobro[]; rendiciones: Rendicion[];
@@ -210,17 +212,30 @@ export function envioPropuesto(
   return datos.ventasEnvios.some((e) => ventas.has(e.ventaId)) ? 0 : regla.costo;
 }
 
-// Costo de cada producto: el precio unitario de su última compra con precio, de cualquier depósito. La última es la
-// de fecha más reciente; a igual fecha, la fila agregada después. Una compra sin fecha cuenta como la más vieja.
-export function costosUltimaCompra(compras: Compra[]) {
-  const ultima = new Map<string, Compra>();
-  for (const c of compras) {
-    if (c.precio === null || c.cantidad <= 0) continue;
-    const previa = ultima.get(c.productoId);
-    if (!previa || (c.fecha?.getTime() ?? 0) >= (previa.fecha?.getTime() ?? 0)) ultima.set(c.productoId, c);
-  }
-  return new Map([...ultima].map(([id, c]) => [id, c.precio ?? 0]));
+// Costo de un producto a una fecha: la fila de Costos con `desde` más reciente que no sea posterior (sin fecha, la
+// última). Agrupa los costos por producto una vez, para buscar el de muchas líneas.
+export function costeador(costos: Costo[]) {
+  const porProducto = new Map<string, Costo[]>();
+  for (const c of costos) porProducto.set(c.productoId, [...(porProducto.get(c.productoId) ?? []), c]);
+  return (productoId: string, fecha: Date | null) => vigente(porProducto.get(productoId) ?? [], fecha)?.costo ?? null;
 }
+
+// Costo vigente de cada producto a una fecha (los que no tienen costo no están).
+export function costosVigentes(costos: Costo[], fecha: Date | null) {
+  const costo = costeador(costos);
+  const res = new Map<string, number>();
+  for (const id of new Set(costos.map((c) => c.productoId))) {
+    const c = costo(id, fecha);
+    if (c !== null) res.set(id, c);
+  }
+  return res;
+}
+
+// Costos que propone una compra: el precio de cada producto comprado con precio, desde la fecha de la compra. Si
+// un producto aparece más de una vez, vale la última línea.
+export const costosDeCompra = (lineas: Pick<Compra, 'productoId' | 'precio' | 'fecha'>[]): Costo[] =>
+  unicosPor(lineas.filter((l) => l.precio !== null && l.precio > 0), (l) => l.productoId)
+    .map((l) => ({ productoId: l.productoId, costo: l.precio ?? 0, desde: l.fecha }));
 
 // ---------- Pedidos ----------
 
@@ -264,6 +279,8 @@ export function resumirPedidos(datos: Datos): ResumenPedido[] {
   const comisionDeVenta = new Map<string, number>();
   for (const c of datos.ventasComisiones) comisionDeVenta.set(c.ventaId, (comisionDeVenta.get(c.ventaId) ?? 0) + c.monto);
   const envioDeVenta = new Map(datos.ventasEnvios.map((e) => [e.ventaId, e]));
+  const costo = costeador(datos.costos);
+  const fechaDe = new Map(datos.ventas.map((v) => [v.id, v.fecha]));
 
   return datos.pedidos.map((pedido) => {
     const manual = estados.get(pedido.id);
@@ -273,7 +290,8 @@ export function resumirPedidos(datos: Datos): ResumenPedido[] {
       return { ...it, entregado: ent, pendiente: cerrado ? 0 : Math.max(0, redondear(it.cantidad - ent, 3)) };
     });
     const vs = ventas.get(pedido.id) ?? [];
-    const its = vs.flatMap((v) => ventaItems.get(v.id) ?? []);
+    const its = vs.flatMap((v) => ventaItems.get(v.id) ?? [])
+      .map((it) => ({ ...it, costo: costo(it.productoId, fechaDe.get(it.ventaId) ?? null) }));
     const hayEntregas = its.length > 0;
     const estado: EstadoPedido = manual === 'cancelado' ? 'cancelado' : manual === 'cerrado' ? 'cerrado'
       : lineas.every((l) => l.pendiente === 0) && hayEntregas ? 'entregado'
@@ -416,13 +434,15 @@ export function fleteParaFaltantes(s: Stock, depositos: Deposito[], destinoId: s
 
 export const claveMes = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
+// `costo`: el vigente a la fecha de la venta.
 export interface LineaVendida extends VentaItem {
-  venta: Venta; pedido: Pedido | undefined; comision: number; ganancia: number | null;
+  venta: Venta; pedido: Pedido | undefined; costo: number | null; comision: number; ganancia: number | null;
 }
 
 export function lineasVendidas(datos: Datos): LineaVendida[] {
   const ventas = new Map(datos.ventas.map((v) => [v.id, v]));
   const pedidos = new Map(datos.pedidos.map((p) => [p.id, p]));
+  const costoA = costeador(datos.costos);
   const comision = new Map<string, number>();
   for (const c of datos.ventasComisiones) {
     const k = `${c.ventaId}#${c.linea}`;
@@ -432,9 +452,10 @@ export function lineasVendidas(datos: Datos): LineaVendida[] {
     const venta = ventas.get(it.ventaId);
     if (!venta) return [];
     const com = redondear(comision.get(`${it.ventaId}#${it.linea}`) ?? 0);
+    const costo = costoA(it.productoId, venta.fecha);
     return [{
-      ...it, venta, pedido: pedidos.get(venta.pedidoId), comision: com,
-      ganancia: it.costo === null ? null : redondear(it.importe - com - it.cantidad * it.costo),
+      ...it, venta, pedido: pedidos.get(venta.pedidoId), costo, comision: com,
+      ganancia: costo === null ? null : redondear(it.importe - com - it.cantidad * costo),
     }];
   });
 }
@@ -541,7 +562,7 @@ export function fabricaciones(ajustes: Ajuste[]): Fabricacion[] {
   return [...res.values()];
 }
 
-// Costo de los insumos por unidad de lo que sale, con los costos de hoy (los de la última compra). Null si algún insumo no tiene
+// Costo de los insumos por unidad de lo que sale, con los costos vigentes hoy. Null si algún insumo no tiene
 // costo o no sale nada. Es una estimación: no se guarda.
 export function costoInsumos(insumos: Insumo[], sale: number, costos: Map<string, number>) {
   const usados = insumos.filter((i) => i.cantidad > 0);
@@ -552,7 +573,7 @@ export function costoInsumos(insumos: Insumo[], sale: number, costos: Map<string
 // ---------- Entregas ----------
 
 export interface LineaEntrega {
-  linea: LineaPedido; cantidad: number; costo: number | null;
+  linea: LineaPedido; cantidad: number;
   comisiones: { vendedor: Vendedor; porcentajeRegla: number; porcentaje: number }[];
 }
 
@@ -571,7 +592,7 @@ export function armarEntrega(venta: Venta, lineas: LineaEntrega[], envio: EnvioE
     const importe = redondear(l.cantidad * l.linea.precio);
     const linea = i + 1;
     items.push({
-      ventaId: venta.id, linea, pedidoLinea: l.linea.linea, productoId: l.linea.productoId, cantidad: l.cantidad, precio: l.linea.precio, importe, costo: l.costo,
+      ventaId: venta.id, linea, pedidoLinea: l.linea.linea, productoId: l.linea.productoId, cantidad: l.cantidad, precio: l.linea.precio, importe,
     });
     for (const c of l.comisiones) {
       comisiones.push({
@@ -615,7 +636,7 @@ export function problemaCorreccionPedido(resumen: ResumenPedido, lineas: LineaCo
 // pedido pasa a la lista, como al registrarlo. Las entregas del pedido
 // toman el depósito nuevo si salían del anterior, el precio nuevo de su línea (con su importe y sus comisiones) y
 // los vendedores nuevos: el que sigue conserva su porcentaje y el que se agrega cobra el de la regla vigente a la
-// fecha de la entrega. El costo, las cantidades, los envíos y los cobros no cambian.
+// fecha de la entrega. Las cantidades, las fechas, los envíos y los cobros no cambian.
 export function corregirPedido(
   datos: Pick<Datos, 'precios' | 'reglas' | 'vendedores' | 'ventasItems' | 'ventasComisiones'>,
   anterior: ResumenPedido, pedido: Pedido, lineas: LineaCorregida[], vendedores: string[],

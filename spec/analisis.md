@@ -25,6 +25,7 @@ Los **clientes que dejaron de comprar** no dependen del período: miran toda la 
 flowchart LR
   VI[Ventas ítems] --> LV[Líneas vendidas<br/>importe, comisión, costo]
   VC[Ventas comisiones] --> LV
+  CO[Costos] -->|vigente a la fecha de venta| LV
   V[Ventas] --> LV
   LV -->|fecha de venta en el período| P[Por producto]
   P --> MV[Más vendidos]
@@ -46,11 +47,11 @@ Para cada producto, sumando los ítems vendidos en el período:
 - **Cantidad** = Σ `cantidad`, en la unidad del producto (`kg`, `unid.`).
 - **Vendido** = Σ `importe`.
 - **Comisiones** = Σ `monto` de las comisiones de esos ítems.
-- **Costo** = Σ `cantidad × costo` (el costo guardado en el ítem al entregarlo).
+- **Costo** = Σ `cantidad × costo`, con el costo de *Costos* vigente a la fecha de la venta.
 - **Ganancia** = vendido − comisiones − costo, sumando solo los ítems **con costo**.
 - **Margen** = ganancia / vendido de los ítems con costo.
 
-Un ítem sin costo (venta de un producto que nunca se compró con precio) suma cantidad, vendido y
+Un ítem sin costo (venta de un producto que no tenía costo cargado a esa fecha) suma cantidad, vendido y
 comisiones, pero no ganancia ni margen: no se puede saber cuánto dejó. La tabla lo marca como "N ventas sin
 costo". Si todos los ítems de un producto están sin costo, su margen es "–" y no aparece en el gráfico de
 mayor ganancia.

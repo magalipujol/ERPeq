@@ -92,11 +92,12 @@ Arquitectura hexagonal, con los límites controlados por ESLint (`no-restricted-
 ## Reglas del modelo de datos
 
 - Lo cargado se tiene que poder corregir desde la app. Los movimientos solo agregan filas (las correcciones son
-  ajustes o estados nuevos; el stock y el costo de cada producto se calculan a partir de ellos). Los datos maestros
+  ajustes o estados nuevos; el stock se calcula a partir de ellos). Los datos maestros
   (contactos y productos) se corrigen reemplazando su fila, buscada por ID, y un pedido reemplazando sus filas y las
   de sus entregas (`corregir` en el adaptador). Una venta cargada por error se borra con todo lo que cuelga de ella.
-- Lo que tiene que quedar fijo al momento de una operación (costo, comisión, ganancia de una venta) se
-  guarda en la fila. Lo demás se calcula.
+- Lo que tiene que quedar fijo al momento de una operación (precio, comisión de una venta) se guarda en la fila.
+  Lo demás se calcula. Lo que tiene historial con fecha `desde` (como *Costos*) no se copia: el costo de una venta
+  es el vigente a su fecha (`costeador`).
 - Las filas guardan IDs, nunca copias de nombres: el nombre de un producto, contacto, vendedor o socio está
   solo en su hoja, y la UI lo resuelve con `nombres(datos)` del dominio.
 - La UI nunca muestra IDs (ni en tablas, ni en mensajes, ni en el texto de WhatsApp): sirven para relacionar

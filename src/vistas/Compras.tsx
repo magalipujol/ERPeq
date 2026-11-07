@@ -1,5 +1,5 @@
 import {
-  Autocomplete, Button, Grid, Group, NativeSelect, ScrollArea, Stack, Table, Text, TextInput, Title,
+  Autocomplete, Button, Grid, Group, NativeSelect, ScrollArea, Stack, Switch, Table, Text, TextInput, Title,
 } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
@@ -50,6 +50,7 @@ function FormCompra() {
   const [pedido, setPedido] = useState('');
   const [nota, setNota] = useState('');
   const [items, setItems] = useState<Item[]>(() => [itemVacio()]);
+  const [actualizarCostos, setActualizarCostos] = useState(true);
   const proveedores = useMemo(() => unicos([
     ...datos.contactos.filter((c) => c.rol === 'proveedor').map((c) => c.nombre),
   ]), [datos]);
@@ -82,12 +83,14 @@ function FormCompra() {
       const existente = buscarContacto('proveedor', prov);
       const contacto = existente ?? { id: M.siguienteId(datos.contactos.map((c) => c.id), 'C'), rol: 'proveedor', nombre: prov };
 
+      const lineasCompra = lineas.map((l) => ({
+        fecha: deISO(fecha), depositoId: deposito, contactoId: contacto.id, productoId: l.p.id, cantidad: l.cantidad, precio: l.precio, remito: remito.trim(), pedidoId: pedido, nota: nota.trim(),
+      }));
       await db.registrarCompra({
         productosNuevos: nuevos,
         proveedorNuevo: existente ? null : contacto,
-        lineas: lineas.map((l) => ({
-          fecha: deISO(fecha), depositoId: deposito, contactoId: contacto.id, productoId: l.p.id, cantidad: l.cantidad, precio: l.precio, remito: remito.trim(), pedidoId: pedido, nota: nota.trim(),
-        })),
+        lineas: lineasCompra,
+        costos: actualizarCostos ? M.costosDeCompra(lineasCompra) : [],
       });
       setItems([itemVacio()]);
       setRemito('');
@@ -123,6 +126,8 @@ function FormCompra() {
           ]} />
 
           <TextInput label="Nota" maxLength={200} placeholder="Opcional" value={nota} onChange={(e) => { setNota(e.currentTarget.value); }} />
+          <Switch label="Actualizar el costo de los productos con estos precios" description="Desde la fecha de la compra."
+            checked={actualizarCostos} onChange={(e) => { setActualizarCostos(e.currentTarget.checked); }} />
           {validos.length > 0 && (
             <Group className="suave" px="md" py="xs" gap="xl">
               <Resumen label="Total" valor={fmtMoney(total)} />

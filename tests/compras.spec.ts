@@ -43,8 +43,25 @@ test('registra una compra con un producto y un proveedor nuevos en una sola escr
       [HOY_SERIE, 'BB', 'C0005', 'P005', 5, 100, 500, 'R-9', 'PE0002', ''],
       [HOY_SERIE, 'BB', 'C0005', 'P002', 10, 500, 5000, 'R-9', 'PE0002', ''],
     ],
+    // El switch de actualizar costos viene prendido: los precios quedan como costo desde la fecha de la compra.
+    'Costos': [['P005', 100, HOY_SERIE], ['P002', 500, HOY_SERIE]],
   }])
   await expect(page.getByRole('row').filter({ hasText: 'Pasas' })).toContainText('Prov C')
+})
+
+test('con el switch apagado, la compra no cambia el costo', async ({ page, google }) => {
+  const form = page.getByRole('form', { name: 'Registrar compra' })
+  await form.getByLabel('Proveedor', { exact: true }).fill('Prov A')
+  await form.getByLabel('Producto', { exact: true }).fill('Almendras')
+  await form.getByLabel('Cantidad', { exact: true }).fill('2')
+  await form.getByLabel('Precio unitario', { exact: true }).fill('1800')
+  const actualizar = form.getByRole('switch', { name: 'Actualizar el costo de los productos con estos precios' })
+  await expect(actualizar).toBeChecked()
+  await actualizar.click()
+  await expect(actualizar).not.toBeChecked()
+  await form.getByRole('button', { name: 'Registrar compra' }).click()
+  await expect(form.getByText(/✓ Compra a Prov A registrada/)).toBeVisible()
+  expect(Object.keys(google.escrituras[0])).toEqual(['Compras'])
 })
 
 test('un proveedor conocido no se vuelve a agregar a Contactos', async ({ page, google }) => {

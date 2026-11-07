@@ -76,6 +76,7 @@ Entrá a https://console.cloud.google.com con la cuenta del dueño.
    | `Tipos de cliente` | `tipo` |
    | `Vendedores` | `id`, `nombre`, `activo`, `localidad` |
    | `Precios` | `producto_id`, `precio`, `desde` |
+   | `Costos` | `producto_id`, `costo`, `desde` |
    | `Reglas de comisión` | `vendedor_id`, `producto_id`, `porcentaje`, `desde` |
    | `Compras` | `fecha`, `deposito_id`, `contacto_id`, `producto_id`, `cantidad`, `precio`, `importe`, `remito`, `pedido_id`, `nota` |
    | `Pedidos` | `id`, `fecha`, `contacto_id`, `deposito_id`, `nota` |
@@ -83,7 +84,7 @@ Entrá a https://console.cloud.google.com con la cuenta del dueño.
    | `Pedidos estados` | `pedido_id`, `fecha`, `estado` |
    | `Pedidos vendedores` | `pedido_id`, `vendedor_id` |
    | `Ventas` | `id`, `fecha`, `pedido_id`, `deposito_id`, `nota` |
-   | `Ventas ítems` | `venta_id`, `linea`, `pedido_linea`, `producto_id`, `cantidad`, `precio`, `importe`, `costo` |
+   | `Ventas ítems` | `venta_id`, `linea`, `pedido_linea`, `producto_id`, `cantidad`, `precio`, `importe` |
    | `Ventas comisiones` | `venta_id`, `linea`, `vendedor_id`, `porcentaje_regla`, `porcentaje`, `monto` |
    | `Fletes` | `id`, `fecha`, `contacto_id`, `origen_id`, `destino_id`, `costo`, `guia`, `nota`, `salida`, `llegada_estimada` |
    | `Fletes ítems` | `flete_id`, `producto_id`, `cantidad` |
@@ -182,6 +183,34 @@ tocan:
 1. En **Fletes**, escribí `salida` en **I1** y `llegada_estimada` en **J1**. Los fletes anteriores quedan vacíos.
 2. La hoja **Pedidos fletes** ya no se usa: la app la ignora. Podés borrarla o dejarla como historial.
 3. Recargá la página.
+
+### Pasar una planilla que ya existe a la hoja de costos
+
+El costo de cada producto se guarda en la hoja **Costos**, con su fecha `desde`, y la ganancia de cada venta usa el
+costo vigente a su fecha. Las ventas ya no guardan el costo en *Ventas ítems*. Si la planilla es anterior a este
+cambio, la app nueva no abre hasta tener la hoja *Costos*. La app anterior ignora esa hoja, así que conviene
+crearla **antes** de publicar la versión nueva:
+
+1. Creá la hoja **Costos** (abajo a la izquierda, **+**) con `producto_id`, `costo` y `desde` en la fila 1.
+2. Llenala con el historial de precios de las compras. En la celda **A2** de *Costos* escribí:
+
+   ```
+   =QUERY(Compras!A2:F; "select D, F, A where F > 0 and E > 0"; 0)
+   ```
+
+   Si tu planilla separa los argumentos con coma, cambiá cada `;` por `,`. Trae una fila por compra con precio:
+   el producto, el precio y la fecha de la compra.
+3. Convertí la fórmula en valores: seleccioná las columnas A a C, **Ctrl+C** y después **Ctrl+Shift+V** (pegar
+   solo valores) en el mismo lugar. Hay que hacerlo: la app agrega filas debajo, y la fórmula las taparía.
+   Revisá que la columna C muestre fechas.
+4. Publicá la versión nueva y recargá la página.
+5. En *Ventas ítems*, la columna **H** (`costo`) ya no se usa. La app la ignora (puede haber columnas de más a la
+   derecha), pero las ventas nuevas la dejan vacía: borrala o cambiale el encabezado a `costo_anterior` si querés
+   guardarla como historial.
+
+La ganancia de las ventas anteriores pasa a salir del costo vigente a su fecha, que en general es el mismo que
+tenían guardado. Puede cambiar en una venta cargada con una fecha anterior a una compra que ya estaba registrada.
+Para corregir un costo, cargá uno nuevo en **Precios → Costos** con la fecha desde la que vale.
 
 ### Si la app dice que las columnas de una hoja no son las que espera
 

@@ -31,7 +31,7 @@ export function BaseProvider({ db, info, datos, cargando, recargar, children }:
     return {
       db, info, datos, cargando, recargar, pedidos,
       stock: M.calcularStock(datos, pedidos),
-      costos: M.costosUltimaCompra(datos.compras),
+      costos: M.costosVigentes(datos.costos, new Date()),
       estadosFletes: M.estadosActuales(datos.fletesEstados),
       buscarProducto: (nombre) => porNombre.get(normalizar(nombre)),
       buscarContacto: (rol, nombre) => contactos.get(`${rol}|${normalizar(nombre)}`),

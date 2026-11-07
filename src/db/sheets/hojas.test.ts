@@ -114,7 +114,7 @@ describe('socios, cobros y rendiciones', () => {
 
 describe('rango', () => {
   it('cubre las columnas de la hoja desde el encabezado', () => {
-    expect(H.rango('ventasItems')).toBe("'Ventas ítems'!A1:H");
+    expect(H.rango('ventasItems')).toBe("'Ventas ítems'!A1:G");
     expect(H.rango('tipos')).toBe("'Tipos de cliente'!A1:A");
   });
 });

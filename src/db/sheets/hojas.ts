@@ -4,7 +4,7 @@
 // Las filas guardan IDs y no copias de nombres: el nombre de un producto, contacto, vendedor o socio sale
 // siempre de su hoja.
 import {
-  type Ajuste, type Cobro, type Compra, type ContactoNuevo, type Datos, type Flete, type FleteItem, type Pedido,
+  type Ajuste, type Cobro, type Compra, type Costo, type ContactoNuevo, type Datos, type Flete, type FleteItem, type Pedido,
   type PedidoItem, type PedidoVendedor, type Precio, type Producto, type Receta, type RecetaItem, redondear,
   type ReglaComision, type ReglaEnvio, type Rendicion, type Socio, type Venta, type VentaComision, type VentaEnvio, type VentaItem,
 } from '../../dominio/modelo';
@@ -19,6 +19,7 @@ export const HOJAS = {
   tipos: ['Tipos de cliente', ['tipo']],
   vendedores: ['Vendedores', ['id', 'nombre', 'activo', 'localidad']],
   precios: ['Precios', ['producto_id', 'precio', 'desde']],
+  costos: ['Costos', ['producto_id', 'costo', 'desde']],
   reglas: ['Reglas de comisión', ['vendedor_id', 'producto_id', 'porcentaje', 'desde']],
   compras: ['Compras', ['fecha', 'deposito_id', 'contacto_id', 'producto_id', 'cantidad', 'precio', 'importe', 'remito', 'pedido_id', 'nota']],
   pedidos: ['Pedidos', ['id', 'fecha', 'contacto_id', 'deposito_id', 'nota']],
@@ -26,7 +27,7 @@ export const HOJAS = {
   pedidosEstados: ['Pedidos estados', ['pedido_id', 'fecha', 'estado']],
   pedidosVendedores: ['Pedidos vendedores', ['pedido_id', 'vendedor_id']],
   ventas: ['Ventas', ['id', 'fecha', 'pedido_id', 'deposito_id', 'nota']],
-  ventasItems: ['Ventas ítems', ['venta_id', 'linea', 'pedido_linea', 'producto_id', 'cantidad', 'precio', 'importe', 'costo']],
+  ventasItems: ['Ventas ítems', ['venta_id', 'linea', 'pedido_linea', 'producto_id', 'cantidad', 'precio', 'importe']],
   ventasComisiones: ['Ventas comisiones', ['venta_id', 'linea', 'vendedor_id', 'porcentaje_regla', 'porcentaje', 'monto']],
   fletes: ['Fletes', ['id', 'fecha', 'contacto_id', 'origen_id', 'destino_id', 'costo', 'guia', 'nota', 'salida', 'llegada_estimada']],
   fletesItems: ['Fletes ítems', ['flete_id', 'producto_id', 'cantidad']],
@@ -113,6 +114,7 @@ export function parsear(crudo: Fila[][]): Datos {
     })),
     precios: de('precios', 0, (f) => ({ productoId: txt(f[0]), precio: num(f[1]) ?? 0, desde: fecha(f[2]) }))
       .filter((p) => p.precio > 0),
+    costos: de('costos', 0, (f) => ({ productoId: txt(f[0]), costo: num(f[1]) ?? 0, desde: fecha(f[2]) })),
     reglas: de('reglas', 0, (f) => ({ vendedorId: txt(f[0]), productoId: txt(f[1]), porcentaje: num(f[2]) ?? 0, desde: fecha(f[3]) })),
     compras: de('compras', 3, (f, fila) => ({
       fila, fecha: fecha(f[0]), depositoId: txt(f[1]), contactoId: txt(f[2]), productoId: txt(f[3]), cantidad: num(f[4]) ?? 0,
@@ -130,7 +132,7 @@ export function parsear(crudo: Fila[][]): Datos {
     ventas: de('ventas', 0, (f) => ({ id: txt(f[0]), fecha: fecha(f[1]), pedidoId: txt(f[2]), depositoId: txt(f[3]), nota: txt(f[4]) })),
     ventasItems: de('ventasItems', 0, (f) => ({
       ventaId: txt(f[0]), linea: num(f[1]) ?? 0, pedidoLinea: num(f[2]) ?? 0, productoId: txt(f[3]), cantidad: num(f[4]) ?? 0,
-      precio: num(f[5]) ?? 0, importe: num(f[6]) ?? 0, costo: num(f[7]),
+      precio: num(f[5]) ?? 0, importe: num(f[6]) ?? 0,
     })),
     ventasComisiones: de('ventasComisiones', 0, (f) => ({
       ventaId: txt(f[0]), linea: num(f[1]) ?? 0, vendedorId: txt(f[2]), porcentajeRegla: num(f[3]), porcentaje: num(f[4]) ?? 0,
@@ -191,6 +193,7 @@ export const filas = {
     c.id, c.rol, c.nombre, c.tipo, c.telefono, c.direccion, c.email, c.localidad, c.provincia, c.observaciones,
   ],
   precio: (p: Precio): ValorCelda[] => [p.productoId, p.precio, p.desde],
+  costo: (c: Costo): ValorCelda[] => [c.productoId, c.costo, c.desde],
   regla: (r: ReglaComision): ValorCelda[] => [r.vendedorId, r.productoId, r.porcentaje, r.desde],
   compra: (c: Omit<Compra, 'fila' | 'importe'>): ValorCelda[] => [
     c.fecha, c.depositoId, c.contactoId, c.productoId, c.cantidad, vacio(c.precio),
@@ -201,7 +204,7 @@ export const filas = {
   estado: (ref: string, estado: string, momento: Date): ValorCelda[] => [ref, { momento }, estado],
   pedidoVendedor: (p: PedidoVendedor): ValorCelda[] => [p.pedidoId, p.vendedorId],
   venta: (v: Venta): ValorCelda[] => [v.id, v.fecha, v.pedidoId, v.depositoId, v.nota],
-  ventaItem: (i: VentaItem): ValorCelda[] => [i.ventaId, i.linea, i.pedidoLinea, i.productoId, i.cantidad, i.precio, i.importe, vacio(i.costo)],
+  ventaItem: (i: VentaItem): ValorCelda[] => [i.ventaId, i.linea, i.pedidoLinea, i.productoId, i.cantidad, i.precio, i.importe],
   ventaComision: (c: VentaComision): ValorCelda[] => [c.ventaId, c.linea, c.vendedorId, vacio(c.porcentajeRegla), c.porcentaje, c.monto],
   flete: (f: Flete): ValorCelda[] => [
     f.id, f.fecha, f.contactoId, f.origenId, f.destinoId, vacio(f.costo), f.guia, f.nota,
