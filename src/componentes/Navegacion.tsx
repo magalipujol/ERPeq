@@ -1,10 +1,11 @@
-import { Menu, SegmentedControl, ScrollArea, Text, UnstyledButton } from '@mantine/core';
+import { Modal, SegmentedControl, ScrollArea, SimpleGrid, Stack, Text, Title, UnstyledButton } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import {
   IconAddressBook, IconBowlSpoon, IconBox, IconCash, IconChartBar, IconClipboardList, IconDots, IconHome, IconPackage, IconPointFilled, IconReceipt2,
   IconShoppingCart, IconTag, IconTruck,
 } from '@tabler/icons-react';
 
-export interface OpcionNav<V extends string> { value: V; label: string }
+export interface OpcionNav<V extends string> { value: V; label: string; grupo: string }
 
 const ICONOS: Record<string, typeof IconPackage> = {
   inicio: IconHome, stock: IconPackage, pedidos: IconClipboardList, ventas: IconReceipt2, compras: IconShoppingCart,
@@ -22,11 +23,10 @@ export function NavSuperior<V extends string>({ opciones, value, onChange }:
   );
 }
 
-// Pantallas con botón propio en la barra inferior; las demás van en el menú «Más». Con OpenDyslexic entran cinco
+// Pantallas con botón propio en la barra inferior; todas están además en la pantalla «Más». Con OpenDyslexic entran cinco
 // botones con la etiqueta entera en un celular de 360 px.
 const EN_BARRA = 4;
 
-// Menu.Target le pasa su propio className: se suma al de la barra en vez de reemplazarlo.
 function BotonBarra({ Icono, label, activa, className, ...props }:
   { Icono: typeof IconPackage; label: string; activa: boolean } & React.ComponentPropsWithoutRef<'button'>) {
   return (
@@ -42,29 +42,39 @@ export function BarraInferior<V extends string>({ opciones, value, onChange }:
   { opciones: readonly OpcionNav<V>[]; value: V; onChange: (v: V) => void }) {
   const ir = (v: V) => { onChange(v); window.scrollTo({ top: 0 }); };
   const resto = opciones.slice(EN_BARRA);
+  const [abierto, { open: abrir, close: cerrar }] = useDisclosure(false);
+  const grupos = new Map<string, OpcionNav<V>[]>();
+  for (const o of opciones) grupos.set(o.grupo, [...(grupos.get(o.grupo) ?? []), o]);
   return (
     <nav aria-label="Pantalla" className="barra-inferior">
       {opciones.slice(0, EN_BARRA).map((o) => (
         <BotonBarra key={o.value} Icono={ICONOS[o.value] ?? IconPointFilled} label={o.label} activa={o.value === value}
           aria-current={o.value === value ? 'page' : undefined} onClick={() => { ir(o.value); }} />
       ))}
-      <Menu position="top-end" offset={4} width={220}>
-        <Menu.Target>
-          <BotonBarra Icono={IconDots} label="Más" activa={resto.some((o) => o.value === value)} />
-        </Menu.Target>
-        <Menu.Dropdown>
-          {resto.map((o) => {
-            const Icono = ICONOS[o.value] ?? IconPointFilled;
-            const activa = o.value === value;
-            return (
-              <Menu.Item key={o.value} leftSection={<Icono size={20} aria-hidden />} fz="md" fw={activa ? 700 : 400}
-                className="barra-inferior-menu-item" aria-current={activa ? 'page' : undefined} onClick={() => { ir(o.value); }}>
-                {o.label}
-              </Menu.Item>
-            );
-          })}
-        </Menu.Dropdown>
-      </Menu>
+      <BotonBarra Icono={IconDots} label="Más" activa={abierto || resto.some((o) => o.value === value)}
+        aria-haspopup="dialog" onClick={abrir} />
+      <Modal opened={abierto} onClose={cerrar} title="Pantallas" fullScreen>
+        <Stack gap="lg">
+          {[...grupos].map(([grupo, items]) => (
+            <section key={grupo} aria-label={grupo}>
+              <Title order={3} fz="md" c="dimmed" mb="xs">{grupo}</Title>
+              <SimpleGrid cols={2} spacing="xs">
+                {items.map((o) => {
+                  const Icono = ICONOS[o.value] ?? IconPointFilled;
+                  const activa = o.value === value;
+                  return (
+                    <UnstyledButton key={o.value} className="pantalla-mas" data-activa={activa || undefined}
+                      aria-current={activa ? 'page' : undefined} onClick={() => { cerrar(); ir(o.value); }}>
+                      <Icono size={28} stroke={activa ? 2.2 : 1.6} aria-hidden />
+                      <Text span fz="sm" fw={activa ? 700 : 400} lh={1.1}>{o.label}</Text>
+                    </UnstyledButton>
+                  );
+                })}
+              </SimpleGrid>
+            </section>
+          ))}
+        </Stack>
+      </Modal>
     </nav>
   );
 }

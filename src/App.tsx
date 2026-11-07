@@ -23,11 +23,14 @@ import { Stock } from './vistas/Stock';
 import { Ventas } from './vistas/Ventas';
 
 type Pantalla = 'config' | 'login' | 'sin-acceso' | 'app';
+// El grupo ordena la pantalla «Más» del celular; los grupos salen en el orden en que aparecen acá.
 const NAV = [
-  { value: 'inicio', label: 'Inicio' }, { value: 'stock', label: 'Stock' }, { value: 'pedidos', label: 'Pedidos' }, { value: 'ventas', label: 'Ventas' },
-  { value: 'compras', label: 'Compras' }, { value: 'recetas', label: 'Recetas' }, { value: 'fletes', label: 'Fletes' }, { value: 'precios', label: 'Precios' },
-  { value: 'contactos', label: 'Contactos' }, { value: 'productos', label: 'Productos' }, { value: 'caja', label: 'Caja' },
-  { value: 'analisis', label: 'Análisis' },
+  { value: 'inicio', label: 'Inicio', grupo: 'Ventas y entregas' }, { value: 'stock', label: 'Stock', grupo: 'Mercadería' },
+  { value: 'pedidos', label: 'Pedidos', grupo: 'Ventas y entregas' }, { value: 'ventas', label: 'Ventas', grupo: 'Ventas y entregas' },
+  { value: 'compras', label: 'Compras', grupo: 'Mercadería' }, { value: 'recetas', label: 'Recetas', grupo: 'Mercadería' },
+  { value: 'fletes', label: 'Fletes', grupo: 'Ventas y entregas' }, { value: 'precios', label: 'Precios', grupo: 'Plata' },
+  { value: 'contactos', label: 'Contactos', grupo: 'Datos' }, { value: 'productos', label: 'Productos', grupo: 'Datos' },
+  { value: 'caja', label: 'Caja', grupo: 'Plata' }, { value: 'analisis', label: 'Análisis', grupo: 'Plata' },
 ] as const;
 type Vista = (typeof NAV)[number]['value'];
 const VISTAS: readonly string[] = NAV.map((n) => n.value);

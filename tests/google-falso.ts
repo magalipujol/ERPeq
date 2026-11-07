@@ -257,7 +257,7 @@ export { expect } from '@playwright/test'
 export type Pantalla = 'Inicio' | 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | 'Recetas' | 'Fletes' | 'Precios' | 'Contactos'
   | 'Productos' | 'Caja' | 'Análisis'
 
-// En celular, estas pantallas están en el menú «Más» de la barra inferior.
+// En celular, estas pantallas no tienen botón en la barra inferior: se abren desde la pantalla «Más».
 const EN_MAS: readonly Pantalla[] = ['Compras', 'Recetas', 'Fletes', 'Precios', 'Contactos', 'Productos', 'Caja', 'Análisis']
 
 // Menos de 768 px: el breakpoint `sm` de Mantine.
@@ -268,7 +268,7 @@ export const ir = async (page: Page, pantalla: Pantalla) => {
   const nav = page.getByLabel('Pantalla', { exact: true }).filter({ visible: true })
   if (esCelular(page) && EN_MAS.includes(pantalla)) {
     await nav.getByRole('button', { name: 'Más' }).click()
-    return page.getByRole('menuitem', { name: pantalla, exact: true }).click()
+    return page.getByRole('dialog', { name: 'Pantallas' }).getByRole('button', { name: pantalla, exact: true }).click()
   }
   return nav.getByText(pantalla, { exact: true }).click()
 }

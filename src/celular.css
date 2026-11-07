@@ -23,8 +23,26 @@
   background: var(--erp-soft);
 }
 
-/* Ítems del menú «Más» de 44px, como los botones. */
-.barra-inferior-menu-item { min-height: 2.75rem; }
+/* Botones de la pantalla «Más»: un ícono grande y la etiqueta, con el mismo color de activa que la barra. */
+.pantalla-mas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 5rem;
+  padding: 8px 4px;
+  text-align: center;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pantalla-mas[data-activa] {
+  color: var(--mantine-primary-color-filled);
+  background: var(--erp-soft);
+  border-color: var(--mantine-primary-color-filled);
+}
 
 /* Los formularios que se abren desde una lista quedan visibles debajo del header fijo. */
 .ancla { scroll-margin-top: calc(var(--app-shell-header-height, 0px) + 8px); }
