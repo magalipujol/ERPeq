@@ -1,7 +1,7 @@
 import { Modal, SegmentedControl, ScrollArea, SimpleGrid, Stack, Text, Title, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
-  IconAddressBook, IconBowlSpoon, IconBox, IconCash, IconChartBar, IconClipboardList, IconDots, IconHome, IconPackage, IconPointFilled, IconReceipt2,
+  IconAddressBook, IconBowlSpoon, IconBox, IconCash, IconChartBar, IconClipboardList, IconCoins, IconDots, IconHome, IconPackage, IconPercentage, IconPointFilled, IconReceipt2,
   IconShoppingCart, IconTag, IconTruck,
 } from '@tabler/icons-react';
 
@@ -9,7 +9,7 @@ export interface OpcionNav<V extends string> { value: V; label: string; grupo: s
 
 const ICONOS: Record<string, typeof IconPackage> = {
   inicio: IconHome, stock: IconPackage, pedidos: IconClipboardList, ventas: IconReceipt2, compras: IconShoppingCart,
-  recetas: IconBowlSpoon, fletes: IconTruck, precios: IconTag, contactos: IconAddressBook, productos: IconBox, caja: IconCash,
+  recetas: IconBowlSpoon, fletes: IconTruck, precios: IconTag, costos: IconCoins, comisiones: IconPercentage, contactos: IconAddressBook, productos: IconBox, caja: IconCash,
   analisis: IconChartBar,
 };
 

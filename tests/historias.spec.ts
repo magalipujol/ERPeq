@@ -189,6 +189,7 @@ test('cambiar el precio de lista y la regla de comisión no toca los pedidos ya 
   await precio.getByLabel('Precio', { exact: true }).fill('900')
   await precio.getByRole('button', { name: 'Guardar precio' }).click()
   await expect(precio.getByText(/✓ Avena: \$\s900/)).toBeVisible()
+  await ir(page, 'Comisiones')
   const regla = page.getByRole('form', { name: 'Nueva regla de comisión' })
   await regla.getByLabel('Vendedor', { exact: true }).selectOption({ label: 'Guada/Hernán' })
   await regla.getByLabel('Producto', { exact: true }).fill('Avena')
@@ -294,8 +295,8 @@ test('una compra más cara actualiza el costo: cambia la ganancia de las ventas 
     'Costos': [['P001', 1600, HOY_SERIE]],
   })
 
-  // 2. En Precios, el costo de las almendras pasa a $ 1.600 desde hoy.
-  await ir(page, 'Precios')
+  // 2. En Costos, el costo de las almendras pasa a $ 1.600 desde hoy.
+  await ir(page, 'Costos')
   await expect(page.getByRole('table', { name: 'Costos' }).getByRole('row').filter({ hasText: 'Almendras' }))
     .toContainText(/1\.600\s*16\/10\/26/)
 

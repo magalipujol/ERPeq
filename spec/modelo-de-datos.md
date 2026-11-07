@@ -419,10 +419,11 @@ flowchart LR
     U((Usuario)) -. "lo cambia (opcional)" .-> F
     F -- "por defecto (copia)" --> D["precio_lista /<br/>porcentaje_regla"]
     F -- "usado" --> V["precio /<br/>porcentaje"]
-    P["Pantalla Precios"] -- "fila nueva con 'desde'" --> T
+    P["Pantallas Precios /<br/>Comisiones"] -- "fila nueva con 'desde'" --> T
 ```
 
-- Los valores por defecto se cambian desde la pantalla **Precios** de la app (o agregando filas a mano):
+- Los valores por defecto se cambian desde las pantallas **Precios** (precio de lista y envío) y **Comisiones** de
+  la app (o agregando filas a mano);
   cada cambio es una fila nueva con su fecha `desde`.
 - La app marca los precios especiales al cargar el pedido ("Precio especial (lista $X)") y los porcentajes
   distintos de la regla al cargar la entrega ("(regla X%)"). En *Ventas*, la liquidación de comisiones
@@ -982,7 +983,7 @@ La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e 
 - **Fabricar sin stock.** La app avisa si un insumo no alcanza en el depósito pero deja fabricar igual (el stock
   queda negativo, como con una venta). Falta decidir si se bloquea.
 - **Costo de lo fabricado.** Las fabricaciones no agregan filas a *Costos*: un producto que solo se fabrica no
-  tiene costo hasta que se le carga uno en Precios. Falta decidir si la fabricación propone el costo de los
+  tiene costo hasta que se le carga uno en la pantalla Costos. Falta decidir si la fabricación propone el costo de los
   insumos, como la compra propone su precio.
 - **Volver de "en camino" a "preparación".** Está en el diagrama para el caso de un flete que vuelve sin
   entregar; si no pasa nunca, se saca.

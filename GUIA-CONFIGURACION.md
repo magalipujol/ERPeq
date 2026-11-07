@@ -210,7 +210,7 @@ crearla **antes** de publicar la versión nueva:
 
 La ganancia de las ventas anteriores pasa a salir del costo vigente a su fecha, que en general es el mismo que
 tenían guardado. Puede cambiar en una venta cargada con una fecha anterior a una compra que ya estaba registrada.
-Para corregir un costo, cargá uno nuevo en **Precios → Costos** con la fecha desde la que vale.
+Para corregir un costo, cargá uno nuevo en la pantalla **Costos** con la fecha desde la que vale.
 
 ### Si la app dice que las columnas de una hoja no son las que espera
 

@@ -8,31 +8,40 @@ import { useFila } from '../ficha';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, unicos } from '../formato';
 import * as M from '../dominio/modelo';
 
-// Valores por defecto: precio de lista y costo de cada producto, porcentaje de comisión de cada vendedor y costo de
-// envío. Cada cambio es una fila nueva con su fecha `desde`. Los pedidos y ventas ya cargados guardan su precio y su
-// comisión; el costo de una venta es el vigente a su fecha.
+// Valores por defecto con fecha `desde`: cada cambio es una fila nueva. Los pedidos y ventas ya cargados guardan su
+// precio, su envío y su comisión; el costo de una venta es el vigente a su fecha.
 export function Precios() {
   return (
     <Stack gap="md">
-      <Title order={2} className="titulo-pantalla">Precios, costos, comisiones y envíos</Title>
+      <Title order={2} className="titulo-pantalla">Precios y envíos</Title>
       <Text c="dimmed" maw="70ch">
-        Los precios, comisiones y envíos se proponen al cargar pedidos y entregas, y cambiarlos no modifica lo ya
-        cargado. El costo de cada venta es el vigente a su fecha.
+        Los precios y el envío se proponen al cargar pedidos y entregas. Cambiarlos no modifica lo ya cargado.
       </Text>
       <Grid gap="md" align="flex-start">
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Stack gap="md">
-            <ListaPrecios />
-            <ListaCostos />
-          </Stack>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Stack gap="md">
-            <ReglasComision />
-            <ReglasEnvio />
-          </Stack>
-        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}><ListaPrecios /></Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}><ReglasEnvio /></Grid.Col>
       </Grid>
+    </Stack>
+  );
+}
+
+export function Costos() {
+  return (
+    <Stack gap="md" maw={720}>
+      <Title order={2} className="titulo-pantalla">Costos de compra</Title>
+      <ListaCostos />
+    </Stack>
+  );
+}
+
+export function Comisiones() {
+  return (
+    <Stack gap="md" maw={720}>
+      <Title order={2} className="titulo-pantalla">Comisiones</Title>
+      <Text c="dimmed" maw="70ch">
+        El porcentaje se propone al cargar cada venta. Cambiarlo no modifica las ventas ya cargadas.
+      </Text>
+      <ReglasComision />
     </Stack>
   );
 }

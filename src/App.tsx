@@ -16,7 +16,7 @@ import { Contactos } from './vistas/Contactos';
 import { type BorradorFlete, type FleteResaltado, Fletes } from './vistas/Fletes';
 import { Inicio } from './vistas/Inicio';
 import { type PedidoElegido, Pedidos } from './vistas/Pedidos';
-import { Precios } from './vistas/Precios';
+import { Comisiones, Costos, Precios } from './vistas/Precios';
 import { Productos } from './vistas/Productos';
 import { Recetas } from './vistas/Recetas';
 import { Stock } from './vistas/Stock';
@@ -29,6 +29,7 @@ const NAV = [
   { value: 'pedidos', label: 'Pedidos', grupo: 'Ventas y entregas' }, { value: 'ventas', label: 'Ventas', grupo: 'Ventas y entregas' },
   { value: 'compras', label: 'Compras', grupo: 'Mercadería' }, { value: 'recetas', label: 'Recetas', grupo: 'Mercadería' },
   { value: 'fletes', label: 'Fletes', grupo: 'Ventas y entregas' }, { value: 'precios', label: 'Precios', grupo: 'Plata' },
+  { value: 'costos', label: 'Costos', grupo: 'Plata' }, { value: 'comisiones', label: 'Comisiones', grupo: 'Plata' },
   { value: 'contactos', label: 'Contactos', grupo: 'Datos' }, { value: 'productos', label: 'Productos', grupo: 'Datos' },
   { value: 'caja', label: 'Caja', grupo: 'Plata' }, { value: 'analisis', label: 'Análisis', grupo: 'Plata' },
 ] as const;
@@ -277,6 +278,8 @@ export function App({ db }: { db: BaseDeDatos }) {
                 <Box display={vista === 'recetas' ? undefined : 'none'}><Recetas /></Box>
                 <Box display={vista === 'fletes' ? undefined : 'none'}><Fletes resaltar={fleteResaltado} borrador={borradorFlete} /></Box>
                 <Box display={vista === 'precios' ? undefined : 'none'}><Precios /></Box>
+                <Box display={vista === 'costos' ? undefined : 'none'}><Costos /></Box>
+                <Box display={vista === 'comisiones' ? undefined : 'none'}><Comisiones /></Box>
                 <Box display={vista === 'contactos' ? undefined : 'none'}><Contactos /></Box>
                 <Box display={vista === 'productos' ? undefined : 'none'}><Productos /></Box>
                 <Box display={vista === 'caja' ? undefined : 'none'}><Caja /></Box>

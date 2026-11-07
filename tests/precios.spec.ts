@@ -1,4 +1,4 @@
-import { expect, HOY_SERIE, test } from './google-falso'
+import { expect, HOY_SERIE, ir, test } from './google-falso'
 
 test.beforeEach(async ({ page, ingresar }) => {
   await page.goto('/#precios')
@@ -20,6 +20,7 @@ test('muestra los precios vigentes y agrega uno nuevo', async ({ page, google })
 })
 
 test('muestra los costos vigentes y agrega uno desde una fecha', async ({ page, google }) => {
+  await ir(page, 'Costos')
   const fila = (p: string) => page.getByRole('table', { name: 'Costos' }).getByRole('row').filter({ has: page.getByRole('cell', { name: p, exact: true }) })
   // Almendras: $1.000 desde el 06/10 (antes $1.500). Miel nunca tuvo costo.
   await expect(fila('Almendras')).toContainText(/1\.000\s*06\/10\/26/)
@@ -36,6 +37,7 @@ test('muestra los costos vigentes y agrega uno desde una fecha', async ({ page, 
 })
 
 test('muestra las reglas de comisión vigentes y agrega una por producto', async ({ page, google }) => {
+  await ir(page, 'Comisiones')
   const reglas = page.getByRole('table', { name: 'Reglas vigentes' })
   await expect(reglas.getByRole('row').filter({ hasText: 'Leo' })).toContainText(/Todos \(general\)\s*10/)
   await expect(reglas.getByRole('row').filter({ hasText: 'Almendras' })).toContainText(/Guada\/Hernán\s*Almendras\s*7/)

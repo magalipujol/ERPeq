@@ -254,11 +254,11 @@ export const test = base.extend<{ google: GoogleFalso; ingresar: () => Promise<v
 
 export { expect } from '@playwright/test'
 
-export type Pantalla = 'Inicio' | 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | 'Recetas' | 'Fletes' | 'Precios' | 'Contactos'
+export type Pantalla = 'Inicio' | 'Stock' | 'Pedidos' | 'Ventas' | 'Compras' | 'Recetas' | 'Fletes' | 'Precios' | 'Costos' | 'Comisiones' | 'Contactos'
   | 'Productos' | 'Caja' | 'Análisis'
 
 // En celular, estas pantallas no tienen botón en la barra inferior: se abren desde la pantalla «Más».
-const EN_MAS: readonly Pantalla[] = ['Compras', 'Recetas', 'Fletes', 'Precios', 'Contactos', 'Productos', 'Caja', 'Análisis']
+const EN_MAS: readonly Pantalla[] = ['Compras', 'Recetas', 'Fletes', 'Precios', 'Costos', 'Comisiones', 'Contactos', 'Productos', 'Caja', 'Análisis']
 
 // Menos de 768 px: el breakpoint `sm` de Mantine.
 export const esCelular = (page: Page) => (page.viewportSize()?.width ?? 0) < 768
