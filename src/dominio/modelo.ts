@@ -20,7 +20,7 @@ export interface ReglaComision { vendedorId: string; productoId: string; porcent
 export interface Compra {
   fila: number; // identifica la compra, que no tiene ID (en la planilla es el número de fila)
   fecha: Date | null; depositoId: string; contactoId: string; productoId: string;
-  cantidad: number; precio: number | null; importe: number | null; remito: string; pedidoId: string; nota: string;
+  cantidad: number; precio: number | null; importe: number | null; remito: string; nota: string;
 }
 // El cliente, su tipo y su localidad salen del contacto.
 export interface Pedido { id: string; fecha: Date | null; contactoId: string; depositoId: string; nota: string }

@@ -108,14 +108,14 @@ describe('operaciones sobre la planilla', () => {
       proveedorNuevo: { id: 'C0005', rol: 'proveedor', nombre: 'Prov C' },
       lineas: [{
         fecha: dia, depositoId: 'BB', contactoId: 'C0005', productoId: 'P004',
-        cantidad: 3, precio: 1.1, remito: '', pedidoId: '', nota: '',
+        cantidad: 3, precio: 1.1, remito: '', nota: '',
       }],
       costos: [{ productoId: 'P004', costo: 1.1, desde: dia }],
     });
     await db.registrarCosto({ productoId: 'P004', costo: 1.2, desde: new Date(2026, 9, 20) });
 
     expect(db.hojas.productos).toStrictEqual([['P004', 'Nueces', 'kg', '']]);
-    expect(db.hojas.compras).toStrictEqual([[DIA, 'BB', 'C0005', 'P004', 3, 1.1, 3.3, '', '', '']]);
+    expect(db.hojas.compras).toStrictEqual([[DIA, 'BB', 'C0005', 'P004', 3, 1.1, 3.3, '', '']]);
     expect(db.hojas.costos).toStrictEqual([['P004', 1.1, DIA], ['P004', 1.2, DIA + 4]]);
 
     const leidos = await db.leer();

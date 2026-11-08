@@ -14,7 +14,6 @@ export interface VentaDePedido { venta: M.Venta; importe: number; cobrado: numbe
 export interface FichaPedido {
   resumen: M.ResumenPedido;
   ventas: VentaDePedido[];
-  compras: M.Compra[]; // compras hechas para este pedido
 }
 
 export function fichaPedido(datos: M.Datos, resumenes: M.ResumenPedido[], id: string): FichaPedido | null {
@@ -27,7 +26,6 @@ export function fichaPedido(datos: M.Datos, resumenes: M.ResumenPedido[], id: st
       const c = cuentas.get(venta.id);
       return { venta, importe: c?.importe ?? 0, cobrado: c?.cobrado ?? 0, saldo: c?.saldo ?? 0 };
     }),
-    compras: recientes(datos.compras.filter((c) => c.pedidoId === id)),
   };
 }
 

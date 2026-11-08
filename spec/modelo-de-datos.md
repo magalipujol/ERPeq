@@ -195,7 +195,6 @@ erDiagram
         string producto_id FK
         number cantidad
         number precio
-        string pedido_id FK "opcional"
     }
     PEDIDO {
         string id PK "PE0001"
@@ -361,7 +360,7 @@ columnas corridas guardaría cada dato en otra columna.
 
 | Hoja | Columnas | Notas |
 |---|---|---|
-| **Compras** | `fecha`, `deposito_id`, `contacto_id`, `producto_id`, `cantidad`, `precio`, `importe`, `remito`, `pedido_id`, `nota` | `contacto_id` es el proveedor. `pedido_id` opcional: la compra se hizo para un pedido. No cambia el cálculo de stock. |
+| **Compras** | `fecha`, `deposito_id`, `contacto_id`, `producto_id`, `cantidad`, `precio`, `importe`, `remito`, `nota` | `contacto_id` es el proveedor. Una compra no se asocia a un pedido: entra al stock del depósito. |
 | **Fletes** | `id`, `fecha`, `contacto_id`, `origen_id`, `destino_id`, `costo`, `guia`, `nota`, `salida`, `llegada_estimada` | `contacto_id` es el transporte. `origen_id` / `destino_id` son depósitos; vacío = afuera (proveedor o cliente). `costo` es gasto de logística del mes: no se asigna a pedidos. `salida` y `llegada_estimada` son la fecha y hora previstas al cargarlo (la llegada es opcional); las reales salen de *Fletes estados*. |
 | **Fletes ítems** | `flete_id`, `producto_id`, `cantidad` | Solo para mercadería que va **entre depósitos**. |
 | **Fletes estados** | `flete_id`, `fecha`, `estado` | Cada cambio de estado es una fila nueva. El estado actual es el de la última fila. Un flete que se carga ya despachado o terminado escribe también los estados anteriores. |

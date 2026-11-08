@@ -257,7 +257,6 @@ function FichaPedido({ id, acciones }: { id: string; acciones: Acciones }) {
             ])} />
         </Seccion>
       )}
-      {f.compras.length > 0 && <Seccion titulo="Compras para este pedido"><TablaCompras compras={f.compras} /></Seccion>}
     </Stack>
   );
 }
@@ -509,7 +508,7 @@ function FichaFlete({ id, acciones }: { id: string; acciones: Acciones }) {
 }
 
 function FichaCompra({ id }: { id: string }) {
-  const { datos, nombres, etiquetas } = useBase();
+  const { datos, nombres } = useBase();
   const c = F.fichaCompra(datos, id);
   if (!c) return <NoEsta />;
   const unidad = datos.productos.find((p) => p.id === c.productoId)?.unidad ?? '';
@@ -523,7 +522,6 @@ function FichaCompra({ id }: { id: string }) {
       ['Precio unitario', fmtMoney(c.precio)],
       ['Importe', fmtMoney(c.importe)],
       ['Remito', c.remito],
-      ['Pedido', c.pedidoId && <Vinculo key="pe" a={{ tipo: 'pedido', id: c.pedidoId }}>{etiquetas.pedido(c.pedidoId) || c.pedidoId}</Vinculo>],
       ['Nota', c.nota],
     ]} />
   );

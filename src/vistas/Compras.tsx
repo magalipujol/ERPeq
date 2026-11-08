@@ -40,21 +40,19 @@ export function Compras() {
 }
 
 function FormCompra() {
-  const { datos, pedidos, buscarProducto, buscarContacto, etiquetas, db } = useBase();
+  const { datos, buscarProducto, buscarContacto, db } = useBase();
   const { guardando, msg, guardar, error } = useGuardar();
   const [fecha, setFecha] = useState(hoyISO);
   const [depSel, setDepSel] = useState<string | null>(null);
   const deposito = depSel ?? datos.depositos.at(0)?.id ?? '';
   const [proveedor, setProveedor] = useState('');
   const [remito, setRemito] = useState('');
-  const [pedido, setPedido] = useState('');
   const [nota, setNota] = useState('');
   const [items, setItems] = useState<Item[]>(() => [itemVacio()]);
   const [actualizarCostos, setActualizarCostos] = useState(true);
   const proveedores = useMemo(() => unicos([
     ...datos.contactos.filter((c) => c.rol === 'proveedor').map((c) => c.nombre),
   ]), [datos]);
-  const abiertos = pedidos.filter((r) => M.pedidoAbierto(r.estado));
 
   function enviar(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -84,7 +82,7 @@ function FormCompra() {
       const contacto = existente ?? { id: M.siguienteId(datos.contactos.map((c) => c.id), 'C'), rol: 'proveedor', nombre: prov };
 
       const lineasCompra = lineas.map((l) => ({
-        fecha: deISO(fecha), depositoId: deposito, contactoId: contacto.id, productoId: l.p.id, cantidad: l.cantidad, precio: l.precio, remito: remito.trim(), pedidoId: pedido, nota: nota.trim(),
+        fecha: deISO(fecha), depositoId: deposito, contactoId: contacto.id, productoId: l.p.id, cantidad: l.cantidad, precio: l.precio, remito: remito.trim(), nota: nota.trim(),
       }));
       await db.registrarCompra({
         productosNuevos: nuevos,
@@ -94,7 +92,6 @@ function FormCompra() {
       });
       setItems([itemVacio()]);
       setRemito('');
-      setPedido('');
       setNota('');
       return `✓ Compra a ${prov} registrada (${lineas.length} producto${lineas.length > 1 ? 's' : ''}${nuevos.length > 0 ? `, ${nuevos.length} nuevo${nuevos.length > 1 ? 's' : ''}` : ''}).`;
     });
@@ -120,10 +117,6 @@ function FormCompra() {
           </Group>
 
           <Items modo="compra" deposito={deposito} fecha={fecha ? deISO(fecha) : null} items={items} onChange={setItems} />
-          <NativeSelect label="Para el pedido" value={pedido} onChange={(e) => { setPedido(e.currentTarget.value); }} data={[
-            { value: '', label: 'Ninguno (stock general)' },
-            ...abiertos.map((r) => ({ value: r.pedido.id, label: etiquetas.pedido(r.pedido.id) })),
-          ]} />
 
           <TextInput label="Nota" maxLength={200} placeholder="Opcional" value={nota} onChange={(e) => { setNota(e.currentTarget.value); }} />
           <Switch label="Actualizar el costo de los productos con estos precios" description="Desde la fecha de la compra."
@@ -143,7 +136,7 @@ function FormCompra() {
 }
 
 function DetalleCompras({ compras }: { compras: M.Compra[] }) {
-  const { cargando, nombres, etiquetas } = useBase();
+  const { cargando, nombres } = useBase();
   const fila = useFila();
   const [buscar, setBuscar] = useState('');
   const q = buscar.trim().toLowerCase();
@@ -173,7 +166,6 @@ function DetalleCompras({ compras }: { compras: M.Compra[] }) {
                 <Table.Td>
                   <Vinculo a={{ tipo: 'compra', id: String(c.fila) }}>{nombres.contacto(c.contactoId)}</Vinculo>
                   {c.remito && <Text size="xs" c="dimmed">Remito {c.remito}</Text>}
-                  {c.pedidoId && <Text size="xs" c="dimmed">Para el pedido de {etiquetas.pedido(c.pedidoId)}</Text>}
                 </Table.Td>
                 <Table.Td>{nombres.producto(c.productoId)}</Table.Td>
                 <Table.Td className="num">{fmtNum(c.cantidad)}</Table.Td>

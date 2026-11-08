@@ -291,7 +291,7 @@ test('una compra más cara actualiza el costo: cambia la ganancia de las ventas 
   await compra.getByRole('button', { name: 'Registrar compra' }).click()
   await expect(compra.getByText('✓ Compra a Prov A registrada (1 producto).')).toBeVisible()
   expect(google.escrituras[0]).toEqual({
-    'Compras': [[HOY_SERIE, 'BB', 'C0002', 'P001', 5, 1600, 8000, '', '', '']],
+    'Compras': [[HOY_SERIE, 'BB', 'C0002', 'P001', 5, 1600, 8000, '', '']],
     'Costos': [['P001', 1600, HOY_SERIE]],
   })
 
@@ -360,7 +360,7 @@ test('un flete cancelado y uno que vuelve sin entregar no mueven stock', async (
   expect(google.escrituras[0].Contactos).toEqual([['C0005', 'transporte', 'Expreso nuevo', '', '', '', '', '', '', '']])
 })
 
-test('una compra hecha para un pedido cubre lo que faltaba', async ({ page }) => {
+test('una compra cubre lo que le faltaba a un pedido', async ({ page }) => {
   // 1. Ana pide 40 kg de avena en Rosario: hay 25 y ya hay 10 comprometidos con el pedido de Ana del 10/10.
   await elegirCliente(page, 'Ana')
   const pedido = formPedido(page)
@@ -375,17 +375,15 @@ test('una compra hecha para un pedido cubre lo que faltaba', async ({ page }) =>
   await esperarStock(page, 'Avena', { general: null, rosario: ['25', '–', '50'] })
   await expect(kpi(page, 'Faltan para pedidos')).toContainText('1')
 
-  // 2. Se compran 30 kg en Rosario para ese pedido.
+  // 2. Se compran 30 kg en Rosario.
   await ir(page, 'Compras')
   const compra = page.getByRole('form', { name: 'Registrar compra' })
   await compra.getByLabel('Depósito', { exact: true }).selectOption({ label: 'Rosario' })
   await compra.getByLabel('Proveedor', { exact: true }).fill('Prov B')
   await compra.getByLabel('Producto', { exact: true }).fill('Avena')
   await compra.getByLabel('Cantidad', { exact: true }).fill('30')
-  await compra.getByLabel('Para el pedido', { exact: true }).selectOption({ label: 'Ana · 16/10/26' })
   await compra.getByRole('button', { name: 'Registrar compra' }).click()
   await expect(compra.getByText('✓ Compra a Prov B registrada (1 producto).')).toBeVisible()
-  await expect(page.getByRole('row').filter({ hasText: 'Para el pedido de Ana · 16/10/26' })).toContainText('Avena')
 
   // 3. Ya no falta nada.
   await ir(page, 'Stock')
