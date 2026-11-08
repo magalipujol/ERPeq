@@ -1,10 +1,9 @@
-import { Alert, Autocomplete, Button, Code, Grid, Group, NativeSelect, NumberInput, ScrollArea, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Anchor, Autocomplete, Button, Code, Grid, Group, Modal, NativeSelect, NumberInput, ScrollArea, Stack, Table, Text, TextInput, Title, useMatches } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import { faltantesDe } from '../db/puerto';
 import { Encabezado, Mensaje, Seccion } from '../componentes/comunes';
 import { Vinculo } from '../componentes/Fichas';
-import { useFila } from '../ficha';
 import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, unicos } from '../formato';
 import * as M from '../dominio/modelo';
 
@@ -68,33 +67,113 @@ function ListaCostos() {
   );
 }
 
+type Registrar = (productoId: string, valor: number, desde: Date) => Promise<void>;
+
+// El valor vigente hoy: el último con `desde` hasta hoy (sin `desde`, vale desde siempre).
+function vigenteHoy(valores: ValorDesde[], hoy: Date) {
+  return valores.filter((x) => !x.desde || x.desde <= hoy)
+    .reduce<ValorDesde | null>((m, x) => (!m || (x.desde?.getTime() ?? 0) >= (m.desde?.getTime() ?? 0) ? x : m), null);
+}
+
 function ListaPorProducto({ titulo, que, valores, registrar, nota }: {
-  titulo: string; que: 'precio' | 'costo'; valores: ValorDesde[]; nota?: string;
-  registrar: (productoId: string, valor: number, desde: Date) => Promise<void>;
+  titulo: string; que: 'precio' | 'costo'; valores: ValorDesde[]; nota?: string; registrar: Registrar;
 }) {
-  const { datos, buscarProducto, cargando } = useBase();
-  const { guardando, msg, guardar, error } = useGuardar();
-  const fila = useFila();
-  const [producto, setProducto] = useState('');
-  const [valorTxt, setValorTxt] = useState<number | string>('');
-  const [desde, setDesde] = useState(hoyISO);
+  const { datos, cargando } = useBase();
+  const enCelular = useMatches({ base: true, sm: false });
   const [buscar, setBuscar] = useState('');
-  const productos = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
+  const [elegido, setElegido] = useState<M.Producto | null>(null);
   const [hoy] = useState(() => new Date());
   const Que = que === 'precio' ? 'Precio' : 'Costo';
 
   const filas = datos.productos
-    .map((p) => {
-      const actual = valores.filter((x) => x.productoId === p.id && (!x.desde || x.desde <= hoy))
-        .reduce<ValorDesde | null>((m, x) => (!m || (x.desde?.getTime() ?? 0) >= (m.desde?.getTime() ?? 0) ? x : m), null);
-      return { p, actual };
-    })
+    .map((p) => ({ p, actual: vigenteHoy(valores.filter((x) => x.productoId === p.id), hoy) }))
     .filter((f) => !buscar.trim() || f.p.producto.toLowerCase().includes(buscar.trim().toLowerCase()))
     .sort((a, b) => a.p.producto.localeCompare(b.p.producto, 'es'));
 
+  return (
+    <Seccion>
+      <Encabezado titulo={titulo}>
+        <TextInput type="search" w={200} placeholder="Buscar producto…" aria-label={`Buscar ${que}`}
+          value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
+      </Encabezado>
+      {nota && <Text size="sm" c="dimmed" mb="xs">{nota}</Text>}
+      <FormValor que={que} registrar={registrar} />
+      <ScrollArea.Autosize mah={480} type="auto">
+        <Table stickyHeader highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }} aria-label={titulo}>
+          <Table.Thead>
+            <Table.Tr><Table.Th>Producto</Table.Th><Table.Th className="num">{Que}</Table.Th><Table.Th>Desde</Table.Th></Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {filas.map(({ p, actual }) => (
+              <Table.Tr key={p.id} className="fila-ficha"
+                onClick={() => { if (!window.getSelection()?.toString()) setElegido(p); }}>
+                <Table.Td>
+                  <Anchor component="button" type="button" inherit ta="left"
+                    onClick={(e) => { e.stopPropagation(); setElegido(p); }}>{p.producto}</Anchor>
+                </Table.Td>
+                <Table.Td className="num" c={actual ? undefined : 'dimmed'}>{actual ? fmtMoney(actual.valor) : `Sin ${que}`}</Table.Td>
+                <Table.Td c="dimmed">{actual ? fmtFecha(actual.desde) : ''}</Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </ScrollArea.Autosize>
+      <Modal opened={elegido !== null} onClose={() => { setElegido(null); }} title={elegido ? `${Que} de ${elegido.producto}` : ''}
+        fullScreen={enCelular}>
+        {elegido && <HistorialValor que={que} producto={elegido} hoy={hoy} registrar={registrar}
+          valores={valores.filter((x) => x.productoId === elegido.id)} />}
+      </Modal>
+    </Seccion>
+  );
+}
+
+// Historial de un producto: todos sus valores, del más nuevo al más viejo, con el vigente marcado y los que todavía
+// no rigen. Debajo, el formulario para cargar uno nuevo.
+function HistorialValor({ que, producto, valores, hoy, registrar }: {
+  que: 'precio' | 'costo'; producto: M.Producto; valores: ValorDesde[]; hoy: Date; registrar: Registrar;
+}) {
+  const vigente = vigenteHoy(valores, hoy);
+  const filas = valores.toSorted((a, b) => (b.desde?.getTime() ?? 0) - (a.desde?.getTime() ?? 0));
+  const Que = que === 'precio' ? 'Precio' : 'Costo';
+  return (
+    <Stack gap="md">
+      <FormValor que={que} registrar={registrar} producto={producto} />
+      {filas.length === 0 ? <Text c="dimmed">{producto.producto} todavía no tiene {que}.</Text> : (
+        <Table fz="sm" aria-label={`Historial de ${que}`}>
+          <Table.Thead>
+            <Table.Tr><Table.Th>Desde</Table.Th><Table.Th className="num">{Que}</Table.Th><Table.Th /></Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {filas.map((x, i) => (
+              // Los valores no tienen ID y no se reordenan: el índice alcanza como clave.
+              // eslint-disable-next-line @eslint-react/no-array-index-key
+              <Table.Tr key={i} fw={x === vigente ? 700 : undefined}>
+                <Table.Td>{x.desde ? fmtFecha(x.desde) : 'Siempre'}</Table.Td>
+                <Table.Td className="num">{fmtMoney(x.valor)}</Table.Td>
+                <Table.Td c="dimmed">{x === vigente ? 'Vigente' : x.desde && x.desde > hoy ? 'Todavía no rige' : ''}</Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      )}
+      <Text size="sm"><Vinculo a={{ tipo: 'producto', id: producto.id }}>Ver la ficha de {producto.producto}</Vinculo></Text>
+    </Stack>
+  );
+}
+
+// Carga un precio o costo con su fecha `desde`. Con `producto`, es el de ese producto y no se elige.
+function FormValor({ que, registrar, producto: fijo }: { que: 'precio' | 'costo'; registrar: Registrar; producto?: M.Producto }) {
+  const { datos, buscarProducto } = useBase();
+  const { guardando, msg, guardar, error } = useGuardar();
+  const [producto, setProducto] = useState('');
+  const [valorTxt, setValorTxt] = useState<number | string>('');
+  const [desde, setDesde] = useState(hoyISO);
+  const productos = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
+  const Que = que === 'precio' ? 'Precio' : 'Costo';
+
   function enviar(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
-    const p = buscarProducto(producto);
+    const p = fijo ?? buscarProducto(producto);
     const valor = aNumero(valorTxt);
     if (!p) { error('Elegí un producto de la lista.'); return; }
     if (!(valor > 0)) { error(`Ingresá un ${que} mayor a 0.`); return; }
@@ -107,41 +186,18 @@ function ListaPorProducto({ titulo, que, valores, registrar, nota }: {
   }
 
   return (
-    <Seccion>
-      <Encabezado titulo={titulo}>
-        <TextInput type="search" w={200} placeholder="Buscar producto…" aria-label={`Buscar ${que}`}
-          value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
-      </Encabezado>
-      {nota && <Text size="sm" c="dimmed" mb="xs">{nota}</Text>}
-      <form onSubmit={enviar} noValidate aria-label={`Cambiar ${que}`}>
-        <Stack gap="xs" mb="sm">
-          <Autocomplete label="Producto" data={productos} value={producto} onChange={setProducto} />
-          <Group grow gap="xs" align="flex-start">
-            <NumberInput label={Que} allowNegative={false} value={valorTxt} onChange={setValorTxt}
-              leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none" />
-            <TextInput label="Desde" type="date" value={desde} onChange={(e) => { setDesde(e.currentTarget.value); }} />
-          </Group>
-          <Button type="submit" loading={guardando}>Guardar {que}</Button>
-          <Mensaje msg={msg} />
-        </Stack>
-      </form>
-      <ScrollArea.Autosize mah={480} type="auto">
-        <Table stickyHeader highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }} aria-label={titulo}>
-          <Table.Thead>
-            <Table.Tr><Table.Th>Producto</Table.Th><Table.Th className="num">{Que}</Table.Th><Table.Th>Desde</Table.Th></Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {filas.map(({ p, actual }) => (
-              <Table.Tr key={p.id} {...fila({ tipo: 'producto', id: p.id })}>
-                <Table.Td><Vinculo a={{ tipo: 'producto', id: p.id }}>{p.producto}</Vinculo></Table.Td>
-                <Table.Td className="num" c={actual ? undefined : 'dimmed'}>{actual ? fmtMoney(actual.valor) : `Sin ${que}`}</Table.Td>
-                <Table.Td c="dimmed">{actual ? fmtFecha(actual.desde) : ''}</Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </ScrollArea.Autosize>
-    </Seccion>
+    <form onSubmit={enviar} noValidate aria-label={`Cambiar ${que}`}>
+      <Stack gap="xs" mb="sm">
+        {!fijo && <Autocomplete label="Producto" data={productos} value={producto} onChange={setProducto} />}
+        <Group grow gap="xs" align="flex-start">
+          <NumberInput label={Que} allowNegative={false} value={valorTxt} onChange={setValorTxt}
+            leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none" />
+          <TextInput label="Desde" type="date" value={desde} onChange={(e) => { setDesde(e.currentTarget.value); }} />
+        </Group>
+        <Button type="submit" loading={guardando}>Guardar {que}</Button>
+        <Mensaje msg={msg} />
+      </Stack>
+    </form>
   );
 }
 

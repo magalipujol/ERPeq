@@ -21,7 +21,6 @@ cada ficha, en `src/componentes/Fichas.tsx`.
 | Ventas | Detalle del mes | Venta (la de esa línea) |
 | Compras | Detalle del mes | Compra |
 | Fletes | Fletes | Flete |
-| Precios | Lista de precios | Producto |
 | Recetas | Lista de recetas | Producto que sale |
 | Caja | Ventas a cobrar | Venta |
 | Análisis | Ganancia por producto; clientes más activos y que dejaron de comprar | Producto; Contacto |
@@ -29,6 +28,10 @@ cada ficha, en `src/componentes/Fichas.tsx`.
 Los botones, vínculos y campos de una fila (Entregar, Cobrar, Despachar…) hacen lo suyo y no abren la ficha; tampoco
 la abre seleccionar texto. Para el teclado y los lectores de pantalla, el texto principal de la fila (cliente,
 producto, transporte o proveedor) es un vínculo que abre la misma ficha.
+
+Las tablas de Precios (lista de precios) y Costos no abren la ficha del producto: tocar una fila abre el historial
+de ese valor para el producto (del más nuevo al más viejo, con el vigente marcado y los que todavía no rigen),
+con el formulario para cargar uno nuevo desde una fecha y un vínculo a la ficha del producto.
 
 ## Qué muestra cada ficha
 

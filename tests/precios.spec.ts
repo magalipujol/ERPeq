@@ -36,6 +36,23 @@ test('muestra los costos vigentes y agrega uno desde una fecha', async ({ page, 
   await expect(fila('Almendras')).toContainText(/1\.200\s*10\/10\/26/)
 })
 
+test('tocar un costo abre su historial y deja cargar uno nuevo ahí mismo', async ({ page, google }) => {
+  await ir(page, 'Costos')
+  await page.getByRole('table', { name: 'Costos' }).getByRole('cell', { name: 'Almendras', exact: true }).click()
+  const modal = page.getByRole('dialog', { name: 'Costo de Almendras' })
+  // Del más nuevo al más viejo: $1.000 desde el 06/10 (vigente), $1.500 desde el 02/10 y $2.000 desde el 10/09.
+  const historial = modal.getByRole('table', { name: 'Historial de costo' }).getByRole('row')
+  await expect(historial.nth(1)).toContainText(/06\/10\/26\s*\$\s1\.000\s*Vigente/)
+  await expect(historial.nth(2)).toContainText(/\$\s1\.500/)
+
+  await modal.getByLabel('Costo', { exact: true }).fill('1300')
+  await modal.getByRole('button', { name: 'Guardar costo' }).click()
+  await expect(modal.getByText(/✓ Almendras: \$\s1\.300 desde 16\/10\/26\./)).toBeVisible()
+  expect(google.escrituras).toEqual([{ 'Costos': [['P001', 1300, HOY_SERIE]] }])
+  await expect(historial.nth(1)).toContainText(/16\/10\/26\s*\$\s1\.300\s*Vigente/)
+  await expect(historial).toHaveCount(5) // encabezado y cuatro costos
+})
+
 test('muestra las reglas de comisión vigentes y agrega una por producto', async ({ page, google }) => {
   await ir(page, 'Comisiones')
   const reglas = page.getByRole('table', { name: 'Reglas vigentes' })
