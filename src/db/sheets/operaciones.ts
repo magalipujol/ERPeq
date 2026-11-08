@@ -99,6 +99,10 @@ export function operaciones(escribir: (e: Escritura) => Promise<void>, corregir:
     registrarAjuste: async (a) => escribir({ ajustes: [filas.ajuste(a)] }),
     registrarPrecio: async (p) => escribir({ precios: [filas.precio(p)] }),
     registrarCosto: async (c) => escribir({ costos: [filas.costo(c)] }),
+    // Los costos no tienen ID propio: se borran todas las filas del producto y se agregan las nuevas, en el mismo orden.
+    corregirCostos: async (productoId, costos) => corregir({
+      reemplazos: [], recambios: [{ hoja: 'costos', ids: [productoId], filas: costos.map(filas.costo) }], agregados: {},
+    }),
     registrarReglaComision: async (r) => escribir({ reglas: [filas.regla(r)] }),
     registrarReglaEnvio: async (r) => escribir({ envios: [filas.envio(r)] }),
     registrarCobro: async (c) => escribir({ cobros: [filas.cobro(c)] }),

@@ -342,7 +342,7 @@ columnas corridas guardaría cada dato en otra columna.
 | **Tipos de cliente** | `tipo` | Lista de tipos para la columna `tipo_cliente` de *Contactos*. |
 | **Vendedores** | `id`, `nombre`, `activo`, `localidad` | Quien consigue el pedido y cobra comisión. "Guada/Hernán" es **un** vendedor; "Leo" es otro. `activo` vacío o "sí" = se puede elegir. `localidad`: donde trabaja; se lo propone en los pedidos de clientes de esa localidad (ver [Pedidos](#pedidos)). |
 | **Precios** | `producto_id`, `precio`, `desde` | Precio por defecto, con historial. Un cambio de precio es una fila nueva; el vigente es el de `desde` más reciente. |
-| **Costos** | `producto_id`, `costo`, `desde` | Costo de compra, con historial. Se carga en la pantalla **Precios** o al registrar una compra (si se deja prendido "Actualizar el costo"). El costo de una venta es el vigente a su fecha (ver [Costo](#costo)). |
+| **Costos** | `producto_id`, `costo`, `desde` | Costo de compra, con historial. Se carga en la pantalla **Costos** o al registrar una compra (si se deja prendido "Actualizar el costo"). El costo de una venta es el vigente a su fecha (ver [Costo](#costo)). |
 | **Reglas de comisión** | `vendedor_id`, `producto_id`, `porcentaje`, `desde` | Porcentaje por defecto. `producto_id` vacío = regla general del vendedor. |
 
 ### Pedidos y ventas
@@ -816,11 +816,16 @@ de los insumos de las recetas.
 
 El costo se carga de dos maneras:
 
-- En la pantalla **Precios** (sección *Costos*), con producto, costo y fecha `desde`.
+- En la pantalla **Costos**, con producto, costo y fecha `desde`, arriba de la lista o en el historial de un producto.
 - Al **registrar una compra**, con el switch "Actualizar el costo de los productos con estos precios" (prendido por
   defecto): cada producto comprado con precio mayor a 0 agrega una fila con ese precio y `desde` = fecha de la compra
   (`costosDeCompra`; si un producto aparece dos veces, vale la última línea). Se guarda en la misma escritura que la
   compra. Con el switch apagado, la compra no toca *Costos*.
+
+Un costo cargado por error se **corrige o se borra** desde el historial del producto (tocando su fila en la pantalla
+Costos). Las filas de *Costos* no tienen ID: la corrección (`corregirCostos`) borra todas las filas del producto y
+vuelve a agregar las que quedan, con la corregida, al final de la hoja y en el mismo orden, así una fila agregada
+después sigue ganando ante la misma fecha. Corregir o borrar un costo cambia la ganancia de las ventas desde su fecha.
 
 | Costos de almendras | Venta del 05/10: 4 kg a $3.000 con 10% de comisión |
 |---|---|

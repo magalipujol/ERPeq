@@ -31,7 +31,8 @@ producto, transporte o proveedor) es un vínculo que abre la misma ficha.
 
 Las tablas de Precios (lista de precios) y Costos no abren la ficha del producto: tocar una fila abre el historial
 de ese valor para el producto (del más nuevo al más viejo, con el vigente marcado y los que todavía no rigen),
-con el formulario para cargar uno nuevo desde una fecha y un vínculo a la ficha del producto.
+con el formulario para cargar uno nuevo desde una fecha y un vínculo a la ficha del producto. En Costos, cada costo
+del historial se puede editar (costo y fecha) o borrar (con confirmación).
 
 ## Qué muestra cada ficha
 

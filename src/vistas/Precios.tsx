@@ -1,10 +1,11 @@
-import { Alert, Anchor, Autocomplete, Button, Code, Grid, Group, Modal, NativeSelect, NumberInput, ScrollArea, Stack, Table, Text, TextInput, Title, useMatches } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, Autocomplete, Button, Code, Grid, Group, Modal, NativeSelect, NumberInput, ScrollArea, Stack, Table, Text, TextInput, Title, useMatches } from '@mantine/core';
+import { IconPencil, IconTrash } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import { faltantesDe } from '../db/puerto';
-import { Encabezado, Mensaje, Seccion } from '../componentes/comunes';
+import { Confirmacion, Encabezado, Mensaje, Seccion } from '../componentes/comunes';
 import { Vinculo } from '../componentes/Fichas';
-import { aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, unicos } from '../formato';
+import { aISO, aNumero, deISO, fmtFecha, fmtMoney, fmtNum, hoyISO, unicos } from '../formato';
 import * as M from '../dominio/modelo';
 
 // Valores por defecto con fecha `desde`: cada cambio es una fila nueva. Los pedidos y ventas ya cargados guardan su
@@ -63,11 +64,17 @@ function ListaCostos() {
   return (
     <ListaPorProducto titulo="Costos" que="costo" valores={datos.costos.map((c) => ({ ...c, valor: c.costo }))}
       registrar={async (productoId, costo, desde) => db.registrarCosto({ productoId, costo, desde })}
+      corregir={async (productoId, lista) => db.corregirCostos(productoId, lista.map((x) => ({ productoId, costo: x.valor, desde: x.desde })))}
       nota="La ganancia de cada venta usa el costo vigente a su fecha. Las compras pueden actualizarlo." />
   );
 }
 
 type Registrar = (productoId: string, valor: number, desde: Date) => Promise<void>;
+// Reemplaza todos los valores de un producto: así se corrige o se borra uno.
+type Corregir = (productoId: string, valores: ValorDesde[]) => Promise<void>;
+
+// Sin mayúsculas ni acentos, para buscar.
+const normal = (t: string) => t.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
 
 // El valor vigente hoy: el último con `desde` hasta hoy (sin `desde`, vale desde siempre).
 function vigenteHoy(valores: ValorDesde[], hoy: Date) {
@@ -75,8 +82,8 @@ function vigenteHoy(valores: ValorDesde[], hoy: Date) {
     .reduce<ValorDesde | null>((m, x) => (!m || (x.desde?.getTime() ?? 0) >= (m.desde?.getTime() ?? 0) ? x : m), null);
 }
 
-function ListaPorProducto({ titulo, que, valores, registrar, nota }: {
-  titulo: string; que: 'precio' | 'costo'; valores: ValorDesde[]; nota?: string; registrar: Registrar;
+function ListaPorProducto({ titulo, que, valores, registrar, corregir, nota }: {
+  titulo: string; que: 'precio' | 'costo'; valores: ValorDesde[]; nota?: string; registrar: Registrar; corregir?: Corregir;
 }) {
   const { datos, cargando } = useBase();
   const enCelular = useMatches({ base: true, sm: false });
@@ -87,17 +94,17 @@ function ListaPorProducto({ titulo, que, valores, registrar, nota }: {
 
   const filas = datos.productos
     .map((p) => ({ p, actual: vigenteHoy(valores.filter((x) => x.productoId === p.id), hoy) }))
-    .filter((f) => !buscar.trim() || f.p.producto.toLowerCase().includes(buscar.trim().toLowerCase()))
+    .filter((f) => normal(f.p.producto).includes(normal(buscar)))
     .sort((a, b) => a.p.producto.localeCompare(b.p.producto, 'es'));
 
   return (
     <Seccion>
-      <Encabezado titulo={titulo}>
-        <TextInput type="search" w={200} placeholder="Buscar producto…" aria-label={`Buscar ${que}`}
-          value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
-      </Encabezado>
+      <Encabezado titulo={titulo} />
       {nota && <Text size="sm" c="dimmed" mb="xs">{nota}</Text>}
       <FormValor que={que} registrar={registrar} />
+      {/* Junto a la tabla: en el celular, lo que encuentra queda a la vista. */}
+      <TextInput type="search" mb="xs" placeholder="Buscar producto…" aria-label={`Buscar ${que}`}
+        value={buscar} onChange={(e) => { setBuscar(e.currentTarget.value); }} />
       <ScrollArea.Autosize mah={480} type="auto">
         <Table stickyHeader highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }} aria-label={titulo}>
           <Table.Thead>
@@ -120,7 +127,7 @@ function ListaPorProducto({ titulo, que, valores, registrar, nota }: {
       </ScrollArea.Autosize>
       <Modal opened={elegido !== null} onClose={() => { setElegido(null); }} title={elegido ? `${Que} de ${elegido.producto}` : ''}
         fullScreen={enCelular}>
-        {elegido && <HistorialValor que={que} producto={elegido} hoy={hoy} registrar={registrar}
+        {elegido && <HistorialValor que={que} producto={elegido} hoy={hoy} registrar={registrar} corregir={corregir}
           valores={valores.filter((x) => x.productoId === elegido.id)} />}
       </Modal>
     </Seccion>
@@ -128,13 +135,53 @@ function ListaPorProducto({ titulo, que, valores, registrar, nota }: {
 }
 
 // Historial de un producto: todos sus valores, del más nuevo al más viejo, con el vigente marcado y los que todavía
-// no rigen. Debajo, el formulario para cargar uno nuevo.
-function HistorialValor({ que, producto, valores, hoy, registrar }: {
-  que: 'precio' | 'costo'; producto: M.Producto; valores: ValorDesde[]; hoy: Date; registrar: Registrar;
+// no rigen. Arriba, el formulario para cargar uno nuevo. Con `corregir`, cada valor se puede editar o borrar.
+function HistorialValor({ que, producto, valores, hoy, registrar, corregir }: {
+  que: 'precio' | 'costo'; producto: M.Producto; valores: ValorDesde[]; hoy: Date; registrar: Registrar; corregir?: Corregir;
 }) {
+  const { guardando, msg, guardar, error } = useGuardar();
+  // Posición en `valores` (el orden de la hoja) del que se edita o se borra.
+  const [editando, setEditando] = useState<number | null>(null);
+  const [valorTxt, setValorTxt] = useState<number | string>('');
+  const [desde, setDesde] = useState('');
+  const [borrando, setBorrando] = useState<number | null>(null);
   const vigente = vigenteHoy(valores, hoy);
-  const filas = valores.toSorted((a, b) => (b.desde?.getTime() ?? 0) - (a.desde?.getTime() ?? 0));
+  const filas = valores.map((x, i) => ({ x, i })).toSorted((a, b) => (b.x.desde?.getTime() ?? 0) - (a.x.desde?.getTime() ?? 0));
   const Que = que === 'precio' ? 'Precio' : 'Costo';
+  const fecha = (x: ValorDesde) => (x.desde ? fmtFecha(x.desde) : 'Siempre');
+
+  function editar(i: number, x: ValorDesde) {
+    setEditando(i);
+    setValorTxt(x.valor);
+    setDesde(x.desde ? aISO(x.desde) : '');
+  }
+
+  function guardarEdicion(e: React.SubmitEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const valor = aNumero(valorTxt);
+    const anterior = editando === null ? undefined : valores[editando];
+    if (!anterior || !corregir) return;
+    if (!(valor > 0)) { error(`Ingresá un ${que} mayor a 0.`); return; }
+    if (!desde) { error('Elegí desde qué fecha rige.'); return; }
+    const nuevo = { ...anterior, valor, desde: deISO(desde) };
+    guardar(async () => {
+      await corregir(producto.id, valores.map((x, i) => (i === editando ? nuevo : x)));
+      setEditando(null);
+      return `✓ Corregido: ${fmtMoney(valor)} desde ${fmtFecha(nuevo.desde)}.`;
+    });
+  }
+
+  function borrar() {
+    const i = borrando;
+    const x = i === null ? undefined : valores[i];
+    setBorrando(null);
+    if (!x || !corregir) return;
+    guardar(async () => {
+      await corregir(producto.id, valores.filter((_, j) => j !== i));
+      return `✓ Borrado el ${que} de ${fmtMoney(x.valor)} (${fecha(x)}).`;
+    });
+  }
+
   return (
     <Stack gap="md">
       <FormValor que={que} registrar={registrar} producto={producto} />
@@ -144,19 +191,58 @@ function HistorialValor({ que, producto, valores, hoy, registrar }: {
             <Table.Tr><Table.Th>Desde</Table.Th><Table.Th className="num">{Que}</Table.Th><Table.Th /></Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {filas.map((x, i) => (
-              // Los valores no tienen ID y no se reordenan: el índice alcanza como clave.
-              // eslint-disable-next-line @eslint-react/no-array-index-key
-              <Table.Tr key={i} fw={x === vigente ? 700 : undefined}>
-                <Table.Td>{x.desde ? fmtFecha(x.desde) : 'Siempre'}</Table.Td>
-                <Table.Td className="num">{fmtMoney(x.valor)}</Table.Td>
-                <Table.Td c="dimmed">{x === vigente ? 'Vigente' : x.desde && x.desde > hoy ? 'Todavía no rige' : ''}</Table.Td>
+            {filas.map(({ x, i }) => (i === editando ? (
+              <Table.Tr key={i}>
+                <Table.Td colSpan={3}>
+                  <form onSubmit={guardarEdicion} noValidate aria-label={`Corregir ${que}`}>
+                    <Stack gap="xs">
+                      <Group grow gap="xs" align="flex-start">
+                        <NumberInput label={Que} allowNegative={false} value={valorTxt} onChange={setValorTxt}
+                          leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none" />
+                        <TextInput label="Desde" type="date" value={desde} onChange={(e) => { setDesde(e.currentTarget.value); }} />
+                      </Group>
+                      <Group gap="xs" justify="flex-end">
+                        <Button variant="default" onClick={() => { setEditando(null); }}>Cancelar</Button>
+                        <Button type="submit" loading={guardando}>Guardar</Button>
+                      </Group>
+                    </Stack>
+                  </form>
+                </Table.Td>
               </Table.Tr>
-            ))}
+            ) : (
+              // Los valores no tienen ID: la clave es su posición en la hoja.
+              <Table.Tr key={i} fw={x === vigente ? 700 : undefined}>
+                <Table.Td>
+                  {fecha(x)}
+                  <Text size="xs" c="dimmed" fw={400}>{x === vigente ? 'Vigente' : x.desde && x.desde > hoy ? 'Todavía no rige' : ''}</Text>
+                </Table.Td>
+                <Table.Td className="num">{fmtMoney(x.valor)}</Table.Td>
+                <Table.Td>
+                  {corregir && (
+                    <Group gap={4} wrap="nowrap" justify="flex-end">
+                      <ActionIcon variant="subtle" size="lg" aria-label={`Editar ${que} de ${fecha(x)}`}
+                        disabled={guardando} onClick={() => { editar(i, x); }}><IconPencil size={18} /></ActionIcon>
+                      <ActionIcon variant="subtle" color="red" size="lg" aria-label={`Borrar ${que} de ${fecha(x)}`}
+                        disabled={guardando} onClick={() => { setBorrando(i); }}><IconTrash size={18} /></ActionIcon>
+                    </Group>
+                  )}
+                </Table.Td>
+              </Table.Tr>
+            )))}
           </Table.Tbody>
         </Table>
       )}
+      <Mensaje msg={msg} />
       <Text size="sm"><Vinculo a={{ tipo: 'producto', id: producto.id }}>Ver la ficha de {producto.producto}</Vinculo></Text>
+      <Confirmacion abierta={borrando !== null} titulo={`¿Borrar este ${que}?`} si={`Sí, borrar ${que}`} peligro onSi={borrar}
+        onNo={() => { setBorrando(null); }}>
+        {borrando !== null && borrando < valores.length && (
+          <Text size="sm">
+            {producto.producto}: {fmtMoney(valores[borrando].valor)} ({fecha(valores[borrando])}). Desde su fecha rige el {que} anterior; si
+            no hay, las ventas de esos días quedan sin {que}.
+          </Text>
+        )}
+      </Confirmacion>
     </Stack>
   );
 }

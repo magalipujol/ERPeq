@@ -42,15 +42,49 @@ test('tocar un costo abre su historial y deja cargar uno nuevo ahí mismo', asyn
   const modal = page.getByRole('dialog', { name: 'Costo de Almendras' })
   // Del más nuevo al más viejo: $1.000 desde el 06/10 (vigente), $1.500 desde el 02/10 y $2.000 desde el 10/09.
   const historial = modal.getByRole('table', { name: 'Historial de costo' }).getByRole('row')
-  await expect(historial.nth(1)).toContainText(/06\/10\/26\s*\$\s1\.000\s*Vigente/)
+  await expect(historial.nth(1)).toContainText(/06\/10\/26\s*Vigente\s*\$\s1\.000/)
   await expect(historial.nth(2)).toContainText(/\$\s1\.500/)
 
   await modal.getByLabel('Costo', { exact: true }).fill('1300')
   await modal.getByRole('button', { name: 'Guardar costo' }).click()
   await expect(modal.getByText(/✓ Almendras: \$\s1\.300 desde 16\/10\/26\./)).toBeVisible()
   expect(google.escrituras).toEqual([{ 'Costos': [['P001', 1300, HOY_SERIE]] }])
-  await expect(historial.nth(1)).toContainText(/16\/10\/26\s*\$\s1\.300\s*Vigente/)
+  await expect(historial.nth(1)).toContainText(/16\/10\/26\s*Vigente\s*\$\s1\.300/)
   await expect(historial).toHaveCount(5) // encabezado y cuatro costos
+})
+
+test('busca en Costos sin importar mayúsculas ni acentos', async ({ page }) => {
+  await ir(page, 'Costos')
+  const tabla = page.getByRole('table', { name: 'Costos' })
+  await page.getByRole('searchbox', { name: 'Buscar costo' }).fill('ÁLMEN')
+  await expect(tabla.getByRole('row')).toHaveCount(2) // encabezado y Almendras
+  await expect(tabla).toContainText('Almendras')
+})
+
+test('en el historial de costos se corrige y se borra un costo', async ({ page, google }) => {
+  await ir(page, 'Costos')
+  await page.getByRole('table', { name: 'Costos' }).getByRole('cell', { name: 'Almendras', exact: true }).click()
+  const modal = page.getByRole('dialog', { name: 'Costo de Almendras' })
+  const historial = modal.getByRole('table', { name: 'Historial de costo' })
+
+  // 1. El de $1.500 del 02/10 pasa a $1.400 desde el 03/10. Las filas de Almendras se reemplazan, en el mismo orden.
+  await modal.getByRole('button', { name: 'Editar costo de 02/10/26' }).click()
+  const form = modal.getByRole('form', { name: 'Corregir costo' })
+  await expect(form.getByLabel('Costo', { exact: true })).toHaveValue('1500')
+  await form.getByLabel('Costo', { exact: true }).fill('1400')
+  await form.getByLabel('Desde', { exact: true }).fill('2026-10-03')
+  await form.getByRole('button', { name: 'Guardar' }).click()
+  await expect(modal.getByText(/✓ Corregido: \$\s1\.400 desde 03\/10\/26\./)).toBeVisible()
+  expect(google.borrados.map((b) => b.valores[1])).toEqual([1000, 1500, 2000])
+  expect(google.escrituras).toEqual([{ 'Costos': [['P001', 2000, HOY_SERIE - 36], ['P001', 1400, HOY_SERIE - 13], ['P001', 1000, HOY_SERIE - 10]] }])
+  await expect(historial.getByRole('row').nth(2)).toContainText(/03\/10\/26\s*\$\s1\.400/)
+
+  // 2. Se borra el de $2.000 del 10/09, confirmando.
+  await modal.getByRole('button', { name: 'Borrar costo de 10/09/26' }).click()
+  await page.getByRole('dialog', { name: '¿Borrar este costo?' }).getByRole('button', { name: 'Sí, borrar costo' }).click()
+  await expect(modal.getByText('✓ Borrado el costo de $ 2.000 (10/09/26).')).toBeVisible()
+  expect(google.hojas.Costos.filter((f) => f[0] === 'P001')).toEqual([['P001', 1400, HOY_SERIE - 13], ['P001', 1000, HOY_SERIE - 10]])
+  await expect(historial.getByRole('row')).toHaveCount(3)
 })
 
 test('muestra las reglas de comisión vigentes y agrega una por producto', async ({ page, google }) => {

@@ -124,6 +124,16 @@ describe('operaciones sobre la planilla', () => {
     expect(M.costeador(leidos.costos)('P004', dia)).toBe(1.1);
   });
 
+  it('corregir los costos de un producto reemplaza solo sus filas', async () => {
+    expect.hasAssertions();
+
+    const db = crearPlanillaEnMemoria({ costos: [['P001', 1500, DIA - 10], ['P002', 500, DIA], ['P001', 1000, DIA]] });
+    // El de $1.000 pasa a $1.200 y el de $1.500 se borra.
+    await db.corregirCostos('P001', [{ productoId: 'P001', costo: 1200, desde: dia }]);
+
+    expect(db.hojas.costos).toStrictEqual([['P002', 500, DIA], ['P001', 1200, DIA]]);
+  });
+
   it('una receta y una fabricación se guardan cada una en una escritura', async () => {
     expect.hasAssertions();
 

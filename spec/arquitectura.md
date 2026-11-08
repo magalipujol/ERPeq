@@ -82,7 +82,7 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
   dominio.
 - **Operaciones:** una por caso de uso. **Cada una es atómica**: se guarda entera o no se guarda. En Sheets
   es un solo `batchUpdate` con un `appendCells` por hoja. Las correcciones (`corregirContacto`,
-  `corregirProducto`, `corregirPedido`) y `borrarVenta` son una `Correccion` del adaptador: filas que se reemplazan en el lugar
+  `corregirProducto`, `corregirPedido`, `corregirCostos`) y `borrarVenta` son una `Correccion` del adaptador: filas que se reemplazan en el lugar
   (`updateCells`), filas sin ID propio que se borran (`deleteDimension`, de abajo hacia arriba) y se vuelven a agregar
   al final, y filas nuevas, todo en un solo `batchUpdate`. El adaptador busca los IDs en la columna A justo antes de
   escribir (la hoja pudo ordenarse a mano desde la última lectura). Si un ID a reemplazar no está, o está en más de
@@ -105,6 +105,7 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
 | `registrarAjuste` | `Ajuste` | *Ajustes*. |
 | `registrarPrecio` | `Precio` | *Precios*. |
 | `registrarCosto` | `Costo` | *Costos*. |
+| `corregirCostos` | `productoId`, `Costo[]` | Borra las filas del producto en *Costos* y agrega las nuevas al final, en el mismo orden (así se corrige o se borra un costo). |
 | `registrarReglaComision` | `ReglaComision` | *Reglas de comisión*. |
 | `registrarReglaEnvio` | `ReglaEnvio` | *Envíos*. |
 | `registrarCobro` | `Cobro` | *Cobros*. |

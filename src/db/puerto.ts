@@ -98,6 +98,8 @@ export interface Operaciones {
   registrarAjuste: (a: Ajuste) => Promise<void>;
   registrarPrecio: (p: Precio) => Promise<void>;
   registrarCosto: (c: Costo) => Promise<void>;
+  // Reemplaza todo el historial de costos de un producto (para corregir o borrar un costo cargado).
+  corregirCostos: (productoId: string, costos: Costo[]) => Promise<void>;
   registrarReglaComision: (r: ReglaComision) => Promise<void>;
   registrarReglaEnvio: (r: ReglaEnvio) => Promise<void>;
   registrarCobro: (c: Cobro) => Promise<void>;
