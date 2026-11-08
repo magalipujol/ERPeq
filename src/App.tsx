@@ -1,8 +1,8 @@
 import {
   ActionIcon, Alert, AppShell, Box, Button, Code, Container, Group, Paper, Stack, Text, ThemeIcon, Title, Tooltip,
 } from '@mantine/core';
-import { IconBrandGoogleFilled, IconExternalLink, IconRefresh } from '@tabler/icons-react';
-import { useCallback, useEffect, useState } from 'react';
+import { IconBrandGoogleFilled, IconExternalLink, IconRefresh, IconSparkles } from '@tabler/icons-react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { BaseProvider } from './BaseProvider';
 import { FichaProvider } from './componentes/Fichas';
 import { BarraInferior, NavSuperior } from './componentes/Navegacion';
@@ -22,6 +22,9 @@ import { Productos } from './vistas/Productos';
 import { Recetas } from './vistas/Recetas';
 import { Stock } from './vistas/Stock';
 import { Ventas } from './vistas/Ventas';
+
+// El asistente trae LiteRT-LM: se carga recién la primera vez que se abre.
+const Asistente = lazy(async () => import('./componentes/Asistente').then((m) => ({ default: m.Asistente })));
 
 type Pantalla = 'config' | 'login' | 'sin-acceso' | 'app';
 // El grupo ordena la pantalla «Más» del celular; los grupos salen en el orden en que aparecen acá.
@@ -62,6 +65,7 @@ export function App({ db }: { db: BaseDeDatos }) {
   const [fleteResaltado, setFleteResaltado] = useState<FleteResaltado | null>(null);
   const [borradorFlete, setBorradorFlete] = useState<BorradorFlete | null>(null);
   const [depositoStock, setDepositoStock] = useState('');
+  const [asistente, setAsistente] = useState<boolean | null>(null); // null: todavía no se abrió
 
   const cargar = useCallback(async () => {
     setEstado({ texto: 'Leyendo la planilla…', error: false });
@@ -200,6 +204,11 @@ export function App({ db }: { db: BaseDeDatos }) {
                       size="lg" hiddenFrom="sm" aria-label="Planilla">
                       <IconExternalLink size={18} />
                     </ActionIcon>
+                    <Tooltip label="Asistente">
+                      <ActionIcon variant="default" size="lg" onClick={() => { setAsistente(true); }} aria-label="Asistente">
+                        <IconSparkles size={16} />
+                      </ActionIcon>
+                    </Tooltip>
                     <Tooltip label="Volver a leer la planilla">
                       <ActionIcon variant="default" size="lg" onClick={() => { void cargar().catch(() => undefined); }} loading={cargando} aria-label="Refrescar">
                         <IconRefresh size={16} />
@@ -287,6 +296,9 @@ export function App({ db }: { db: BaseDeDatos }) {
                 <Box display={vista === 'productos' ? undefined : 'none'}><Productos /></Box>
                 <Box display={vista === 'caja' ? undefined : 'none'}><Caja /></Box>
                 <Box display={vista === 'analisis' ? undefined : 'none'}><Analisis visible={vista === 'analisis'} /></Box>
+                {asistente !== null && (
+                  <Suspense fallback={null}><Asistente abierto={asistente} onCerrar={() => { setAsistente(false); }} /></Suspense>
+                )}
               </FichaProvider>
             </BaseProvider>
           )}

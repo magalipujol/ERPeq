@@ -19,6 +19,9 @@ Es una página estática (sin servidor) hecha con React, TypeScript y Mantine, q
   cada vez que se abre carga la versión publicada, así que se actualiza sola con cada deploy. Una app que quedó
   abierta en segundo plano sigue con la versión anterior hasta que se cierra o se recarga. Ver
   [GUIA-CONFIGURACION.md](GUIA-CONFIGURACION.md#instalar-en-el-celular).
+- El asistente (botón ✨ del header) responde preguntas sobre los datos con un modelo de lenguaje que corre en el
+  navegador (Gemma 4 E2B con LiteRT-LM, sobre WebGPU): los datos no salen del dispositivo. Solo consulta. La primera
+  vez descarga el modelo (~2 GB) de Hugging Face y lo guarda en el navegador. Ver [spec/asistente.md](spec/asistente.md).
 
 ## Estructura de la planilla
 
@@ -54,6 +57,7 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
   - `dominio/modelo.ts`: tipos y cálculos del negocio (sin base de datos ni navegador).
   - `dominio/analisis.ts`: cálculos de la pantalla Análisis (sin base de datos ni navegador).
   - `dominio/mapa.ts`: qué va en el mapa de Inicio y en qué localidad (sin base de datos ni navegador).
+  - `dominio/asistente.ts`: las consultas que puede hacer el asistente (sin base de datos ni navegador).
   - `dominio/fichas.ts`: qué muestra la ficha de cada cosa al tocarla en una tabla (sin base de datos ni navegador).
   - `mapa/`: el mapa de Argentina (`argentina.json`: provincias y localidades ya proyectadas) y `ubicar.ts`,
     que ubica localidades y arma las marcas.
@@ -66,7 +70,7 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
   - `componentes/`: piezas compartidas (carga de ítems, navegación entre pantallas, KPIs, el mapa de Inicio y
     `Fichas.tsx`, el modal que muestra lo que se toca en una tabla con sus vínculos, `Maestros.tsx`, los
     formularios de alta y corrección de contactos y productos, `CorregirPedido.tsx`, el que corrige un pedido, y
-    `FormFlete.tsx`, el alta y la corrección de un flete); `ficha.ts`: el contexto para abrirlas.
+    `FormFlete.tsx`, el alta y la corrección de un flete, y `Asistente.tsx`, el panel del asistente); `ficha.ts`: el contexto para abrirlas.
   - `celular.css`: ajustes para pantallas de menos de 768 px (barra inferior con menú *Más*, campos de 44 px).
   - `fuentes/`: la tipografía OpenDyslexic (regular y negrita) y su licencia (SIL Open Font License).
   - `whatsapp.ts`: arma el mensaje con los pedidos para mandar a un grupo de WhatsApp (botón *Exportar a WhatsApp* en Pedidos).

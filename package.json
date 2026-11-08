@@ -19,6 +19,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@litert-lm/core": "^0.19.0",
     "@mantine/charts": "^9.7.2",
     "@mantine/core": "^9.7.2",
     "@mantine/hooks": "^9.7.2",
