@@ -1,8 +1,8 @@
 // Cada operación del puerto se traduce en las filas que agrega a cada hoja (una Escritura), que el
 // adaptador guarda de una sola vez.
-import type { Cobro, CorreccionPedido, Entrega } from '../../dominio/modelo';
+import { type Cobro, type CorreccionPedido, type Entrega, motivoFabricacion } from '../../dominio/modelo';
 import type { CompraNueva, FleteNuevo, Operaciones, PedidoNuevo } from '../puerto';
-import { type Correccion, type Escritura, filas, type Reemplazo, unir } from './hojas';
+import { type Correccion, type Escritura, filas, type Recambio, type Reemplazo, unir } from './hojas';
 
 export function escrituraEntrega({ venta, items, comisiones, envio }: Entrega, cobros: Cobro[] = []): Escritura {
   return {
@@ -83,6 +83,8 @@ export function escrituraCompra(c: CompraNueva): Escritura {
 // que corrige filas ya guardadas, también de una sola vez.
 export function operaciones(escribir: (e: Escritura) => Promise<void>, corregir: (c: Correccion) => Promise<void>): Operaciones {
   const reemplazar = async (r: Reemplazo) => corregir({ reemplazos: [r], recambios: [], agregados: {} });
+  // Las filas sin ID propio se corrigen borrando todas las de su grupo y agregando las nuevas, en el mismo orden.
+  const recambiar = async (r: Recambio) => corregir({ reemplazos: [], recambios: [r], agregados: {} });
   return {
     registrarContacto: async (c) => escribir({ contactos: [filas.contacto(c)] }),
     corregirContacto: async (c) => reemplazar({ hoja: 'contactos', id: c.id, fila: filas.contacto(c) }),
@@ -95,19 +97,32 @@ export function operaciones(escribir: (e: Escritura) => Promise<void>, corregir:
     cambiarEstadoPedido: async (id, estado, momento) => escribir({ pedidosEstados: [filas.estado(id, estado, momento)] }),
     registrarFlete: async (f) => escribir(escrituraFlete(f)),
     cambiarEstadoFlete: async (id, estado, momento) => escribir({ fletesEstados: [filas.estado(id, estado, momento)] }),
+    corregirFlete: async ({ flete, items, transporteNuevo }) => corregir({
+      reemplazos: [{ hoja: 'fletes', id: flete.id, fila: filas.flete(flete) }],
+      recambios: [{ hoja: 'fletesItems', ids: [flete.id], filas: items.map(filas.fleteItem) }],
+      agregados: transporteNuevo ? { contactos: [filas.contacto(transporteNuevo)] } : {},
+    }),
+    borrarFlete: async (id) => corregir({
+      reemplazos: [],
+      recambios: (['fletes', 'fletesItems', 'fletesEstados'] as const).map((hoja) => ({ hoja, ids: [id], filas: [] })), agregados: {},
+    }),
     registrarCompra: async (c) => escribir(escrituraCompra(c)),
     registrarAjuste: async (a) => escribir({ ajustes: [filas.ajuste(a)] }),
     registrarPrecio: async (p) => escribir({ precios: [filas.precio(p)] }),
     registrarCosto: async (c) => escribir({ costos: [filas.costo(c)] }),
-    // Los costos no tienen ID propio: se borran todas las filas del producto y se agregan las nuevas, en el mismo orden.
-    corregirCostos: async (productoId, costos) => corregir({
-      reemplazos: [], recambios: [{ hoja: 'costos', ids: [productoId], filas: costos.map(filas.costo) }], agregados: {},
-    }),
+    corregirPrecios: async (productoId, precios) => recambiar({ hoja: 'precios', ids: [productoId], filas: precios.map(filas.precio) }),
+    corregirCostos: async (productoId, costos) => recambiar({ hoja: 'costos', ids: [productoId], filas: costos.map(filas.costo) }),
     registrarReglaComision: async (r) => escribir({ reglas: [filas.regla(r)] }),
+    corregirReglas: async (vendedorId, reglas) => recambiar({ hoja: 'reglas', ids: [vendedorId], filas: reglas.map(filas.regla) }),
     registrarReglaEnvio: async (r) => escribir({ envios: [filas.envio(r)] }),
     registrarCobro: async (c) => escribir({ cobros: [filas.cobro(c)] }),
+    // Los cobros tienen el ID de la venta en la columna B.
+    corregirCobros: async (ventaId, cobros) => recambiar({ hoja: 'cobros', ids: [ventaId], filas: cobros.map(filas.cobro), columna: 1 }),
+    corregirEnvio: async (ventaId, envio) => recambiar({ hoja: 'ventasEnvios', ids: [ventaId], filas: envio ? [filas.ventaEnvio(envio)] : [] }),
     registrarRendicion: async (r) => escribir({ rendiciones: [filas.rendicion(r)] }),
     registrarReceta: async (r) => escribir({ recetas: [filas.receta(r.receta)], recetasItems: r.items.map(filas.recetaItem) }),
     registrarFabricacion: async (ajustes) => escribir({ ajustes: ajustes.map(filas.ajuste) }),
+    // El motivo ("Fabricación FA0001 (RE0001 v2)", columna E) identifica los ajustes de la fabricación.
+    borrarFabricacion: async (f) => recambiar({ hoja: 'ajustes', ids: [motivoFabricacion(f)], filas: [], columna: 4 }),
   };
 }

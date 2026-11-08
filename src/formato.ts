@@ -22,6 +22,9 @@ export const deISOConHora = (s: string) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(s);
   return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5])) : null;
 };
+// Fecha local → valor de un <input type="datetime-local">.
+export const aISOConHora = (d: Date | null) =>
+  (d ? `${aISO(d)}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : '');
 export const fmtFechaHora = (d: Date | null) =>
   (d ? `${fmtFecha(d)} ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}` : '–');
 export const hora = () => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });

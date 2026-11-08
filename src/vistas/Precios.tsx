@@ -53,7 +53,8 @@ function ListaPrecios() {
   const { datos, db } = useBase();
   return (
     <ListaPorProducto titulo="Lista de precios" que="precio" valores={datos.precios.map((p) => ({ ...p, valor: p.precio }))}
-      registrar={async (productoId, precio, desde) => db.registrarPrecio({ productoId, precio, desde })} />
+      registrar={async (productoId, precio, desde) => db.registrarPrecio({ productoId, precio, desde })}
+      corregir={async (productoId, lista) => db.corregirPrecios(productoId, lista.map((x) => ({ productoId, precio: x.valor, desde: x.desde })))} />
   );
 }
 
@@ -238,8 +239,8 @@ function HistorialValor({ que, producto, valores, hoy, registrar, corregir }: {
         onNo={() => { setBorrando(null); }}>
         {borrando !== null && borrando < valores.length && (
           <Text size="sm">
-            {producto.producto}: {fmtMoney(valores[borrando].valor)} ({fecha(valores[borrando])}). Desde su fecha rige el {que} anterior; si
-            no hay, las ventas de esos días quedan sin {que}.
+            {producto.producto}: {fmtMoney(valores[borrando].valor)} ({fecha(valores[borrando])}). Desde su fecha rige el {que} anterior
+            {que === 'costo' ? '; si no hay, las ventas de esos días quedan sin costo.' : '. Los pedidos ya cargados no cambian.'}
           </Text>
         )}
       </Confirmacion>
@@ -294,8 +295,34 @@ function ReglasComision() {
   const [producto, setProducto] = useState('');
   const [pctTxt, setPctTxt] = useState<number | string>('');
   const [desde, setDesde] = useState(hoyISO);
+  // La regla que se corrige con el formulario, y la que se va a borrar.
+  const [editando, setEditando] = useState<M.ReglaComision | null>(null);
+  const [borrando, setBorrando] = useState<M.ReglaComision | null>(null);
   const productos = useMemo(() => unicos(datos.productos.map((p) => p.producto)), [datos]);
   const nombreProducto = new Map(datos.productos.map((p) => [p.id, p.producto]));
+  const descripcion = (r: M.ReglaComision) =>
+    `${nombres.vendedor(r.vendedorId)}: ${fmtNum(r.porcentaje)}% ${r.productoId ? `en ${nombreProducto.get(r.productoId) ?? r.productoId}` : 'general'}`;
+  // Las reglas no tienen ID: se reemplazan todas las del vendedor, con la corregida en su lugar.
+  const delVendedor = (vendedorId: string) => datos.reglas.filter((x) => x.vendedorId === vendedorId);
+
+  function editar(r: M.ReglaComision) {
+    setEditando(r);
+    setVendedor(r.vendedorId);
+    setProducto(r.productoId ? nombreProducto.get(r.productoId) ?? '' : '');
+    setPctTxt(r.porcentaje);
+    setDesde(aISO(r.desde));
+  }
+
+  function borrar() {
+    const r = borrando;
+    setBorrando(null);
+    if (!r) return;
+    guardar(async () => {
+      await db.corregirReglas(r.vendedorId, delVendedor(r.vendedorId).filter((x) => x !== r));
+      if (editando === r) setEditando(null);
+      return `✓ Borrada la regla de ${descripcion(r)}.`;
+    });
+  }
 
   // Regla vigente de cada vendedor y producto (la última agregada con `desde` hasta hoy).
   const [hoy] = useState(() => new Date());
@@ -319,21 +346,28 @@ function ReglasComision() {
     if (p === undefined) { error('Ese producto no existe. Dejalo vacío para una regla general.'); return; }
     if (!(pct >= 0 && pct <= 100)) { error('El porcentaje tiene que estar entre 0 y 100.'); return; }
     if (!desde) { error('Elegí desde qué fecha rige.'); return; }
+    const regla = { vendedorId: vendedor, productoId: p?.id ?? '', porcentaje: pct, desde: deISO(desde) };
+    const anterior = editando;
     guardar(async () => {
-      await db.registrarReglaComision({ vendedorId: vendedor, productoId: p?.id ?? '', porcentaje: pct, desde: deISO(desde) });
+      if (anterior) {
+        await db.corregirReglas(anterior.vendedorId, delVendedor(anterior.vendedorId).map((x) => (x === anterior ? regla : x)));
+      } else {
+        await db.registrarReglaComision(regla);
+      }
+      setEditando(null);
       setPctTxt('');
-      return `✓ ${nombres.vendedor(vendedor)}: ${fmtNum(pct)}% ${p ? `en ${p.producto}` : 'general'}.`;
+      return `✓ ${anterior ? 'Corregida: ' : ''}${descripcion(regla)}.`;
     });
   }
 
   return (
     <Seccion>
       <Encabezado titulo="Reglas de comisión" />
-      <form onSubmit={enviar} noValidate aria-label="Nueva regla de comisión">
+      <form onSubmit={enviar} noValidate aria-label={editando ? 'Corregir regla de comisión' : 'Nueva regla de comisión'}>
         <Stack gap="xs" mb="sm">
           <Group grow gap="xs" align="flex-start">
             <NativeSelect label="Vendedor" data={datos.vendedores.map((v) => ({ value: v.id, label: v.nombre }))} value={vendedor}
-              onChange={(e) => { setVendedor(e.currentTarget.value); }} />
+              disabled={editando !== null} onChange={(e) => { setVendedor(e.currentTarget.value); }} />
             <Autocomplete label="Producto" placeholder="Todos" data={productos} value={producto} onChange={setProducto} />
           </Group>
           <Group grow gap="xs" align="flex-start">
@@ -341,14 +375,21 @@ function ReglasComision() {
               rightSection={<Text size="xs" c="dimmed">%</Text>} rightSectionPointerEvents="none" />
             <TextInput label="Desde" type="date" value={desde} onChange={(e) => { setDesde(e.currentTarget.value); }} />
           </Group>
-          <Button type="submit" loading={guardando}>Guardar regla</Button>
+          {editando ? (
+            <Group gap="xs" justify="flex-end">
+              <Button variant="default" onClick={() => { setEditando(null); setPctTxt(''); }}>Cancelar</Button>
+              <Button type="submit" loading={guardando}>Guardar corrección</Button>
+            </Group>
+          ) : <Button type="submit" loading={guardando}>Guardar regla</Button>}
           <Mensaje msg={msg} />
         </Stack>
       </form>
       <ScrollArea type="auto">
         <Table highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }} aria-label="Reglas vigentes">
           <Table.Thead>
-            <Table.Tr><Table.Th>Vendedor</Table.Th><Table.Th>Producto</Table.Th><Table.Th className="num">%</Table.Th><Table.Th>Desde</Table.Th></Table.Tr>
+            <Table.Tr>
+              <Table.Th>Vendedor</Table.Th><Table.Th>Producto</Table.Th><Table.Th className="num">%</Table.Th><Table.Th>Desde</Table.Th><Table.Th />
+            </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {filas.map((r) => (
@@ -357,12 +398,28 @@ function ReglasComision() {
                 <Table.Td c={r.productoId ? undefined : 'dimmed'}>{r.productoId ? nombreProducto.get(r.productoId) ?? r.productoId : 'Todos (general)'}</Table.Td>
                 <Table.Td className="num">{fmtNum(r.porcentaje)}</Table.Td>
                 <Table.Td c="dimmed">{fmtFecha(r.desde)}</Table.Td>
+                <Table.Td>
+                  <Group gap={4} wrap="nowrap" justify="flex-end">
+                    <ActionIcon variant="subtle" size="lg" aria-label={`Editar regla de ${descripcion(r)}`}
+                      disabled={guardando} onClick={() => { editar(r); }}><IconPencil size={18} /></ActionIcon>
+                    <ActionIcon variant="subtle" color="red" size="lg" aria-label={`Borrar regla de ${descripcion(r)}`}
+                      disabled={guardando} onClick={() => { setBorrando(r); }}><IconTrash size={18} /></ActionIcon>
+                  </Group>
+                </Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>
         </Table>
       </ScrollArea>
       {filas.length === 0 && <Text c="dimmed" mt="xs" size="sm">No hay reglas: las comisiones se proponen en 0%.</Text>}
+      <Confirmacion abierta={borrando !== null} titulo="¿Borrar esta regla?" si="Sí, borrar regla" peligro onSi={borrar}
+        onNo={() => { setBorrando(null); }}>
+        {borrando && (
+          <Text size="sm">
+            {descripcion(borrando)}, desde {fmtFecha(borrando.desde)}. Desde su fecha rige la regla anterior. Las ventas ya cargadas no cambian.
+          </Text>
+        )}
+      </Confirmacion>
     </Seccion>
   );
 }

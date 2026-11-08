@@ -1,10 +1,11 @@
 import {
-  Alert, Autocomplete, Badge, Button, Code, Grid, Group, NativeSelect, NumberInput, ScrollArea, SegmentedControl, Stack,
+  ActionIcon, Alert, Autocomplete, Badge, Button, Code, Grid, Group, NativeSelect, NumberInput, ScrollArea, SegmentedControl, Stack,
   Table, Text, TextInput, Title,
 } from '@mantine/core';
+import { IconTrash } from '@tabler/icons-react';
 import { useMemo, useRef, useState } from 'react';
 import { useBase, useGuardar } from '../base';
-import { Encabezado, Kpis, Mensaje, Seccion } from '../componentes/comunes';
+import { Confirmacion, Encabezado, Kpis, Mensaje, Seccion } from '../componentes/comunes';
 import { Vinculo } from '../componentes/Fichas';
 import { useFila } from '../ficha';
 import { type Item, itemVacio } from '../componentes/item';
@@ -364,18 +365,32 @@ function ListaRecetas({ vigentes, onEditar, deshabilitado }:
 }
 
 function ListaFabricaciones({ hechas }: { hechas: M.Fabricacion[] }) {
-  const { datos, nombres, cargando } = useBase();
+  const { datos, nombres, cargando, db } = useBase();
+  const { guardando, msg, guardar } = useGuardar();
+  const [borrando, setBorrando] = useState<M.Fabricacion | null>(null);
   const filas = [...hechas].sort(porFechaDesc).slice(0, 30);
-  if (filas.length === 0) return null;
+  if (filas.length === 0 && msg === null) return null;
+
+  function borrar() {
+    const f = borrando;
+    setBorrando(null);
+    if (!f) return;
+    guardar(async () => {
+      await db.borrarFabricacion(f);
+      return `✓ Fabricación de ${nombres.producto(f.productoId)} borrada: los insumos volvieron a ${nombres.deposito(f.depositoId)}.`;
+    });
+  }
+
   return (
     <Seccion>
       <Encabezado titulo="Últimas fabricaciones" />
+      <Mensaje msg={msg} />
       <ScrollArea type="auto">
         <Table highlightOnHover fz="sm" style={{ opacity: cargando ? 0.5 : 1 }} aria-label="Últimas fabricaciones">
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Fecha</Table.Th><Table.Th>Producto</Table.Th><Table.Th className="num">Salió</Table.Th>
-              <Table.Th>Depósito</Table.Th><Table.Th>Receta</Table.Th>
+              <Table.Th>Depósito</Table.Th><Table.Th>Receta</Table.Th><Table.Th />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -388,12 +403,26 @@ function ListaFabricaciones({ hechas }: { hechas: M.Fabricacion[] }) {
                   <Table.Td className="num">{fmtNum(f.cantidad)} {unidad}</Table.Td>
                   <Table.Td>{nombres.deposito(f.depositoId)}</Table.Td>
                   <Table.Td c="dimmed">Versión {f.version}</Table.Td>
+                  <Table.Td>
+                    <ActionIcon variant="subtle" color="red" size="lg" disabled={guardando} onClick={() => { setBorrando(f); }}
+                      aria-label={`Borrar fabricación de ${nombres.producto(f.productoId)} del ${fmtFecha(f.fecha)}`}><IconTrash size={18} /></ActionIcon>
+                  </Table.Td>
                 </Table.Tr>
               );
             })}
           </Table.Tbody>
         </Table>
       </ScrollArea>
+      <Confirmacion abierta={borrando !== null} titulo="¿Borrar la fabricación?" si="Sí, borrar fabricación" peligro onSi={borrar}
+        onNo={() => { setBorrando(null); }}>
+        {borrando && (
+          <Text size="sm">
+            {fmtNum(borrando.cantidad)} {unidadDe(datos, borrando.productoId)} de {nombres.producto(borrando.productoId)} ({fmtFecha(borrando.fecha)},
+            {' '}{nombres.deposito(borrando.depositoId)}). Lo fabricado sale del stock y los insumos vuelven.
+          </Text>
+        )}
+        <Text size="sm" fw={700}>No se puede deshacer.</Text>
+      </Confirmacion>
     </Seccion>
   );
 }

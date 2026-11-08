@@ -61,9 +61,13 @@ sequenceDiagram
     [Corregir un pedido](#corregir-un-pedido)). El stock, las comisiones y lo que falta cobrar se recalculan solos.
   - **Ventas**: una entrega registrada por error se borra con sus comisiones, envío y cobros (ver
     [Borrar una venta](#borrar-una-venta)).
-  - **Movimientos** (compras, ajustes, estados): las correcciones son filas nuevas (un ajuste, un nuevo
-    estado), así el stock se puede recalcular siempre. La corrección de fletes, compras y cobros ya
-    cargados todavía no está en la app (ver [Preguntas abiertas](#preguntas-abiertas)).
+  - **Fletes**: se corrigen (datos y mercadería; los estados se cambian con uno nuevo) o se borran con su
+    mercadería y sus estados, desde su ficha.
+  - **Filas sin ID propio que se agrupan por otra columna** (precios y costos por producto, reglas de comisión por
+    vendedor, cobros y envío por venta, ajustes de una fabricación por su motivo): se corrigen o se borran
+    reemplazando todas las del grupo, en el mismo orden, en una sola escritura.
+  - **Compras, ajustes sueltos y rendiciones**: no tienen ID ni nada que las agrupe, así que no se editan; un
+    error se corrige con una fila nueva (un ajuste o una rendición en sentido contrario).
 - **Lo derivado se calcula.** El stock, lo pendiente de un pedido y el estado actual de un flete salen de los
   movimientos; el costo de cada venta sale de *Costos* (el vigente a su fecha). Lo único que se guarda calculado es
   lo que tiene que quedar fijo al momento de la operación (precio, porcentaje de comisión): si después cambia el
@@ -423,7 +427,9 @@ flowchart LR
 
 - Los valores por defecto se cambian desde las pantallas **Precios** (precio de lista y envío) y **Comisiones** de
   la app (o agregando filas a mano);
-  cada cambio es una fila nueva con su fecha `desde`.
+  cada cambio es una fila nueva con su fecha `desde`. Un precio o una regla cargados por error se corrigen o se
+  borran ahí mismo (el historial del producto en Precios; la tabla de reglas vigentes en Comisiones): se
+  reemplazan todas las filas del producto o del vendedor. Lo ya cargado no cambia.
 - La app marca los precios especiales al cargar el pedido ("Precio especial (lista $X)") y los porcentajes
   distintos de la regla al cargar la entrega ("(regla X%)"). En *Ventas*, la liquidación de comisiones
   indica cuántas entregas tuvieron un porcentaje distinto de la regla.
@@ -954,10 +960,9 @@ La pantalla Análisis (ganancia por producto, más vendidos, clientes activos e 
 
 ## Preguntas abiertas
 
-- **Corregir movimientos.** Contactos y productos se corrigen en el lugar, y un pedido reemplazando sus filas y las
-  de sus entregas; una venta se puede borrar. Falta decidir cómo se corrigen un flete, una compra, un cobro, una
-  rendición o una fabricación ya cargados, y si una entrega se puede corregir sola (la fecha, las cantidades
-  entregadas, el envío).
+- **Corregir compras, ajustes sueltos y rendiciones.** No tienen ID: para editarlos haría falta agregarles una
+  columna de ID (y una cabecera que agrupe las líneas de una compra). Falta decidir también si una entrega se
+  puede corregir sola (la fecha, las cantidades entregadas) sin pasar por la corrección del pedido.
 - **Depósitos, vendedores, socios y tipos de cliente** todavía se cargan y se corrigen a mano en la planilla.
 
 - **Depósito por pedido o por línea.** Esta spec usa uno por pedido. Si un pedido puede entregarse en parte

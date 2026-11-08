@@ -134,6 +134,60 @@ describe('operaciones sobre la planilla', () => {
     expect(db.hojas.costos).toStrictEqual([['P002', 500, DIA], ['P001', 1200, DIA]]);
   });
 
+  it('corregir precios, reglas, cobros y envío reemplaza solo las filas de su producto, vendedor o venta', async () => {
+    expect.hasAssertions();
+
+    const db = crearPlanillaEnMemoria({
+      precios: [['P001', 1000, DIA], ['P002', 500, DIA]],
+      reglas: [['VEN01', '', 10, DIA], ['VEN02', '', 5, DIA], ['VEN01', 'P001', 15, DIA]],
+      cobros: [[DIA, 'V0001', 1000, 'efectivo', 'SOC01', ''], [DIA, 'V0002', 300, 'efectivo', 'SOC01', ''], [DIA, 'V0001', 500, 'efectivo', 'SOC01', '']],
+      ventasEnvios: [['V0001', 'VEN01', 500, 500], ['V0002', '', 500, 500]],
+    });
+    await db.corregirPrecios('P001', [{ productoId: 'P001', precio: 1100, desde: dia }]);
+    // La regla general de Leo se borra y queda la de P001.
+    await db.corregirReglas('VEN01', [{ vendedorId: 'VEN01', productoId: 'P001', porcentaje: 15, desde: dia }]);
+    // El cobro de $ 500 pasa a transferencia y el de $ 1.000 se borra.
+    await db.corregirCobros('V0001', [{ fecha: dia, ventaId: 'V0001', importe: 500, medio: 'transferencia', socioId: 'SOC01', nota: '' }]);
+    await db.corregirEnvio('V0001', { ventaId: 'V0001', vendedorId: '', costoRegla: 500, costo: 0 });
+    await db.corregirEnvio('V0002', null);
+
+    expect(db.hojas).toMatchObject({
+      precios: [['P002', 500, DIA], ['P001', 1100, DIA]],
+      reglas: [['VEN02', '', 5, DIA], ['VEN01', 'P001', 15, DIA]],
+      cobros: [[DIA, 'V0002', 300, 'efectivo', 'SOC01', ''], [DIA, 'V0001', 500, 'transferencia', 'SOC01', '']],
+      ventasEnvios: [['V0001', '', 500, 0]],
+    });
+  });
+
+  it('corregir un flete rehace su mercadería y deja sus estados; borrarlo saca todo', async () => {
+    expect.hasAssertions();
+
+    const flete = (id: string): M.Flete => ({
+      id, fecha: dia, contactoId: 'C0004', origenId: 'BB', destinoId: 'ROS', costo: 5000, guia: '', nota: '', salida: null, llegadaEstimada: null,
+    });
+    const db = crearPlanillaEnMemoria();
+    for (const id of ['F0001', 'F0002']) {
+      await db.registrarFlete({ flete: flete(id), items: [{ fleteId: id, productoId: 'P001', cantidad: 2 }], estados: ['preparacion'], momento: dia, transporteNuevo: null });
+    }
+    await db.corregirFlete({
+      flete: { ...flete('F0001'), costo: 6000, destinoId: 'CBA' }, items: [{ fleteId: 'F0001', productoId: 'P002', cantidad: 3 }], transporteNuevo: null,
+    });
+
+    expect(db.hojas).toMatchObject({
+      fletes: [['F0001', DIA, 'C0004', 'BB', 'CBA', 6000, '', '', '', ''], ['F0002', DIA, 'C0004', 'BB', 'ROS', 5000, '', '', '', '']],
+      fletesItems: [['F0002', 'P001', 2], ['F0001', 'P002', 3]],
+      fletesEstados: [['F0001', MOMENTO, 'preparacion'], ['F0002', MOMENTO, 'preparacion']],
+    });
+
+    await db.borrarFlete('F0001');
+
+    expect(db.hojas).toMatchObject({
+      fletes: [['F0002', DIA, 'C0004', 'BB', 'ROS', 5000, '', '', '', '']],
+      fletesItems: [['F0002', 'P001', 2]],
+      fletesEstados: [['F0002', MOMENTO, 'preparacion']],
+    });
+  });
+
   it('una receta y una fabricación se guardan cada una en una escritura', async () => {
     expect.hasAssertions();
 
@@ -163,6 +217,12 @@ describe('operaciones sobre la planilla', () => {
 
     expect(leidos.recetas.map((r) => [r.version, r.activa])).toStrictEqual([[1, true], [2, false]]);
     expect(M.fabricaciones(leidos.ajustes)).toMatchObject([{ id: 'FA0001', recetaId: 'RE0001', version: 1, productoId: 'P009', cantidad: 0.95 }]);
+
+    // Borrar la fabricación saca sus tres ajustes y deja los demás.
+    await db.registrarAjuste({ fecha: dia, depositoId: 'BB', productoId: 'P001', cantidad: 1, motivo: 'Recuento' });
+    await db.borrarFabricacion(M.fabricaciones(leidos.ajustes)[0]);
+
+    expect(db.hojas.ajustes).toStrictEqual([[DIA, 'BB', 'P001', 1, 'Recuento']]);
   });
 
   it('las operaciones simples agregan una fila en su hoja', async () => {

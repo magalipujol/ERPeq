@@ -545,8 +545,10 @@ const MOTIVO_FABRICACION = /^Fabricación (\S+) \((\S+) v(\d+)\)$/;
 
 // Los ajustes que descuentan los insumos y suman el producto en el depósito. Los insumos sin cantidad no generan
 // ajuste.
+export const motivoFabricacion = (f: Fabricacion) => `Fabricación ${f.id} (${f.recetaId} v${f.version})`;
+
 export function armarFabricacion(f: Fabricacion, insumos: Insumo[]): Ajuste[] {
-  const motivo = `Fabricación ${f.id} (${f.recetaId} v${f.version})`;
+  const motivo = motivoFabricacion(f);
   const ajuste = (productoId: string, cantidad: number): Ajuste => ({ fecha: f.fecha, depositoId: f.depositoId, productoId, cantidad, motivo });
   return [...insumos.filter((i) => i.cantidad > 0).map((i) => ajuste(i.productoId, -i.cantidad)), ajuste(f.productoId, f.cantidad)];
 }

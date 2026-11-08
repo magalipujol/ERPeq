@@ -53,6 +53,10 @@ El stock no cambia de fórmula: la fabricación entra por los ajustes. La lista 
 los ajustes cuyo motivo tiene esa forma (`fabricaciones` en `src/dominio/modelo.ts`); lo que salió es el ajuste
 positivo. El ID siguiente sale de esa misma lista.
 
+Una fabricación cargada por error se **borra** desde esa lista (con confirmación): se borran sus ajustes, los que
+tienen su motivo, así los insumos vuelven al stock y lo fabricado sale. Para cambiarla, se borra y se vuelve a
+cargar.
+
 Ejemplo con los datos de prueba: 2 tandas en Rosario que dan 1,85 kg (se esperaban 0,95 × 2 = 1,9 kg).
 
 | Fila de *Ajustes* | Producto | Cantidad |
