@@ -2,8 +2,9 @@
 // conoce esta interfaz; cómo se guarda (hojas, columnas, celdas, API) es asunto de cada adaptador.
 // Ver spec/arquitectura.md.
 import type {
-  Ajuste, Cobro, Compra, Contacto, Costo, ContactoNuevo, CorreccionPedido, Datos, Entrega, EstadoFlete, Flete, FleteItem, Pedido, PedidoItem,
-  Precio, Producto, Receta, RecetaItem, ReglaComision, ReglaEnvio, Rendicion,
+  Ajuste, Cobro, Compra, Contacto, Costo, ContactoNuevo, CorreccionPedido, Datos, Entrega, EstadoFlete, Fabricacion, Flete, FleteItem, Pedido,
+  PedidoItem,
+  Precio, Producto, Receta, RecetaItem, ReglaComision, ReglaEnvio, Rendicion, VentaEnvio,
 } from '../dominio/modelo';
 
 export class SesionVencida extends Error {
@@ -94,19 +95,34 @@ export interface Operaciones {
   cambiarEstadoPedido: (pedidoId: string, estado: 'cancelado' | 'cerrado', momento: Date) => Promise<void>;
   registrarFlete: (f: FleteNuevo) => Promise<void>;
   cambiarEstadoFlete: (fleteId: string, estado: EstadoFlete, momento: Date) => Promise<void>;
+  // Reemplaza los datos y la mercadería de un flete. Sus estados no se tocan.
+  // El transporte nuevo, si lo hay, se agrega en la misma escritura.
+  corregirFlete: (c: Omit<FleteNuevo, 'estados' | 'momento'>) => Promise<void>;
+  // Borra un flete con su mercadería y sus estados: lo que llevaba vuelve al stock del origen.
+  borrarFlete: (fleteId: string) => Promise<void>;
   registrarCompra: (c: CompraNueva) => Promise<void>;
   registrarAjuste: (a: Ajuste) => Promise<void>;
   registrarPrecio: (p: Precio) => Promise<void>;
   registrarCosto: (c: Costo) => Promise<void>;
+  // Reemplaza todo el historial de precios de un producto (para corregir o borrar un precio cargado).
+  corregirPrecios: (productoId: string, precios: Precio[]) => Promise<void>;
   // Reemplaza todo el historial de costos de un producto (para corregir o borrar un costo cargado).
   corregirCostos: (productoId: string, costos: Costo[]) => Promise<void>;
   registrarReglaComision: (r: ReglaComision) => Promise<void>;
+  // Reemplaza todas las reglas de comisión de un vendedor (para corregir o borrar una).
+  corregirReglas: (vendedorId: string, reglas: ReglaComision[]) => Promise<void>;
   registrarReglaEnvio: (r: ReglaEnvio) => Promise<void>;
   registrarCobro: (c: Cobro) => Promise<void>;
+  // Reemplaza todos los cobros de una venta (para corregir o borrar uno).
+  corregirCobros: (ventaId: string, cobros: Cobro[]) => Promise<void>;
+  // Reemplaza el envío de una venta; null lo saca.
+  corregirEnvio: (ventaId: string, envio: VentaEnvio | null) => Promise<void>;
   registrarRendicion: (r: Rendicion) => Promise<void>;
   registrarReceta: (r: RecetaNueva) => Promise<void>;
   // Los ajustes de una fabricación (armarFabricacion): descuentan los insumos y suman el producto.
   registrarFabricacion: (ajustes: Ajuste[]) => Promise<void>;
+  // Borra los ajustes de una fabricación: los insumos vuelven al stock y lo fabricado sale.
+  borrarFabricacion: (f: Fabricacion) => Promise<void>;
 }
 
 export interface BaseDeDatos extends Sesion, Operaciones {

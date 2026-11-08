@@ -1,13 +1,15 @@
-import { Anchor, Button, Group, Modal, SimpleGrid, Stack, Table, Text, Title, useMatches } from '@mantine/core';
-import { IconArrowLeft } from '@tabler/icons-react';
+import { ActionIcon, Anchor, Button, Group, Modal, NativeSelect, NumberInput, SimpleGrid, Stack, Table, Text, TextInput, Title, useMatches } from '@mantine/core';
+import { IconArrowLeft, IconPencil, IconTrash } from '@tabler/icons-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBase, useGuardar } from '../base';
 import * as F from '../dominio/fichas';
 import * as M from '../dominio/modelo';
 import { FichaContext, useFicha } from '../ficha';
-import { fmtFecha, fmtFechaHora, fmtMoney, fmtNum, lugar } from '../formato';
+import { aISO, aNumero, deISO, fmtFecha, fmtFechaHora, fmtMoney, fmtNum, lugar } from '../formato';
+import { CamposCobro, type DatosCobro } from './Cobro';
 import { Confirmacion, Mensaje, Resumen } from './comunes';
 import { FormCorregirPedido } from './CorregirPedido';
+import { FormFlete } from './FormFlete';
 import { FormContacto, FormProducto } from './Maestros';
 import { EstadoFlete, EstadoPedido, Recorrido } from './estados';
 
@@ -257,7 +259,6 @@ function FichaPedido({ id, acciones }: { id: string; acciones: Acciones }) {
             ])} />
         </Seccion>
       )}
-      {f.compras.length > 0 && <Seccion titulo="Compras para este pedido"><TablaCompras compras={f.compras} /></Seccion>}
     </Stack>
   );
 }
@@ -299,8 +300,6 @@ function FichaVenta({ id }: { id: string }) {
         ['Fecha', fmtFecha(f.venta.fecha)],
         ['Depósito', nombres.deposito(f.venta.depositoId)],
         ['Comisiones', f.comisiones.map((c) => `${nombres.vendedor(c.vendedorId)} ${fmtMoney(c.monto)}`).join(', ')],
-        ['Envío', f.envio && f.envio.costo > 0
-          ? `${fmtMoney(f.envio.costo)} · ${f.envio.vendedorId ? `para ${nombres.vendedor(f.envio.vendedorId)}` : 'para el negocio'}` : ''],
         ['Nota', f.venta.nota],
       ]} />
       <Seccion titulo="Productos">
@@ -315,14 +314,8 @@ function FichaVenta({ id }: { id: string }) {
       <Totales items={[
         ['Importe', fmtMoney(f.importe)], ['Cobrado', fmtMoney(f.cobrado)], ['A cobrar', fmtMoney(f.saldo)], ['Ganancia', fmtMoney(f.ganancia)],
       ]} />
-      {f.cobros.length > 0 && (
-        <Seccion titulo="Cobros">
-          <Tabla label="Cobros de la venta" columnas={[{ titulo: 'Fecha' }, { titulo: 'Importe', num: true }, { titulo: 'Medio' }, { titulo: 'Recibió' }]}
-            filas={f.cobros.map((c) => [
-              fmtFecha(c.fecha), fmtMoney(c.importe), nombreMedio(c.medio), nombres.socio(c.socioId),
-            ])} />
-        </Seccion>
-      )}
+      {f.envio && <EnvioVenta envio={f.envio} pedidoId={f.venta.pedidoId} />}
+      {f.cobros.length > 0 && <CobrosVenta ventaId={id} cobros={f.cobros} />}
       <Group>
         <Button size="xs" variant="light" color="red" loading={guardando} onClick={() => { setConfirmando(true); }}>Borrar venta</Button>
       </Group>
@@ -340,6 +333,137 @@ function FichaVenta({ id }: { id: string }) {
         <Text size="sm" fw={700}>No se puede deshacer.</Text>
       </Confirmacion>
     </Stack>
+  );
+}
+
+// Cobros de una venta, del más nuevo al más viejo, cada uno con su corrección y su borrado. Los cobros no tienen ID:
+// se reemplazan todos los de la venta, en el orden de la hoja, con el corregido en su lugar.
+function CobrosVenta({ ventaId, cobros }: { ventaId: string; cobros: M.Cobro[] }) {
+  const { datos, nombres, db } = useBase();
+  const { guardando, msg, guardar, error } = useGuardar();
+  const [editando, setEditando] = useState<M.Cobro | null>(null);
+  const [borrando, setBorrando] = useState<M.Cobro | null>(null);
+  const [fecha, setFecha] = useState('');
+  const [valor, setValor] = useState<DatosCobro>({ importe: '', medio: 'efectivo', socioId: '' });
+  const [nota, setNota] = useState('');
+  const deLaVenta = () => datos.cobros.filter((c) => c.ventaId === ventaId);
+  const describir = (c: M.Cobro) => `${fmtMoney(c.importe)} del ${fmtFecha(c.fecha)}`;
+
+  function editar(c: M.Cobro) {
+    setEditando(c);
+    setFecha(aISO(c.fecha));
+    setValor({ importe: c.importe, medio: (M.MEDIOS as readonly string[]).includes(c.medio) ? c.medio as M.Medio : 'efectivo', socioId: c.socioId });
+    setNota(c.nota);
+  }
+
+  function enviar(e: React.SubmitEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const anterior = editando;
+    const importe = aNumero(valor.importe);
+    if (!anterior) return;
+    if (!fecha) { error('Elegí la fecha.'); return; }
+    if (!(importe > 0)) { error('El importe tiene que ser mayor a 0.'); return; }
+    if (!datos.socios.some((s) => s.id === valor.socioId)) { error('Elegí quién recibió la plata.'); return; }
+    const nuevo: M.Cobro = { ...anterior, fecha: deISO(fecha), importe, medio: valor.medio, socioId: valor.socioId, nota: nota.trim() };
+    guardar(async () => {
+      await db.corregirCobros(ventaId, deLaVenta().map((c) => (c === anterior ? nuevo : c)));
+      setEditando(null);
+      return `✓ Cobro corregido: ${describir(nuevo)}.`;
+    });
+  }
+
+  function borrar() {
+    const c = borrando;
+    setBorrando(null);
+    if (!c) return;
+    guardar(async () => {
+      await db.corregirCobros(ventaId, deLaVenta().filter((x) => x !== c));
+      return `✓ Cobro de ${describir(c)} borrado.`;
+    });
+  }
+
+  return (
+    <Seccion titulo="Cobros">
+      <Tabla label="Cobros de la venta" columnas={[{ titulo: 'Fecha' }, { titulo: 'Importe', num: true }, { titulo: 'Medio' }, { titulo: 'Recibió' }, { titulo: '' }]}
+        filas={cobros.map((c) => [
+          fmtFecha(c.fecha), fmtMoney(c.importe), nombreMedio(c.medio), nombres.socio(c.socioId),
+          <Group key="a" gap={4} wrap="nowrap" justify="flex-end">
+            <ActionIcon variant="subtle" size="lg" aria-label={`Editar cobro de ${describir(c)}`} disabled={guardando}
+              onClick={() => { editar(c); }}><IconPencil size={18} /></ActionIcon>
+            <ActionIcon variant="subtle" color="red" size="lg" aria-label={`Borrar cobro de ${describir(c)}`} disabled={guardando}
+              onClick={() => { setBorrando(c); }}><IconTrash size={18} /></ActionIcon>
+          </Group>,
+        ])} />
+      {editando && (
+        <form onSubmit={enviar} noValidate aria-label="Corregir cobro">
+          <Stack gap="xs" mt="xs">
+            <TextInput label="Fecha" type="date" value={fecha} onChange={(e) => { setFecha(e.currentTarget.value); }} />
+            <CamposCobro valor={valor} onChange={setValor} socios={datos.socios} etiqueta="Importe" />
+            <TextInput label="Nota" maxLength={200} placeholder="Opcional" value={nota} onChange={(e) => { setNota(e.currentTarget.value); }} />
+            <Group gap="xs" justify="flex-end">
+              <Button variant="default" onClick={() => { setEditando(null); }}>Cancelar</Button>
+              <Button type="submit" loading={guardando}>Guardar cobro</Button>
+            </Group>
+          </Stack>
+        </form>
+      )}
+      <Mensaje msg={msg} />
+      <Confirmacion abierta={borrando !== null} titulo="¿Borrar este cobro?" si="Sí, borrar cobro" peligro onSi={borrar}
+        onNo={() => { setBorrando(null); }}>
+        {borrando && <Text size="sm">Cobro de {describir(borrando)}, recibido por {nombres.socio(borrando.socioId)}. Vuelve a quedar a cobrar.</Text>}
+      </Confirmacion>
+    </Seccion>
+  );
+}
+
+// Envío de una venta: se corrige el costo y para quién es (un vendedor del pedido o el negocio).
+function EnvioVenta({ envio, pedidoId }: { envio: M.VentaEnvio; pedidoId: string }) {
+  const { datos, nombres, db } = useBase();
+  const { guardando, msg, guardar, error } = useGuardar();
+  const [editando, setEditando] = useState(false);
+  const [costoTxt, setCostoTxt] = useState<number | string>(envio.costo);
+  const [para, setPara] = useState(envio.vendedorId);
+  const vendedores = [...new Set([
+    ...datos.pedidosVendedores.filter((v) => v.pedidoId === pedidoId).map((v) => v.vendedorId), envio.vendedorId,
+  ])].filter((v) => v !== '');
+  const quien = (v: string) => (v ? nombres.vendedor(v) : 'el negocio');
+
+  function enviar(e: React.SubmitEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const costo = aNumero(costoTxt);
+    if (!(costo >= 0)) { error('El costo no puede ser negativo.'); return; }
+    guardar(async () => {
+      await db.corregirEnvio(envio.ventaId, { ...envio, costo, vendedorId: para });
+      setEditando(false);
+      return `✓ Envío corregido: ${fmtMoney(costo)} para ${quien(para)}.`;
+    });
+  }
+
+  return (
+    <Seccion titulo="Envío">
+      {editando ? (
+        <form onSubmit={enviar} noValidate aria-label="Corregir envío">
+          <Stack gap="xs">
+            <Group grow gap="xs" align="flex-start">
+              <NumberInput label="Costo de envío" allowNegative={false} value={costoTxt} onChange={setCostoTxt}
+                leftSection={<Text size="xs" c="dimmed">$</Text>} leftSectionPointerEvents="none" />
+              <NativeSelect label="El envío es para" value={para} onChange={(e) => { setPara(e.currentTarget.value); }}
+                data={[...vendedores.map((v) => ({ value: v, label: nombres.vendedor(v) })), { value: '', label: 'El negocio' }]} />
+            </Group>
+            <Group gap="xs" justify="flex-end">
+              <Button variant="default" onClick={() => { setEditando(false); }}>Cancelar</Button>
+              <Button type="submit" loading={guardando}>Guardar envío</Button>
+            </Group>
+          </Stack>
+        </form>
+      ) : (
+        <Group gap="xs">
+          <Text size="sm">{envio.costo > 0 ? `${fmtMoney(envio.costo)} · para ${quien(envio.vendedorId)}` : 'Sin cargo'}</Text>
+          <Button size="xs" variant="light" onClick={() => { setCostoTxt(envio.costo); setPara(envio.vendedorId); setEditando(true); }}>Corregir envío</Button>
+        </Group>
+      )}
+      <Mensaje msg={msg} />
+    </Seccion>
   );
 }
 
@@ -474,22 +598,39 @@ function FichaContacto({ id }: { id: string }) {
 }
 
 function FichaFlete({ id, acciones }: { id: string; acciones: Acciones }) {
-  const { datos, nombres } = useBase();
+  const { datos, nombres, etiquetas, db } = useBase();
+  const { guardando, msg, guardar } = useGuardar();
+  const [confirmando, setConfirmando] = useState(false);
   const f = F.fichaFlete(datos, id);
+  if (!f && msg !== null) return <Mensaje msg={msg} />;
   if (!f) return <NoEsta />;
+
+  function borrar() {
+    setConfirmando(false);
+    const nombre = etiquetas.flete(id);
+    guardar(async () => {
+      await db.borrarFlete(id);
+      return `✓ Flete de ${nombre} borrado.`;
+    });
+  }
+
   return (
     <Stack gap="md">
-      <Datos items={[
-        ['Transporte', <Vinculo key="t" a={{ tipo: 'contacto', id: f.flete.contactoId }}>{nombres.contacto(f.flete.contactoId)}</Vinculo>],
-        ['Fecha', fmtFecha(f.flete.fecha)],
-        ['Recorrido', <Recorrido key="r" flete={f.flete} />],
-        ['Estado', <EstadoFlete key="e" estado={f.estado} />],
-        ['Costo', fmtMoney(f.flete.costo)],
-        ['Salida prevista', f.flete.salida ? fmtFechaHora(f.flete.salida) : ''],
-        ['Llegada estimada', f.flete.llegadaEstimada ? fmtFechaHora(f.flete.llegadaEstimada) : ''],
-        ['Guía', f.flete.guia],
-        ['Nota', f.flete.nota],
-      ]} />
+      <Corregible etiqueta="Corregir flete" editor={(listo, cancelar) => (
+        <FormFlete corregir={{ flete: f.flete, items: f.items, onListo: listo, onCancelar: cancelar }} />
+      )}>
+        <Datos items={[
+          ['Transporte', <Vinculo key="t" a={{ tipo: 'contacto', id: f.flete.contactoId }}>{nombres.contacto(f.flete.contactoId)}</Vinculo>],
+          ['Fecha', fmtFecha(f.flete.fecha)],
+          ['Recorrido', <Recorrido key="r" flete={f.flete} />],
+          ['Estado', <EstadoFlete key="e" estado={f.estado} />],
+          ['Costo', fmtMoney(f.flete.costo)],
+          ['Salida prevista', f.flete.salida ? fmtFechaHora(f.flete.salida) : ''],
+          ['Llegada estimada', f.flete.llegadaEstimada ? fmtFechaHora(f.flete.llegadaEstimada) : ''],
+          ['Guía', f.flete.guia],
+          ['Nota', f.flete.nota],
+        ]} />
+      </Corregible>
       <Group><Button size="xs" variant="light" onClick={() => { acciones.verFlete(id); }}>Ver en Fletes</Button></Group>
       {f.items.length > 0 && (
         <Seccion titulo="Mercadería">
@@ -504,12 +645,24 @@ function FichaFlete({ id, acciones }: { id: string; acciones: Acciones }) {
           {f.historial.map((e) => `${nombreEstadoFlete(e.estado)} (${fmtFecha(e.fecha)})`).join(' → ') || '–'}
         </Text>
       </Seccion>
+      <Group>
+        <Button size="xs" variant="light" color="red" loading={guardando} onClick={() => { setConfirmando(true); }}>Borrar flete</Button>
+      </Group>
+      <Mensaje msg={msg} />
+      <Confirmacion abierta={confirmando} titulo="¿Borrar el flete?" si="Sí, borrar flete" peligro onSi={borrar}
+        onNo={() => { setConfirmando(false); }}>
+        <Text size="sm">Flete de {etiquetas.flete(id)}: se borran también su mercadería y sus estados.</Text>
+        {f.items.length > 0 && (f.estado === 'camino' || f.estado === 'finalizado') && (
+          <Text size="sm">La mercadería vuelve al stock de {nombres.deposito(f.flete.origenId)}.</Text>
+        )}
+        <Text size="sm" fw={700}>No se puede deshacer.</Text>
+      </Confirmacion>
     </Stack>
   );
 }
 
 function FichaCompra({ id }: { id: string }) {
-  const { datos, nombres, etiquetas } = useBase();
+  const { datos, nombres } = useBase();
   const c = F.fichaCompra(datos, id);
   if (!c) return <NoEsta />;
   const unidad = datos.productos.find((p) => p.id === c.productoId)?.unidad ?? '';
@@ -523,7 +676,6 @@ function FichaCompra({ id }: { id: string }) {
       ['Precio unitario', fmtMoney(c.precio)],
       ['Importe', fmtMoney(c.importe)],
       ['Remito', c.remito],
-      ['Pedido', c.pedidoId && <Vinculo key="pe" a={{ tipo: 'pedido', id: c.pedidoId }}>{etiquetas.pedido(c.pedidoId) || c.pedidoId}</Vinculo>],
       ['Nota', c.nota],
     ]} />
   );

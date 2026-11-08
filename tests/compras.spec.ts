@@ -28,7 +28,6 @@ test('registra una compra con un producto y un proveedor nuevos en una sola escr
   // Toma el último precio de compra del producto.
   await expect(form.getByLabel('Precio unitario', { exact: true }).nth(1)).toHaveValue('500')
   await expect(form.getByText('Stock en General: 0 → 10 kg')).toBeVisible()
-  await form.getByLabel('Para el pedido', { exact: true }).selectOption({ label: 'Ana · 10/10/26' })
 
   await expect(form.getByRole('group', { name: 'Total' })).toContainText('5.500')
   await expect(form.getByRole('group', { name: 'Productos nuevos' })).toContainText('1')
@@ -40,8 +39,8 @@ test('registra una compra con un producto y un proveedor nuevos en una sola escr
     'Productos': [['P005', 'Pasas', 'kg', '']],
     'Contactos': [['C0005', 'proveedor', 'Prov C', '', '', '', '', '', '', '']],
     'Compras': [
-      [HOY_SERIE, 'BB', 'C0005', 'P005', 5, 100, 500, 'R-9', 'PE0002', ''],
-      [HOY_SERIE, 'BB', 'C0005', 'P002', 10, 500, 5000, 'R-9', 'PE0002', ''],
+      [HOY_SERIE, 'BB', 'C0005', 'P005', 5, 100, 500, 'R-9', ''],
+      [HOY_SERIE, 'BB', 'C0005', 'P002', 10, 500, 5000, 'R-9', ''],
     ],
     // El switch de actualizar costos viene prendido: los precios quedan como costo desde la fecha de la compra.
     'Costos': [['P005', 100, HOY_SERIE], ['P002', 500, HOY_SERIE]],

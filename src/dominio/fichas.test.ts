@@ -7,7 +7,7 @@ const contacto = (id: string, rol: string): M.Contacto => ({
   id, rol, nombre: id, tipo: '', telefono: '', direccion: '', email: '', localidad: '', provincia: '', observaciones: '',
 });
 
-// Ana pide 10 kg de almendras (PE1) y se le entregan 4 en V1, que pagó $ 1.000 de $ 4.000. Para el pedido se
+// Ana pide 10 kg de almendras (PE1) y se le entregan 4 en V1, que pagó $ 1.000 de $ 4.000. En Rosario se
 // compraron 5 kg (fila 3) y se mandó un flete de Bahía Blanca a Rosario. La avena (P002) entra en la receta del mix.
 const datos: M.Datos = {
   depositos: [{ id: 'BB', nombre: 'General', localidad: '' }, { id: 'ROS', nombre: 'Rosario', localidad: '' }],
@@ -23,8 +23,8 @@ const datos: M.Datos = {
   costos: [{ productoId: 'P001', costo: 600, desde: fecha(2026, 10, 1) }, { productoId: 'P001', costo: 800, desde: fecha(2026, 10, 5) }],
   reglas: [],
   compras: [
-    { fila: 2, fecha: fecha(2026, 9, 1), depositoId: 'BB', contactoId: 'C2', productoId: 'P001', cantidad: 10, precio: 500, importe: 5000, remito: '', pedidoId: '', nota: '' },
-    { fila: 3, fecha: fecha(2026, 10, 2), depositoId: 'ROS', contactoId: 'C2', productoId: 'P001', cantidad: 5, precio: 800, importe: 4000, remito: '', pedidoId: 'PE1', nota: '' },
+    { fila: 2, fecha: fecha(2026, 9, 1), depositoId: 'BB', contactoId: 'C2', productoId: 'P001', cantidad: 10, precio: 500, importe: 5000, remito: '', nota: '' },
+    { fila: 3, fecha: fecha(2026, 10, 2), depositoId: 'ROS', contactoId: 'C2', productoId: 'P001', cantidad: 5, precio: 800, importe: 4000, remito: '', nota: 'R-9' },
   ],
   pedidos: [
     { id: 'PE1', fecha: fecha(2026, 10, 1), contactoId: 'C1', depositoId: 'ROS', nota: '' },
@@ -52,12 +52,11 @@ const resumenes = M.resumirPedidos(datos);
 const stock = M.calcularStock(datos, resumenes);
 
 describe('fichas', () => {
-  it('pedido: sus entregas con lo que falta cobrar y las compras hechas para él', () => {
+  it('pedido: sus entregas con lo que falta cobrar', () => {
     const f = F.fichaPedido(datos, resumenes, 'PE1');
 
     expect(f?.resumen.estado).toBe('parcial');
     expect(f?.ventas).toStrictEqual([{ venta: datos.ventas[0], importe: 4000, cobrado: 1000, saldo: 3000 }]);
-    expect(f?.compras.map((c) => c.fila)).toStrictEqual([3]);
     expect(F.fichaPedido(datos, resumenes, 'PE9')).toBeNull();
   });
 
@@ -107,7 +106,7 @@ describe('fichas', () => {
     expect(F.fichaFlete(datos, 'F1')).toMatchObject({ estado: 'camino', items: [{ cantidad: 2 }] });
     expect(F.fichaFlete(datos, 'F1')).not.toHaveProperty('pedidos');
     expect(F.fichaFlete(datos, 'F1')?.historial.map((e) => e.estado)).toStrictEqual(['preparacion', 'camino']);
-    expect(F.fichaCompra(datos, '3')?.pedidoId).toBe('PE1');
+    expect(F.fichaCompra(datos, '3')?.nota).toBe('R-9');
     expect(F.fichaCompra(datos, '9')).toBeNull();
   });
 });

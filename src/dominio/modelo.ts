@@ -20,7 +20,7 @@ export interface ReglaComision { vendedorId: string; productoId: string; porcent
 export interface Compra {
   fila: number; // identifica la compra, que no tiene ID (en la planilla es el número de fila)
   fecha: Date | null; depositoId: string; contactoId: string; productoId: string;
-  cantidad: number; precio: number | null; importe: number | null; remito: string; pedidoId: string; nota: string;
+  cantidad: number; precio: number | null; importe: number | null; remito: string; nota: string;
 }
 // El cliente, su tipo y su localidad salen del contacto.
 export interface Pedido { id: string; fecha: Date | null; contactoId: string; depositoId: string; nota: string }
@@ -545,8 +545,10 @@ const MOTIVO_FABRICACION = /^Fabricación (\S+) \((\S+) v(\d+)\)$/;
 
 // Los ajustes que descuentan los insumos y suman el producto en el depósito. Los insumos sin cantidad no generan
 // ajuste.
+export const motivoFabricacion = (f: Fabricacion) => `Fabricación ${f.id} (${f.recetaId} v${f.version})`;
+
 export function armarFabricacion(f: Fabricacion, insumos: Insumo[]): Ajuste[] {
-  const motivo = `Fabricación ${f.id} (${f.recetaId} v${f.version})`;
+  const motivo = motivoFabricacion(f);
   const ajuste = (productoId: string, cantidad: number): Ajuste => ({ fecha: f.fecha, depositoId: f.depositoId, productoId, cantidad, motivo });
   return [...insumos.filter((i) => i.cantidad > 0).map((i) => ajuste(i.productoId, -i.cantidad)), ajuste(f.productoId, f.cantidad)];
 }

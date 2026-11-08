@@ -112,3 +112,20 @@ test('si la planilla no tiene las hojas de recetas, avisa cuáles crear y no dej
   await expect(page.getByText('receta_id, version, producto_id, cantidad', { exact: true })).toBeVisible()
   await expect(formReceta(page).getByRole('button', { name: 'Guardar receta' })).toBeDisabled()
 })
+
+test('borrar una fabricación saca sus ajustes: los insumos vuelven y lo fabricado sale', async ({ page, google }) => {
+  // Una fabricación de 0,95 kg de Mix europeo en General: tres ajustes con el mismo motivo.
+  const motivo = 'Fabricación FA0001 (RE0001 v1)'
+  google.hojas.Ajustes.push(
+    [HOY_SERIE, 'BB', 'P001', -0.6, motivo], [HOY_SERIE, 'BB', 'P002', -0.4, motivo], [HOY_SERIE, 'BB', 'P004', 0.95, motivo],
+  )
+  await page.getByRole('button', { name: 'Refrescar' }).click()
+  const lista = page.getByRole('table', { name: 'Últimas fabricaciones' })
+  await expect(lista).toContainText('Mix europeo')
+
+  await lista.getByRole('button', { name: /^Borrar fabricación de Mix europeo/ }).click()
+  await page.getByRole('dialog', { name: '¿Borrar la fabricación?' }).getByRole('button', { name: 'Sí, borrar fabricación' }).click()
+  await expect(page.getByText('✓ Fabricación de Mix europeo borrada: los insumos volvieron a General.')).toBeVisible()
+  // Queda solo el ajuste por rotura de la planilla de prueba.
+  expect(google.hojas.Ajustes.map((f) => f[4])).toEqual(['rotura'])
+})

@@ -10,8 +10,8 @@ describe('parsear', () => {
 
   const d = H.parsear(crudo({
     productos: [['P001', ' Almendras ', '', ''], ['', 'sin id'], ['P002', 'Miel', 'unid.', '5']],
-    compras: [[45658, 'BB', 'C0001', 'P001', 10, 1000, 10000, 'R-1', 'PE0001', ''], ['', '', '', '', ''],
-      [45659, 'ROS', '', 'P002', '3', '', '', '', '', '']],
+    compras: [[45658, 'BB', 'C0001', 'P001', 10, 1000, 10000, 'R-1', 'nota'], ['', '', '', '', ''],
+      [45659, 'ROS', '', 'P002', '3', '', '', '', '']],
     vendedores: [['VEN01', 'Guada/Hernán', ''], ['VEN02', 'Leo', 'no']],
     pedidosItems: [['PE0001', 1, 'P001', 2, '', 3000]],
     ventasComisiones: [['V0001', 1, 'VEN01', 3, 5, 300]],
@@ -24,8 +24,8 @@ describe('parsear', () => {
       { id: 'P002', producto: 'Miel', unidad: 'unid.', minimo: 5 },
     ]);
     // La fila 3 quedó vacía y no se cuenta.
-    expect(d.compras.map((c) => [c.fila, c.productoId, c.cantidad, c.precio, c.pedidoId])).toStrictEqual([
-      [2, 'P001', 10, 1000, 'PE0001'], [4, 'P002', 3, null, ''],
+    expect(d.compras.map((c) => [c.fila, c.productoId, c.cantidad, c.precio, c.nota])).toStrictEqual([
+      [2, 'P001', 10, 1000, 'nota'], [4, 'P002', 3, null, ''],
     ]);
     expect(d.compras[0].fecha).toStrictEqual(new Date(2025, 0, 1));
   });

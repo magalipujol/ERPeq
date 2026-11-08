@@ -14,7 +14,7 @@ const datos = (d: Partial<M.Datos>): M.Datos => ({ ...vacios(), ...d });
 const producto = (id: string): M.Producto => ({ id, producto: id, unidad: 'kg', minimo: 0 });
 const compra = (c: Partial<M.Compra>): M.Compra => ({
   fila: 2, fecha: fecha(2026, 10, 1), depositoId: 'BB', contactoId: '', productoId: 'P001',
-  cantidad: 1, precio: null, importe: null, remito: '', pedidoId: '', nota: '', ...c,
+  cantidad: 1, precio: null, importe: null, remito: '', nota: '', ...c,
 });
 const pedido = (id: string, depositoId = 'ROS'): M.Pedido => ({
   id, fecha: fecha(2026, 10, 1), contactoId: '', depositoId, nota: '',

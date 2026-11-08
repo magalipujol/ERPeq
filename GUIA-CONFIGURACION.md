@@ -78,7 +78,7 @@ Entrá a https://console.cloud.google.com con la cuenta del dueño.
    | `Precios` | `producto_id`, `precio`, `desde` |
    | `Costos` | `producto_id`, `costo`, `desde` |
    | `Reglas de comisión` | `vendedor_id`, `producto_id`, `porcentaje`, `desde` |
-   | `Compras` | `fecha`, `deposito_id`, `contacto_id`, `producto_id`, `cantidad`, `precio`, `importe`, `remito`, `pedido_id`, `nota` |
+   | `Compras` | `fecha`, `deposito_id`, `contacto_id`, `producto_id`, `cantidad`, `precio`, `importe`, `remito`, `nota` |
    | `Pedidos` | `id`, `fecha`, `contacto_id`, `deposito_id`, `nota` |
    | `Pedidos ítems` | `pedido_id`, `linea`, `producto_id`, `cantidad`, `precio_lista`, `precio` |
    | `Pedidos estados` | `pedido_id`, `fecha`, `estado` |
@@ -183,6 +183,12 @@ tocan:
 1. En **Fletes**, escribí `salida` en **I1** y `llegada_estimada` en **J1**. Los fletes anteriores quedan vacíos.
 2. La hoja **Pedidos fletes** ya no se usa: la app la ignora. Podés borrarla o dejarla como historial.
 3. Recargá la página.
+
+### Quitar el pedido de las compras en una planilla que ya existe
+
+Las compras ya no se asocian a un pedido. Si la hoja **Compras** todavía tiene la columna `pedido_id` (en **I**),
+la app no abre hasta quitarla: hacé clic derecho en la letra **I** de *Compras* → *Borrar columna*. `nota` queda en
+**I**. Después, recargá la página.
 
 ### Pasar una planilla que ya existe a la hoja de costos
 

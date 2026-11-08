@@ -65,7 +65,8 @@ encabezados de cada hoja y no abre una planilla con las columnas distintas a las
     pendientes —con el flete para cubrir lo que les falta— y fletes en curso, y sus listas), Stock, Pedidos, Ventas, Compras, Recetas, Fletes, Precios (y envíos), Costos, Comisiones, Contactos, Productos, Caja y Análisis.
   - `componentes/`: piezas compartidas (carga de ítems, navegación entre pantallas, KPIs, el mapa de Inicio y
     `Fichas.tsx`, el modal que muestra lo que se toca en una tabla con sus vínculos, `Maestros.tsx`, los
-    formularios de alta y corrección de contactos y productos, y `CorregirPedido.tsx`, el que corrige un pedido); `ficha.ts`: el contexto para abrirlas.
+    formularios de alta y corrección de contactos y productos, `CorregirPedido.tsx`, el que corrige un pedido, y
+    `FormFlete.tsx`, el alta y la corrección de un flete); `ficha.ts`: el contexto para abrirlas.
   - `celular.css`: ajustes para pantallas de menos de 768 px (barra inferior con menú *Más*, campos de 44 px).
   - `fuentes/`: la tipografía OpenDyslexic (regular y negrita) y su licencia (SIL Open Font License).
   - `whatsapp.ts`: arma el mensaje con los pedidos para mandar a un grupo de WhatsApp (botón *Exportar a WhatsApp* en Pedidos).

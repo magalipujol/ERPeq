@@ -27,7 +27,7 @@ export const ENCABEZADOS: Record<string, string[]> = {
   'Precios': ['producto_id', 'precio', 'desde'],
   'Costos': ['producto_id', 'costo', 'desde'],
   'Reglas de comisión': ['vendedor_id', 'producto_id', 'porcentaje', 'desde'],
-  'Compras': ['fecha', 'deposito_id', 'contacto_id', 'producto_id', 'cantidad', 'precio', 'importe', 'remito', 'pedido_id', 'nota'],
+  'Compras': ['fecha', 'deposito_id', 'contacto_id', 'producto_id', 'cantidad', 'precio', 'importe', 'remito', 'nota'],
   'Pedidos': ['id', 'fecha', 'contacto_id', 'deposito_id', 'nota'],
   'Pedidos ítems': ['pedido_id', 'linea', 'producto_id', 'cantidad', 'precio_lista', 'precio'],
   'Pedidos estados': ['pedido_id', 'fecha', 'estado'],
@@ -84,9 +84,9 @@ export function planillaInicial(): Record<string, Fila[]> {
       ['VEN02', 'P001', 7, serie('2026-01-01')],
     ],
     'Compras': [
-      [serie('2026-09-10'), 'BB', 'C0002', 'P001', 10, 2000, 20000, '', '', ''],
-      [serie('2026-10-02'), 'BB', 'C0002', 'P001', 10, 1000, 10000, 'R-1', '', ''],
-      [serie('2026-10-03'), 'ROS', 'C0003', 'P002', 30, 500, 15000, '', '', ''],
+      [serie('2026-09-10'), 'BB', 'C0002', 'P001', 10, 2000, 20000, '', ''],
+      [serie('2026-10-02'), 'BB', 'C0002', 'P001', 10, 1000, 10000, 'R-1', ''],
+      [serie('2026-10-03'), 'ROS', 'C0003', 'P002', 30, 500, 15000, '', ''],
     ],
     'Pedidos': [
       ['PE0001', serie('2026-10-05'), 'C0001', 'BB', ''],

@@ -1,4 +1,4 @@
-import { expect, HOY_SERIE, ir, test } from './google-falso'
+import { expect, HOY_SERIE, ir, serie, test } from './google-falso'
 
 test.beforeEach(async ({ page, ingresar }) => {
   await page.goto('/#precios')
@@ -87,6 +87,26 @@ test('en el historial de costos se corrige y se borra un costo', async ({ page, 
   await expect(historial.getByRole('row')).toHaveCount(3)
 })
 
+test('en el historial de precios se corrige y se borra un precio', async ({ page, google }) => {
+  await page.getByRole('table', { name: 'Lista de precios' }).getByRole('cell', { name: 'Avena', exact: true }).click()
+  const modal = page.getByRole('dialog', { name: 'Precio de Avena' })
+
+  // 1. Los $800 pasan a $850 desde el 01/02. Las filas de Avena se reemplazan.
+  await modal.getByRole('button', { name: 'Editar precio de 01/01/26' }).click()
+  const form = modal.getByRole('form', { name: 'Corregir precio' })
+  await form.getByLabel('Precio', { exact: true }).fill('850')
+  await form.getByLabel('Desde', { exact: true }).fill('2026-02-01')
+  await form.getByRole('button', { name: 'Guardar' }).click()
+  await expect(modal.getByText(/✓ Corregido: \$\s850 desde 01\/02\/26\./)).toBeVisible()
+  expect(google.hojas.Precios.filter((f) => f[0] === 'P002')).toEqual([['P002', 850, serie('2026-02-01')]])
+
+  // 2. Se borra: Avena queda sin precio y los demás productos no cambian.
+  await modal.getByRole('button', { name: 'Borrar precio de 01/02/26' }).click()
+  await page.getByRole('dialog', { name: '¿Borrar este precio?' }).getByRole('button', { name: 'Sí, borrar precio' }).click()
+  await expect(modal.getByText('✓ Borrado el precio de $ 850 (01/02/26).')).toBeVisible()
+  expect(google.hojas.Precios.map((f) => f[0])).toEqual(['P001', 'P004'])
+})
+
 test('muestra las reglas de comisión vigentes y agrega una por producto', async ({ page, google }) => {
   await ir(page, 'Comisiones')
   const reglas = page.getByRole('table', { name: 'Reglas vigentes' })
@@ -115,4 +135,27 @@ test('el costo de envío arranca sin cobrarse y se puede dejar de cobrar con cos
   await expect(form.getByText('✓ Desde 16/10/26 no se cobra envío.')).toBeVisible()
   await expect(page.getByText('Hoy no se cobra envío.')).toBeVisible()
   expect(google.escrituras).toEqual([{ 'Envíos': [[150000, 5000, HOY_SERIE]] }, { 'Envíos': [[0, 0, HOY_SERIE]] }])
+})
+
+test('una regla de comisión se corrige y se borra desde la tabla de vigentes', async ({ page, google }) => {
+  await ir(page, 'Comisiones')
+  const reglas = page.getByRole('table', { name: 'Reglas vigentes' })
+
+  // 1. La de Guada/Hernán en almendras pasa del 7 al 8%: se reemplazan todas sus reglas, la general queda igual.
+  await reglas.getByRole('button', { name: 'Editar regla de Guada/Hernán: 7% en Almendras' }).click()
+  const form = page.getByRole('form', { name: 'Corregir regla de comisión' })
+  await expect(form.getByLabel('Vendedor', { exact: true })).toBeDisabled()
+  await form.getByLabel('Comisión', { exact: true }).fill('8')
+  await form.getByRole('button', { name: 'Guardar corrección' }).click()
+  await expect(page.getByText('✓ Corregida: Guada/Hernán: 8% en Almendras.')).toBeVisible()
+  expect(google.hojas['Reglas de comisión']).toEqual([
+    ['VEN01', '', 10, serie('2026-01-01')], ['VEN02', '', 3, serie('2026-01-01')], ['VEN02', 'P001', 8, serie('2026-01-01')],
+  ])
+
+  // 2. Se borra la general de Leo: Leo se queda sin reglas.
+  await reglas.getByRole('button', { name: 'Borrar regla de Leo: 10% general' }).click()
+  await page.getByRole('dialog', { name: '¿Borrar esta regla?' }).getByRole('button', { name: 'Sí, borrar regla' }).click()
+  await expect(page.getByText('✓ Borrada la regla de Leo: 10% general.')).toBeVisible()
+  await expect(reglas.getByRole('row').filter({ hasText: 'Leo' })).toHaveCount(0)
+  expect(google.hojas['Reglas de comisión'].map((f) => f[0])).toEqual(['VEN02', 'VEN02'])
 })

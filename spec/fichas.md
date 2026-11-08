@@ -31,8 +31,8 @@ producto, transporte o proveedor) es un vínculo que abre la misma ficha.
 
 Las tablas de Precios (lista de precios) y Costos no abren la ficha del producto: tocar una fila abre el historial
 de ese valor para el producto (del más nuevo al más viejo, con el vigente marcado y los que todavía no rigen),
-con el formulario para cargar uno nuevo desde una fecha y un vínculo a la ficha del producto. En Costos, cada costo
-del historial se puede editar (costo y fecha) o borrar (con confirmación).
+con el formulario para cargar uno nuevo desde una fecha y un vínculo a la ficha del producto. Cada valor del
+historial se puede editar (valor y fecha) o borrar (con confirmación).
 
 ## Qué muestra cada ficha
 
@@ -60,12 +60,12 @@ flowchart LR
 
 | Ficha | Datos | Vínculos y listas | Acción |
 |---|---|---|---|
-| **Pedido** | Cliente, fecha, depósito de entrega, estado, vendedores, nota; importe, entregado, envío (si hubo) y ganancia | Productos (con lo entregado y pendiente), entregas (con lo que falta cobrar de cada una) y compras hechas para el pedido | *Registrar entrega* (si está abierto): abre Pedidos con ese pedido elegido. *Corregir pedido*: fecha, cliente, depósito, vendedores, productos, precios y nota, con sus entregas (ver [Corregir un pedido](modelo-de-datos.md#corregir-un-pedido)) |
-| **Venta** | Cliente, pedido, fecha, depósito, comisión por vendedor, envío (y para quién), nota; importe (con el envío), cobrado, a cobrar y ganancia | Productos entregados (con costo y ganancia de cada uno) y cobros | *Borrar venta*, con confirmación: borra la venta con sus ítems, comisiones, envío y cobros (ver [Borrar una venta](modelo-de-datos.md#borrar-una-venta)) |
+| **Pedido** | Cliente, fecha, depósito de entrega, estado, vendedores, nota; importe, entregado, envío (si hubo) y ganancia | Productos (con lo entregado y pendiente) y entregas (con lo que falta cobrar de cada una) | *Registrar entrega* (si está abierto): abre Pedidos con ese pedido elegido. *Corregir pedido*: fecha, cliente, depósito, vendedores, productos, precios y nota, con sus entregas (ver [Corregir un pedido](modelo-de-datos.md#corregir-un-pedido)) |
+| **Venta** | Cliente, pedido, fecha, depósito, comisión por vendedor, envío (y para quién), nota; importe (con el envío), cobrado, a cobrar y ganancia | Productos entregados (con costo y ganancia de cada uno) y cobros | *Borrar venta*, con confirmación: borra la venta con sus ítems, comisiones, envío y cobros (ver [Borrar una venta](modelo-de-datos.md#borrar-una-venta)). *Corregir envío*: costo y para quién. En cada cobro, editar (fecha, importe, medio, quién recibió, nota) o borrar, con confirmación |
 | **Producto** | Unidad, precio de lista vigente hoy, costo vigente hoy (de *Costos*), mínimo | Stock por depósito (en depósito, en camino, en fletes en preparación y comprometido), receta activa que lo fabrica, recetas activas que lo usan, pedidos abiertos con algo pendiente, ventas y compras | *Corregir datos*: nombre, unidad y mínimo, en el lugar |
 | **Contacto** | Tipo, teléfono, dirección, email, localidad, observaciones (los vacíos no se muestran) | Como cliente: cantidad de pedidos, lo comprado (entregado), lo que debe y sus pedidos. Como proveedor: sus compras. Como transporte: sus fletes | *Corregir datos*: todos (el rol, solo si no tiene pedidos, compras ni fletes) |
-| **Flete** | Transporte, fecha, recorrido, estado, costo, salida prevista, llegada estimada, guía, nota | Mercadería y los estados por los que pasó | *Ver en Fletes*: abre Fletes con la fila resaltada |
-| **Compra** | Proveedor, producto, fecha, depósito, cantidad, precio, importe, remito, nota | Pedido para el que se compró | — |
+| **Flete** | Transporte, fecha, recorrido, estado, costo, salida prevista, llegada estimada, guía, nota | Mercadería y los estados por los que pasó | *Ver en Fletes*: abre Fletes con la fila resaltada. *Corregir flete*: todo menos el estado, con el mismo formulario que el alta. *Borrar flete*, con confirmación: con su mercadería y sus estados |
+| **Compra** | Proveedor, producto, fecha, depósito, cantidad, precio, importe, remito, nota | — | — |
 
 - Las listas van de lo más reciente a lo más viejo. Las de ventas, compras, pedidos de un cliente y fletes de un
   transporte muestran las 10 últimas y avisan cuántas más hay.

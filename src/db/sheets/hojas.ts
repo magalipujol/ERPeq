@@ -21,7 +21,7 @@ export const HOJAS = {
   precios: ['Precios', ['producto_id', 'precio', 'desde']],
   costos: ['Costos', ['producto_id', 'costo', 'desde']],
   reglas: ['Reglas de comisión', ['vendedor_id', 'producto_id', 'porcentaje', 'desde']],
-  compras: ['Compras', ['fecha', 'deposito_id', 'contacto_id', 'producto_id', 'cantidad', 'precio', 'importe', 'remito', 'pedido_id', 'nota']],
+  compras: ['Compras', ['fecha', 'deposito_id', 'contacto_id', 'producto_id', 'cantidad', 'precio', 'importe', 'remito', 'nota']],
   pedidos: ['Pedidos', ['id', 'fecha', 'contacto_id', 'deposito_id', 'nota']],
   pedidosItems: ['Pedidos ítems', ['pedido_id', 'linea', 'producto_id', 'cantidad', 'precio_lista', 'precio']],
   pedidosEstados: ['Pedidos estados', ['pedido_id', 'fecha', 'estado']],
@@ -118,7 +118,7 @@ export function parsear(crudo: Fila[][]): Datos {
     reglas: de('reglas', 0, (f) => ({ vendedorId: txt(f[0]), productoId: txt(f[1]), porcentaje: num(f[2]) ?? 0, desde: fecha(f[3]) })),
     compras: de('compras', 3, (f, fila) => ({
       fila, fecha: fecha(f[0]), depositoId: txt(f[1]), contactoId: txt(f[2]), productoId: txt(f[3]), cantidad: num(f[4]) ?? 0,
-      precio: num(f[5]), importe: num(f[6]), remito: txt(f[7]), pedidoId: txt(f[8]), nota: txt(f[9]),
+      precio: num(f[5]), importe: num(f[6]), remito: txt(f[7]), nota: txt(f[8]),
     })),
     pedidos: de('pedidos', 0, (f) => ({
       id: txt(f[0]), fecha: fecha(f[1]), contactoId: txt(f[2]), depositoId: txt(f[3]), nota: txt(f[4]),
@@ -197,7 +197,7 @@ export const filas = {
   regla: (r: ReglaComision): ValorCelda[] => [r.vendedorId, r.productoId, r.porcentaje, r.desde],
   compra: (c: Omit<Compra, 'fila' | 'importe'>): ValorCelda[] => [
     c.fecha, c.depositoId, c.contactoId, c.productoId, c.cantidad, vacio(c.precio),
-    c.precio === null ? '' : redondear(c.cantidad * c.precio), c.remito, c.pedidoId, c.nota,
+    c.precio === null ? '' : redondear(c.cantidad * c.precio), c.remito, c.nota,
   ],
   pedido: (p: Pedido): ValorCelda[] => [p.id, p.fecha, p.contactoId, p.depositoId, p.nota],
   pedidoItem: (i: PedidoItem): ValorCelda[] => [i.pedidoId, i.linea, i.productoId, i.cantidad, vacio(i.precioLista), i.precio],

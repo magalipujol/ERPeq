@@ -81,8 +81,8 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
   Los cálculos (stock, resúmenes de pedidos, cuentas entre socios) los hace la UI con las funciones del
   dominio.
 - **Operaciones:** una por caso de uso. **Cada una es atómica**: se guarda entera o no se guarda. En Sheets
-  es un solo `batchUpdate` con un `appendCells` por hoja. Las correcciones (`corregirContacto`,
-  `corregirProducto`, `corregirPedido`, `corregirCostos`) y `borrarVenta` son una `Correccion` del adaptador: filas que se reemplazan en el lugar
+  es un solo `batchUpdate` con un `appendCells` por hoja. Las correcciones (`corregir…`) y los
+  borrados (`borrar…`) son una `Correccion` del adaptador: filas que se reemplazan en el lugar
   (`updateCells`), filas sin ID propio que se borran (`deleteDimension`, de abajo hacia arriba) y se vuelven a agregar
   al final, y filas nuevas, todo en un solo `batchUpdate`. El adaptador busca los IDs en la columna A justo antes de
   escribir (la hoja pudo ordenarse a mano desde la última lectura). Si un ID a reemplazar no está, o está en más de
@@ -101,17 +101,24 @@ import que cruza una capa en la dirección prohibida no pasa `pnpm lint` ni el p
 | `cambiarEstadoPedido` | `pedidoId`, `cancelado` o `cerrado`, `momento` | *Pedidos estados*. |
 | `registrarFlete` | `flete` (con la salida y la llegada previstas), `items`, `estados`, `momento`, `transporteNuevo` | *Contactos* (si el transporte es nuevo), *Fletes*, *Fletes ítems*, *Fletes estados* (uno por estado). No guarda pedidos: un flete lleva productos. |
 | `cambiarEstadoFlete` | `fleteId`, estado, `momento` | *Fletes estados*. |
+| `corregirFlete` | `flete`, `items`, `transporteNuevo` | Reemplaza su fila en *Fletes*; borra y vuelve a agregar sus filas de *Fletes ítems*; agrega *Contactos* (si el transporte es nuevo). Los estados no se tocan. |
+| `borrarFlete` | `fleteId` | Borra sus filas de *Fletes*, *Fletes ítems* y *Fletes estados*. |
 | `registrarCompra` | `lineas`, `productosNuevos`, `proveedorNuevo`, `costos` (de `costosDeCompra`, o vacío) | *Productos* (nuevos), *Contactos* (si el proveedor es nuevo), *Compras* (el importe lo calcula el adaptador), *Costos* (si hay). |
 | `registrarAjuste` | `Ajuste` | *Ajustes*. |
 | `registrarPrecio` | `Precio` | *Precios*. |
 | `registrarCosto` | `Costo` | *Costos*. |
+| `corregirPrecios` | `productoId`, `Precio[]` | Como `corregirCostos`, en *Precios*. |
 | `corregirCostos` | `productoId`, `Costo[]` | Borra las filas del producto en *Costos* y agrega las nuevas al final, en el mismo orden (así se corrige o se borra un costo). |
 | `registrarReglaComision` | `ReglaComision` | *Reglas de comisión*. |
+| `corregirReglas` | `vendedorId`, `ReglaComision[]` | Borra las filas del vendedor en *Reglas de comisión* y agrega las nuevas al final, en el mismo orden. |
 | `registrarReglaEnvio` | `ReglaEnvio` | *Envíos*. |
 | `registrarCobro` | `Cobro` | *Cobros*. |
+| `corregirCobros` | `ventaId`, `Cobro[]` | Borra los cobros de la venta (ID en la columna B de *Cobros*) y agrega los nuevos al final, en el mismo orden. |
+| `corregirEnvio` | `ventaId`, `VentaEnvio` (o `null`) | Borra la fila de la venta en *Ventas envíos* y agrega la nueva (con `null`, ninguna). |
 | `registrarRendicion` | `Rendicion` | *Rendiciones*. |
 | `registrarReceta` | `receta` (una versión), `items` | *Recetas*, *Recetas ítems* (si hay). |
 | `registrarFabricacion` | `ajustes` (de `armarFabricacion`) | *Ajustes* (uno negativo por insumo y uno positivo por el producto). |
+| `borrarFabricacion` | `Fabricacion` | Borra sus filas de *Ajustes*: las que tienen su motivo (`motivoFabricacion`) en la columna E. |
 
 Los IDs (`PE0003`, `V0004`, `C0012`…) los genera la UI con `siguienteId` del dominio a partir de los datos
 leídos, así el mensaje de confirmación puede nombrarlos. El momento de los estados lo pasa la UI (`new Date()`).
