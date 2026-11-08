@@ -173,10 +173,12 @@ export function App({ db }: { db: BaseDeDatos }) {
   const enApp = pantalla === 'app' && info !== null && datos !== null;
 
   return (
-    <AppShell header={{ height: { base: 68, sm: enApp ? 116 : 68, xl: 68 } }} footer={enApp ? { height: { base: 64, sm: 0 } } : undefined}>
+    <AppShell header={{ height: { base: 68, sm: enApp ? 112 : 68 } }} footer={enApp ? { height: { base: 64, sm: 0 } } : undefined}>
       <AppShell.Header>
+        {/* Arriba, el nombre y las acciones (planilla, refrescar, salir); en escritorio, abajo, las pantallas en una fila propia:
+            son demasiadas para compartir renglón con el resto. */}
         <Container size="xl" h="100%">
-          <Group h="100%" justify="space-between" gap="xs" py={8} className="fila-header">
+          <Group h={68} justify="space-between" gap="xs" py={8} wrap="nowrap" className="fila-header">
             <Group gap="sm" wrap="nowrap" miw={0}>
               <ThemeIcon size={42} radius="md" variant="light" aria-hidden>🌿</ThemeIcon>
               <Box miw={0}>
@@ -186,7 +188,6 @@ export function App({ db }: { db: BaseDeDatos }) {
                 </Text>
               </Box>
             </Group>
-            {enApp && <NavSuperior opciones={NAV} value={vista} onChange={irA} />}
             {(pantalla === 'app' || pantalla === 'sin-acceso') && (
               <Group gap={6} wrap="nowrap">
                 {info && (
@@ -209,6 +210,7 @@ export function App({ db }: { db: BaseDeDatos }) {
               </Group>
             )}
           </Group>
+          {enApp && <NavSuperior opciones={NAV} value={vista} onChange={irA} />}
         </Container>
       </AppShell.Header>
 

@@ -17,8 +17,8 @@ const ICONOS: Record<string, typeof IconPackage> = {
 export function NavSuperior<V extends string>({ opciones, value, onChange }:
   { opciones: readonly OpcionNav<V>[]; value: V; onChange: (v: V) => void }) {
   return (
-    <ScrollArea type="never" maw="100%" visibleFrom="sm">
-      <SegmentedControl value={value} onChange={onChange} data={[...opciones]} aria-label="Pantalla" />
+    <ScrollArea type="auto" scrollbarSize={6} maw="100%" visibleFrom="sm">
+      <SegmentedControl value={value} onChange={onChange} data={[...opciones]} aria-label="Pantalla" size="xs" styles={{ label: { paddingInline: 5 } }} />
     </ScrollArea>
   );
 }

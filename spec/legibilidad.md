@@ -28,6 +28,9 @@ Association (BDA) y las pautas de contraste de WCAG. Los valores están en `src/
 - OpenDyslexic es ancha: revisar cada pantalla en un celular de 360 a 412 px (las pruebas e2e de celular usan 360). Las tablas van dentro de un
   `ScrollArea`, y un `SegmentedControl` con varias opciones pasa a vertical (*Estado* en *Nuevo flete*) o a tamaño
   `xs` (*Período* en Análisis) en celular. La barra inferior tiene cuatro pantallas y un menú *Más* con el resto.
+  En la compu, las pantallas van en una fila propia debajo del nombre y las acciones (*Planilla*, refrescar, *Salir*),
+  en tamaño `xs` y con poco relleno para que entren todas desde 1440 px; en pantallas más angostas la fila se desplaza
+  y muestra su barra.
 - En celular el espacio es para los datos: cada bloque de una pantalla va en `Seccion` (de `componentes/comunes.tsx`),
   que en la compu es una tarjeta y en el celular queda plano, sin borde ni relleno, así las tarjetas de adentro
   (pedidos, productos) no quedan dentro de otra tarjeta. El título de cada pantalla lleva `className="titulo-pantalla"`:
