@@ -1,6 +1,6 @@
 // Análisis de ventas por producto y por cliente sobre un período. No depende del navegador, así se puede
 // probar con Node. Las definiciones y fórmulas están en spec/analisis.md.
-import { type Datos, estadosActuales, lineasVendidas, nombres, redondear } from './modelo';
+import { claveMes, type Datos, estadosActuales, lineasVendidas, nombres, redondear } from './modelo';
 
 export const PERIODOS = [
   { value: '3', label: '3 meses' },
@@ -80,6 +80,85 @@ export interface FletesPeriodo { total: number; cantidad: number }
 export function fletesDelPeriodo(datos: Datos, desde: Date | null): FletesPeriodo {
   const fletes = datos.fletes.filter((f) => enPeriodo(f.fecha, desde));
   return { total: redondear(fletes.reduce((s, f) => s + (f.costo ?? 0), 0)), cantidad: fletes.length };
+}
+
+// ---------- Margen mensual ----------
+
+// Margen de cada mes: lo que entró por ventas y envíos menos lo que costó lo vendido (al costo vigente a la fecha
+// de cada venta), las comisiones, los envíos que se quedan los vendedores y los fletes. Las compras del mes no
+// entran en el margen: van aparte, como plata que salió (ver spec/analisis.md).
+export interface MargenMes {
+  mes: string; // "2026-10"
+  ventas: number; envios: number; ingresos: number;
+  costo: number; comisiones: number; enviosVendedores: number; fletes: number; egresos: number;
+  margen: number; margenPct: number | null; // margen / ingresos, entre 0 y 1
+  lineasSinCosto: number; // ítems vendidos sin costo cargado a su fecha: su costo no se descuenta
+  compras: number;
+}
+
+// Primer día del mes de `desde`: el informe mensual toma meses enteros.
+export const inicioDeMes = (desde: Date | null) => (desde === null ? null : new Date(desde.getFullYear(), desde.getMonth(), 1));
+
+const mesVacio = (mes: string): MargenMes => ({
+  mes, ventas: 0, envios: 0, ingresos: 0, costo: 0, comisiones: 0, enviosVendedores: 0, fletes: 0, egresos: 0,
+  margen: 0, margenPct: null, lineasSinCosto: 0, compras: 0,
+});
+
+function cerrarMes(m: MargenMes): MargenMes {
+  const ingresos = m.ventas + m.envios;
+  const egresos = m.costo + m.comisiones + m.enviosVendedores + m.fletes;
+  return {
+    ...m,
+    ventas: redondear(m.ventas), envios: redondear(m.envios), ingresos: redondear(ingresos),
+    costo: redondear(m.costo), comisiones: redondear(m.comisiones), enviosVendedores: redondear(m.enviosVendedores),
+    fletes: redondear(m.fletes), egresos: redondear(egresos), margen: redondear(ingresos - egresos),
+    margenPct: ingresos > 0 ? (ingresos - egresos) / ingresos : null, compras: redondear(m.compras),
+  };
+}
+
+// Meses con algún movimiento desde `desde` (que se lleva al primer día de su mes), del más reciente al más viejo.
+export function margenPorMes(datos: Datos, desde: Date | null): MargenMes[] {
+  const inicio = inicioDeMes(desde);
+  const meses = new Map<string, MargenMes>();
+  const sumar = (fecha: Date | null, f: (m: MargenMes) => void) => {
+    if (!enPeriodo(fecha, inicio) || fecha === null) return;
+    const k = claveMes(fecha);
+    const m = meses.get(k) ?? mesVacio(k);
+    f(m);
+    meses.set(k, m);
+  };
+
+  for (const l of lineasVendidas(datos)) {
+    sumar(l.venta.fecha, (m) => {
+      m.ventas += l.importe;
+      m.comisiones += l.comision;
+      if (l.costo === null) m.lineasSinCosto += 1;
+      else m.costo += l.cantidad * l.costo;
+    });
+  }
+  const ventas = new Map(datos.ventas.map((v) => [v.id, v]));
+  for (const e of datos.ventasEnvios) {
+    sumar(ventas.get(e.ventaId)?.fecha ?? null, (m) => {
+      m.envios += e.costo;
+      if (e.vendedorId !== '') m.enviosVendedores += e.costo;
+    });
+  }
+  for (const f of datos.fletes) sumar(f.fecha, (m) => { m.fletes += f.costo ?? 0; });
+  for (const c of datos.compras) {
+    sumar(c.fecha, (m) => { m.compras += c.importe ?? (c.precio === null ? 0 : c.cantidad * c.precio); });
+  }
+  return [...meses.values()].map(cerrarMes).sort((a, b) => b.mes.localeCompare(a.mes));
+}
+
+// Total de varios meses, con los mismos campos.
+export function totalMargen(meses: MargenMes[]): MargenMes {
+  const t = mesVacio('total');
+  for (const m of meses) {
+    t.ventas += m.ventas; t.envios += m.envios; t.costo += m.costo; t.comisiones += m.comisiones;
+    t.enviosVendedores += m.enviosVendedores; t.fletes += m.fletes; t.lineasSinCosto += m.lineasSinCosto;
+    t.compras += m.compras;
+  }
+  return cerrarMes(t);
 }
 
 // ---------- Clientes ----------

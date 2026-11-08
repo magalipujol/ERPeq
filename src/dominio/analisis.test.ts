@@ -153,3 +153,62 @@ describe('clientesInactivos', () => {
     expect(A.clientesInactivos(e, HOY)).toStrictEqual([]);
   });
 });
+
+describe('margenPorMes', () => {
+  const flete = (id: string, f: Date, costo: number | null): M.Flete => ({
+    id, fecha: f, contactoId: '', origenId: 'BB', destinoId: 'ROS', costo, guia: '', nota: '', salida: null, llegadaEstimada: null,
+  });
+  const compra = (fila: number, f: Date, cantidad: number, precio: number | null, importe: number | null): M.Compra => ({
+    fila, fecha: f, depositoId: 'BB', contactoId: '', productoId: 'P001', cantidad, precio, importe, remito: '', nota: '',
+  });
+  const d = armar([
+    // Octubre: 4 kg de almendras a $3.000 (costo $1.500, comisión $1.200) y 2 de miel sin costo.
+    { id: 'PE1', cliente: 'Ana', fecha: fecha(2026, 10, 5), lineas: [['P001', 4, 3000, 1500, 1200], ['P003', 2, 1000, null]] },
+    // Septiembre: 10 kg de avena a $800 (costo $500, comisión $240).
+    { id: 'PE2', cliente: 'Bruno', fecha: fecha(2026, 9, 1), lineas: [['P002', 10, 800, 500, 240]] },
+    // Enero: fuera de los últimos 3 meses.
+    { id: 'PE3', cliente: 'Bruno', fecha: fecha(2026, 1, 10), lineas: [['P002', 100, 800, 500]] },
+  ], {
+    // El envío de octubre se lo queda el vendedor; el de septiembre, el negocio.
+    ventasEnvios: [
+      { ventaId: 'V-PE1', vendedorId: 'VEN01', costoRegla: 5000, costo: 5000 },
+      { ventaId: 'V-PE2', vendedorId: '', costoRegla: 3000, costo: 3000 },
+    ],
+    fletes: [flete('F1', fecha(2026, 10, 8), 4000), flete('F2', fecha(2026, 9, 2), null)],
+    // Compras: 100 kg en octubre ($150.000) y una sin importe en julio (10 × $1.000).
+    compras: [compra(2, fecha(2026, 10, 2), 100, 1500, 150000), compra(3, fecha(2026, 7, 1), 10, 1000, null)],
+  });
+
+  it('por mes: ingresos (ventas y envíos) menos costo de lo vendido, comisiones, envíos de vendedores y fletes', () => {
+    const [oct, sep, jul] = A.margenPorMes(d, A.inicioPeriodo('3', HOY));
+
+    // Octubre: ventas 12.000 + 2.000 = 14.000; envío 5.000 → ingresos 19.000.
+    // Egresos: costo 4 × 1.500 = 6.000 (la miel no tiene costo) + comisión 1.200 + envío del vendedor 5.000 + flete 4.000 = 16.200.
+    expect(oct).toMatchObject({
+      mes: '2026-10', ventas: 14000, envios: 5000, ingresos: 19000, costo: 6000, comisiones: 1200, enviosVendedores: 5000,
+      fletes: 4000, egresos: 16200, margen: 2800, lineasSinCosto: 1, compras: 150000,
+    });
+    expect(oct.margenPct).toBeCloseTo(2800 / 19000);
+    // Septiembre: 8.000 + 3.000 de envío del negocio − 5.000 de costo − 240 de comisión = 5.760; el flete sin costo no suma.
+    expect(sep).toMatchObject({ mes: '2026-09', ingresos: 11000, egresos: 5240, margen: 5760, compras: 0 });
+    // Julio: el período de 3 meses empieza el 16/07, pero el informe toma el mes entero: entra la compra del 01/07.
+    expect(jul).toMatchObject({ mes: '2026-07', ingresos: 0, margen: 0, margenPct: null, compras: 10000 });
+  });
+
+  it('las compras no cambian el margen: son plata que salió, no costo de lo vendido', () => {
+    const oct = A.margenPorMes(d, null)[0];
+
+    expect(oct.margen).toBe(oct.ingresos - oct.egresos);
+    expect(oct.compras).toBe(150000);
+  });
+
+  it('el total suma los meses y recalcula el margen', () => {
+    const meses = A.margenPorMes(d, null);
+    const t = A.totalMargen(meses);
+
+    // Enero: 80.000 − 50.000 = 30.000. Total: 2.800 + 5.760 + 0 + 30.000.
+    expect(meses.map((m) => m.mes)).toStrictEqual(['2026-10', '2026-09', '2026-07', '2026-01']);
+    expect(t).toMatchObject({ ingresos: 110000, margen: 38560, compras: 160000, lineasSinCosto: 1 });
+    expect(t.margenPct).toBeCloseTo(38560 / 110000);
+  });
+});

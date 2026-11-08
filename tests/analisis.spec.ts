@@ -54,6 +54,19 @@ test('el dueño ve qué productos y clientes rinden más y quién dejó de compr
   await expect(kpi(page, 'Fletes del período')).toContainText('5.000')
   await expect(kpi(page, 'Ganancia después de fletes')).toContainText('8.800')
 
+  // Margen mensual, en meses enteros: desde el 01/04, así que entra la miel que Bruno compró el 10/04.
+  // Octubre: ventas $12.000 (Ana) + $8.000 (Carla) = $20.000; costo 4 × $1.500 + 10 × $500 = $11.000; comisión $1.200;
+  // flete $5.000 → margen $2.800 (14%). Compras de octubre: $10.000 de almendras + $15.000 de avena = $25.000.
+  await expect(fila(page, 'Margen mensual', 'Octubre de 2026').getByRole('cell')).toHaveText(
+    ['Octubre de 2026', /20\.000/, /0/, /11\.000/, /1\.200/, /0/, /5\.000/, /2\.800/, '14%', /25\.000/])
+  // Septiembre: $8.000 de avena − $5.000 de costo = $3.000, con $20.000 de compras de almendras.
+  await expect(fila(page, 'Margen mensual', 'Septiembre de 2026').getByRole('cell').nth(7)).toContainText('3.000')
+  // Abril: 2 unid. de miel × $1.000 − 2 × $600 = $800. Total: 800 + 3.000 (agosto) + 3.000 + 2.800 = $9.600.
+  await expect(fila(page, 'Margen mensual', 'Abril de 2026').getByRole('cell').nth(7)).toContainText('800')
+  const total = fila(page, 'Margen mensual', 'Total').getByRole('cell')
+  await expect(total.nth(7)).toContainText('9.600')
+  await expect(total.nth(9)).toContainText('45.000')
+
   await expect(fila(page, 'Ganancia por producto', 'Avena').getByRole('cell')).toHaveText(
     ['Avena', '30 kg', /24\.000/, /0/, /15\.000/, /9\.000/, /37,5/])
   await expect(fila(page, 'Ganancia por producto', 'Almendras').getByRole('cell').nth(5)).toContainText('4.800')

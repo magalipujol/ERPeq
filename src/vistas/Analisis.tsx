@@ -6,7 +6,7 @@ import { useBase } from '../base';
 import { Encabezado, Kpis, Seccion } from '../componentes/comunes';
 import { Vinculo } from '../componentes/Fichas';
 import { useFila } from '../ficha';
-import { fmtFecha, fmtMoney, fmtNum } from '../formato';
+import { fmtFecha, fmtMes, fmtMoney, fmtNum } from '../formato';
 
 const fmtPct = (n: number | null) =>
   (n === null ? '–' : n.toLocaleString('es-AR', { style: 'percent', maximumFractionDigits: 1 }));
@@ -21,6 +21,7 @@ export function Analisis({ visible }: { visible: boolean }) {
   const clientes = useMemo(() => A.analizarClientes(datos, desde), [datos, desde]);
   const inactivos = useMemo(() => A.clientesInactivos(datos, hoy), [datos, hoy]);
   const fletes = A.fletesDelPeriodo(datos, desde);
+  const meses = useMemo(() => A.margenPorMes(datos, desde), [datos, desde]);
   // En celular los cuatro períodos entran en una fila solo en tamaño chico.
   const tamPeriodo = useMatches({ base: 'xs', sm: 'sm' });
 
@@ -43,6 +44,8 @@ export function Analisis({ visible }: { visible: boolean }) {
         { label: 'Ganancia después de fletes', valor: fmtMoney(ganancia - fletes.total), alerta: ganancia - fletes.total < 0 },
       ]} />
 
+      <MargenMensual meses={meses} />
+
       <Grid gap="md" align="flex-start">
         <Grid.Col span={{ base: 12, md: 6 }}>{visible && <MasVendidos productos={productos} />}</Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>{visible && <MayorGanancia productos={productos} />}</Grid.Col>
@@ -55,6 +58,65 @@ export function Analisis({ visible }: { visible: boolean }) {
         <Grid.Col span={{ base: 12, md: 6 }}><ClientesInactivos clientes={inactivos} /></Grid.Col>
       </Grid>
     </Stack>
+  );
+}
+
+// Margen de cada mes del período (meses enteros), con el total. Las compras van al final, aparte: son plata que salió,
+// no costo de lo vendido.
+function MargenMensual({ meses }: { meses: A.MargenMes[] }) {
+  const total = A.totalMargen(meses);
+  const celdas = (m: A.MargenMes) => (
+    <>
+      <Table.Td className="num">{fmtMoney(m.ventas)}</Table.Td>
+      <Table.Td className="num">{fmtMoney(m.envios)}</Table.Td>
+      <Table.Td className="num" c="dimmed">{fmtMoney(m.costo)}</Table.Td>
+      <Table.Td className="num" c="dimmed">{fmtMoney(m.comisiones)}</Table.Td>
+      <Table.Td className="num" c="dimmed">{fmtMoney(m.enviosVendedores)}</Table.Td>
+      <Table.Td className="num" c="dimmed">{fmtMoney(m.fletes)}</Table.Td>
+      <Table.Td className="num" fw={700} c={m.margen < 0 ? 'red' : undefined}>{fmtMoney(m.margen)}</Table.Td>
+      <Table.Td className="num">{fmtPct(m.margenPct)}</Table.Td>
+      <Table.Td className="num" c="dimmed">{fmtMoney(m.compras)}</Table.Td>
+    </>
+  );
+  return (
+    <Seccion>
+      <Encabezado titulo="Margen mensual" />
+      <ScrollArea.Autosize mah={480} type="auto">
+        <Table stickyHeader highlightOnHover fz="sm" style={{ whiteSpace: 'nowrap' }} aria-label="Margen mensual">
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Mes</Table.Th><Table.Th className="num">Ventas</Table.Th><Table.Th className="num">Envíos</Table.Th>
+              <Table.Th className="num">Costo</Table.Th><Table.Th className="num">Comisiones</Table.Th>
+              <Table.Th className="num" title="Envíos que cobra el negocio pero se quedan los vendedores">Envíos vend.</Table.Th><Table.Th className="num">Fletes</Table.Th>
+              <Table.Th className="num">Margen</Table.Th><Table.Th className="num">Margen %</Table.Th>
+              <Table.Th className="num">Compras</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {meses.map((m) => (
+              <Table.Tr key={m.mes}>
+                <Table.Td>
+                  {fmtMes(m.mes)}
+                  {m.lineasSinCosto > 0 && (
+                    <Text size="xs" c="dimmed">{m.lineasSinCosto} {m.lineasSinCosto === 1 ? 'venta' : 'ventas'} sin costo</Text>
+                  )}
+                </Table.Td>
+                {celdas(m)}
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+          {meses.length > 1 && (
+            <Table.Tfoot>
+              <Table.Tr fw={700}>
+                <Table.Td>Total</Table.Td>
+                {celdas(total)}
+              </Table.Tr>
+            </Table.Tfoot>
+          )}
+        </Table>
+      </ScrollArea.Autosize>
+      {meses.length === 0 && <Text c="dimmed" mt="xs" size="sm">No hay movimientos en el período.</Text>}
+    </Seccion>
   );
 }
 
