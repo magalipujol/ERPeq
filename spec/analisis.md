@@ -95,6 +95,57 @@ Período: últimos 6 meses al 16/10/2026. Hay un flete de $5.000 el 08/10.
 Ganancia de productos $13.800, margen 38,3 %; después de fletes, $13.800 − $5.000 = $8.800. Más vendido
 por importe: Avena. Por cantidad: Avena (30 kg); no hay ventas en unidades en el período.
 
+## Margen mensual
+
+Una fila por mes con movimientos, del más reciente al más viejo, y el total del período. Toma **meses enteros**:
+desde el primer día del mes en que empieza el período ("6 meses" al 16/10/2026 empieza el 01/04/2026, no el 16/04).
+Cálculo en `margenPorMes` y `totalMargen` de `src/dominio/analisis.ts`.
+
+| Columna | Qué suma | Fecha que se usa |
+|---|---|---|
+| Ventas | Σ `importe` de *Ventas ítems* | de la venta |
+| Envíos | Σ `costo` de *Ventas envíos* (lo que pagó el cliente por el envío) | de la venta |
+| Costo | Costo de lo vendido: Σ `cantidad × costo`, con el costo de *Costos* vigente a la fecha de la venta | de la venta |
+| Comisiones | Σ `monto` de *Ventas comisiones* | de la venta |
+| Envíos vend. | Σ `costo` de las filas de *Ventas envíos* con `vendedor_id`: los cobra el negocio pero son del vendedor | de la venta |
+| Fletes | Σ `costo` de *Fletes* | del flete |
+| **Margen** | ventas + envíos − costo − comisiones − envíos de vendedores − fletes | |
+| Margen % | margen / (ventas + envíos); "–" si no hubo ingresos | |
+| Compras | Σ `importe` de *Compras* (o `cantidad × precio` si falta el importe) | de la compra |
+
+El margen descuenta el **costo de lo vendido**, no las compras del mes: lo que se compra para stock se vende en
+otros meses, y descontarlo el mes de la compra haría que un mes con mucha reposición dé pérdida aunque se haya
+vendido bien. Las compras se muestran en la última columna, aparte, como plata que salió. Así el mismo informe
+sirve para mirar por mes y, como cada venta tiene su costo a su fecha, también por pedido o producto.
+
+Un ítem sin costo cargado a su fecha suma a las ventas pero no descuenta costo: el margen de ese mes queda más
+alto de lo real. La fila lo marca ("1 venta sin costo").
+
+```mermaid
+flowchart LR
+  LV[Líneas vendidas] -->|importe| I[Ingresos]
+  VE[Ventas envíos] -->|costo| I
+  LV -->|cantidad × costo vigente| E[Egresos]
+  LV -->|comisión| E
+  VE -->|con vendedor| E
+  F[Fletes] -->|costo| E
+  I --> M[Margen = ingresos − egresos]
+  E --> M
+  C[Compras] -->|importe, aparte| CA[Compras del mes]
+```
+
+### Ejemplo
+
+Octubre de 2026: Ana compra 4 kg de almendras a $3.000 (costo $1.500, comisión $1.200), Carla 10 kg de avena a
+$800 (costo $500), hay un flete de $5.000 y se compran 10 kg de almendras ($10.000) y 30 kg de avena ($15.000).
+
+| Ventas | Envíos | Costo | Comisiones | Envíos de vendedores | Fletes | Margen | Margen % | Compras |
+|---|---|---|---|---|---|---|---|---|
+| $20.000 | $0 | $11.000 | $1.200 | $0 | $5.000 | $2.800 | 14 % | $25.000 |
+
+Si además en una entrega se cobra un envío de $5.000 que se queda el vendedor, suma $5.000 a envíos y $5.000 a
+envíos de vendedores: el margen no cambia. Si el envío queda para el negocio, el margen sube $5.000.
+
 ## Clientes
 
 Un cliente se identifica por el `contacto_id` del pedido y su nombre sale de *Contactos*; los pedidos sin

@@ -50,7 +50,7 @@ esperados explicados (de dónde sale cada total). Ahí es donde aparecen los bug
 | Ruta | Contenido |
 |---|---|
 | `src/dominio/modelo.ts` | **Dominio**: tipos y cálculos (stock, estados, precios, comisiones, ganancia, entregas, IDs, envío de cada entrega, saldo a cobrar de cada venta, cuentas entre socios y recetas: versión vigente, merma y armado de una fabricación). No sabe nada de hojas, columnas ni del navegador: se prueba con Vitest. |
-| `src/dominio/analisis.ts` | **Dominio**: cálculos de la pantalla Análisis (ganancia y ventas por producto, clientes activos e inactivos). Puro, se prueba con Vitest. Ver `spec/analisis.md`. |
+| `src/dominio/analisis.ts` | **Dominio**: cálculos de la pantalla Análisis (ganancia y ventas por producto, margen mensual, clientes activos e inactivos). Puro, se prueba con Vitest. Ver `spec/analisis.md`. |
 | `src/dominio/fichas.ts` | **Dominio**: qué muestra la ficha de un pedido, venta, producto, contacto, flete o compra y lo que tiene relacionado. Puro, se prueba con Vitest. Ver `spec/fichas.md`. |
 | `src/dominio/mapa.ts` | **Dominio**: qué va en el mapa de Inicio (depósitos, pedidos abiertos, fletes en curso) y en qué localidad. Puro, se prueba con Vitest. Ver `spec/mapa.md`. |
 | `src/mapa/` | Mapa de Argentina: `argentina.json` (provincias como paths SVG y localidades censales, ya proyectadas; lo genera `herramientas/mapa_argentina.py`) y `ubicar.ts` (ubica una localidad, junta lugares cercanos en sitios y fletes en tramos; se prueba con Vitest). Lo usa `componentes/Mapa.tsx`, que Inicio carga aparte (`lazy`). |
