@@ -159,7 +159,7 @@ describe('margenPorMes', () => {
     id, fecha: f, contactoId: '', origenId: 'BB', destinoId: 'ROS', costo, guia: '', nota: '', salida: null, llegadaEstimada: null,
   });
   const compra = (fila: number, f: Date, cantidad: number, precio: number | null, importe: number | null): M.Compra => ({
-    fila, fecha: f, depositoId: 'BB', contactoId: '', productoId: 'P001', cantidad, precio, importe, remito: '', pedidoId: '', nota: '',
+    fila, fecha: f, depositoId: 'BB', contactoId: '', productoId: 'P001', cantidad, precio, importe, remito: '', nota: '',
   });
   const d = armar([
     // Octubre: 4 kg de almendras a $3.000 (costo $1.500, comisión $1.200) y 2 de miel sin costo.
